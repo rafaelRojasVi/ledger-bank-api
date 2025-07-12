@@ -1,7 +1,7 @@
 # lib/ledger_bank_api_web/resource_controller.ex
 defmodule LedgerBankApiWeb.ResourceController do
   @moduledoc """
-  Generic REST-y JSON controller with overridable defaults:
+  Generic REST-style JSON controller with overridable defaults.
 
       defmodule LedgerBankApiWeb.AccountController do
         use LedgerBankApiWeb.ResourceController,
@@ -15,34 +15,41 @@ defmodule LedgerBankApiWeb.ResourceController do
 
   # -------------------------------------------------------------------------
   defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
+    # 1.  Compute everything **once** at compile-time so we don’t spend cycles
+    #     converting strings ↔︎ atoms on every request.
+    ctx      = Keyword.fetch!(opts, :context)
+    resource = Keyword.fetch!(opts, :resource)          # e.g. :account
+    plural   = String.to_atom("#{resource}s")           # e.g. :accounts
+
+    quote bind_quoted: [ctx: ctx, resource: resource, plural: plural] do
       use LedgerBankApiWeb, :controller
       action_fallback LedgerBankApiWeb.FallbackController
 
       @behaviour LedgerBankApiWeb.ResourceController
 
-      @ctx      Keyword.fetch!(opts, :context)
-      @resource Keyword.fetch!(opts, :resource)       # :account, :transaction …
-      @plural   "#{@resource}s"                       # "accounts" etc.
+      @ctx      ctx
+      @resource resource
+      @plural   plural
 
-      # ---------- Default index / show -------------------------------------
+      # ---------- default /index ------------------------------------------
       @impl true
       def index(conn, _params) do
-        list_fun = :"list_#{@plural}"
+        list_fun = :"list_#{@plural}"      # :list_accounts / :list_transactions …
         data     = apply(@ctx, list_fun, [])
-        render(conn, :index, [{@plural, data}] |> Enum.into(%{}))
+        render(conn, :index, %{@plural => data})        # ← **atom key**
       end
 
+      # ---------- default /show -------------------------------------------
       @impl true
       def show(conn, %{"id" => id}) do
-        get_fun = :"get_#{@resource}"
+        get_fun = :"get_#{@resource}"      # :get_account / :get_transaction …
         case apply(@ctx, get_fun, [id]) do
           nil  -> {:error, :not_found}
-          item -> render(conn, :show, [{@resource, item}] |> Enum.into(%{}))
+          item -> render(conn, :show, %{@resource => item})   # ← **atom key**
         end
       end
 
-      # Let users override either action
+      # Let individual controllers override either action if they need to
       defoverridable index: 2, show: 2
     end
   end

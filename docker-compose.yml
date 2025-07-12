@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ledger_bank_api_prod
+    ports:
+      - "5432:5432"
+    healthcheck:                       # ← wait until PG accepts conns
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  web:
+      build: .
+      depends_on:
+        db:
+          condition: service_healthy               # wait for container health-check
+      environment:
+        # Ecto / Phoenix
+        DATABASE_URL: ecto://postgres:postgres@db:5432/ledger_bank_api_prod
+        SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+
+        # ➜  add these four ↓ so pg_isready knows where to probe
+        PGHOST: db
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres        # only inside Docker; not exposed
+
+      entrypoint: ["sh", "/app/docker/entrypoint.sh"]
+      ports:
+        - "4000:4000"

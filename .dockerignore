@@ -1,0 +1,30 @@
+# Build artifacts
+_build/
+deps/
+*.ez
+
+# Development files
+.elixir_ls/
+.git/
+.gitignore
+
+# Test files
+test/
+
+# Documentation
+docs/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp 

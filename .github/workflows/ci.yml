@@ -1,0 +1,44 @@
+name: mix-test + docker-build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
+      # speeds up rebar3 downloads
+      HEX_HTTP_TIMEOUT: 20
+
+    steps:
+      # 1) Checkout code
+      - uses: actions/checkout@v4
+
+      # 2) Cache mix/ and deps/_build (huge speed-up)
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mix
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      # 3) Install Elixir + OTP that matches your project
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: 1.18.4
+          otp-version: 26.2
+
+      # 4) Install package deps & run tests
+      - run: mix deps.get
+      - run: mix test --warnings-as-errors
+
+      # 5) Build container image (no push yet)
+      - name: Build docker image
+        run: |
+          docker compose build --pull

@@ -4,10 +4,14 @@
 /erl_crash.dump
 /.elixir_ls
 /.formatter.exs
+
 # Tests & benches
 /cover
 /bench/*.png
+
 # Misc
 *.swp
 *.log
-*.env
+
+# Environment files
+.env

@@ -1,5 +1,8 @@
 # bench/banking_bench.exs
 Mix.Task.run("app.start")
+Mix.Task.run("ecto.create", ["--quiet"])
+Mix.Task.run("ecto.migrate", ["--quiet"])
+
 
 alias LedgerBankApi.Banking
 alias LedgerBankApi.Banking.Account
@@ -27,4 +30,3 @@ Benchee.run(
   formatters: [Benchee.Formatters.Console],
   # comparison: true   ← delete this line
 )
-

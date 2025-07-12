@@ -4,12 +4,11 @@ import Config
 config :ledger_bank_api, LedgerBankApi.Repo,
   username: "postgres",
   password: "postgres",
-  hostname: "localhost",
-  database: "ledger_bank_api_dev",
-  stacktrace: true,
+  database: "ledger_bank_api_test",
+  hostname: System.get_env("DB_HOST", "localhost"),   # <─ key change
   port: 5432,
-  show_sensitive_data_on_connection_error: true,
   pool_size: 10
+
 
 # For development, we disable any cache and enable
 # debugging and code reloading.

@@ -1,8 +1,9 @@
+# .github/workflows/ci.yml
 name: mix-test + docker-build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
 
 jobs:
@@ -11,14 +12,14 @@ jobs:
 
     env:
       MIX_ENV: test
-      DB_HOST: db
+      DB_HOST: localhost            # host ↔ container
       HEX_HTTP_TIMEOUT: 20
 
     steps:
       # 1) Checkout code
       - uses: actions/checkout@v4
 
-      # 2) Cache deps and build output
+      # 2) Cache deps and _build to speed things up
       - uses: actions/cache@v4
         with:
           path: |
@@ -26,24 +27,37 @@ jobs:
             deps
             _build
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
 
-      # 3) Install Elixir & Erlang
+      # 3) Install Erlang/Elixir
       - uses: erlef/setup-beam@v1
         with:
-          elixir-version: 1.18.4
-          otp-version: 26.2
+          elixir-version: '1.18.4'
+          otp-version: '26.2'
 
-      # 4) Start PostgreSQL (from docker-compose)
-      - name: Start PostgreSQL in Docker
+      # 4) Spin up Postgres
+      - name: Start Postgres via Compose
         run: docker compose up -d db
 
-      # 5) Install dependencies and run tests
+      # 5) Wait until Postgres responds
+      - name: Wait for Postgres
+        run: |
+          for i in {1..20}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "Postgres is up"
+              exit 0
+            fi
+            echo "Waiting for Postgres…"
+            sleep 2
+          done
+          echo "Postgres never became ready" >&2
+          exit 1
+
+      # 6) Fetch deps, create DB, migrate, test
       - run: mix deps.get
       - run: mix ecto.create
       - run: mix ecto.migrate
       - run: mix test --warnings-as-errors
 
-      # 6) Build the Docker image
-      - name: Build docker image
+      # 7) Build your Docker image (optional)
+      - name: Build app image
         run: docker compose build --pull

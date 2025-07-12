@@ -1,0 +1,12 @@
+# Elixir / Phoenix
+/_build
+/deps
+/erl_crash.dump
+/.elixir_ls
+/.formatter.exs
+# Tests & benches
+/cover
+/bench/*.png
+# Misc
+*.swp
+*.log

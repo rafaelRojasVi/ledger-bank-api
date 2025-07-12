@@ -11,14 +11,14 @@ jobs:
 
     env:
       MIX_ENV: test
-      # speeds up rebar3 downloads
+      DB_HOST: db
       HEX_HTTP_TIMEOUT: 20
 
     steps:
       # 1) Checkout code
       - uses: actions/checkout@v4
 
-      # 2) Cache mix/ and deps/_build (huge speed-up)
+      # 2) Cache deps and build output
       - uses: actions/cache@v4
         with:
           path: |
@@ -28,17 +28,22 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-
 
-      # 3) Install Elixir + OTP that matches your project
+      # 3) Install Elixir & Erlang
       - uses: erlef/setup-beam@v1
         with:
           elixir-version: 1.18.4
           otp-version: 26.2
 
-      # 4) Install package deps & run tests
+      # 4) Start PostgreSQL (from docker-compose)
+      - name: Start PostgreSQL in Docker
+        run: docker compose up -d db
+
+      # 5) Install dependencies and run tests
       - run: mix deps.get
+      - run: mix ecto.create
+      - run: mix ecto.migrate
       - run: mix test --warnings-as-errors
 
-      # 5) Build container image (no push yet)
+      # 6) Build the Docker image
       - name: Build docker image
-        run: |
-          docker compose build --pull
+        run: docker compose build --pull

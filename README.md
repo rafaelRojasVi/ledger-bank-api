@@ -57,7 +57,10 @@ cp env.example .env
 ### 3. Start Database
 
 ```bash
-# Start PostgreSQL in Docker
+# Option A: Use the startup script (Windows PowerShell)
+. scripts/start-dev.ps1
+
+# Option B: Manual setup
 docker-compose up -d db
 ```
 

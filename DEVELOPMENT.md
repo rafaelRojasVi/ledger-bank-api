@@ -349,7 +349,11 @@ mix bench:ci
 ## 🚀 Quick Commands Reference
 
 ```bash
-# Complete development setup
+# Complete development setup (Windows PowerShell)
+. scripts/start-dev.ps1
+iex -S mix phx.server
+
+# Or manual setup
 cp env.example .env
 docker-compose up -d db
 . scripts/dev-db.ps1

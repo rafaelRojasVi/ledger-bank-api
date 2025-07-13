@@ -3,29 +3,33 @@ version: "3.9"
 services:
   db:
     image: postgres:16
-    env_file: .env
     environment:
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+      POSTGRES_DB: ${DB_NAME:-ledger_bank_api_dev}
+      POSTGRES_USER: ${DB_USER:-postgres}
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 3s
       timeout: 3s
       retries: 15
 
   web:
     build: .
-    env_file: .env
     environment:
-      MIX_ENV: dev
+      MIX_ENV: ${MIX_ENV:-dev}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dev-insecure}
-      DATABASE_URL: ecto://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}
+      DATABASE_URL: ecto://${DB_USER:-postgres}:${DB_PASS:-postgres}@db:5432/${DB_NAME:-ledger_bank_api_dev}
       PGHOST: db
       PGPORT: 5432
-      PGUSER: ${DB_USER}
-      PGPASSWORD: ${DB_PASS}
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASS:-postgres}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres}
+      DB_NAME: ${DB_NAME:-ledger_bank_api_dev}
     depends_on:
       db:
         condition: service_healthy

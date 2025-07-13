@@ -1,13 +1,15 @@
 import Config
 
 # Configure your database
+db_name = System.get_env("DB_NAME", "ledger_bank_api_dev")
+
 config :ledger_bank_api, LedgerBankApi.Repo,
-  username: "postgres",
-  password: "postgres",
-  database: "ledger_bank_api_test",
-  hostname: System.get_env("DB_HOST", "localhost"),   # <─ key change
-  port: 5432,
-  pool_size: 10
+  username: System.get_env("DB_USER",  "postgres"),
+  password: System.get_env("DB_PASS",  "postgres"),
+  hostname: System.get_env("DB_HOST",  "localhost"),
+  database: db_name,
+  pool_size: 10,
+  port: String.to_integer(System.get_env("DB_PORT", "5432"))
 
 
 # For development, we disable any cache and enable

@@ -32,41 +32,93 @@ The application follows a clean architecture pattern with:
 
 - Elixir 1.18+
 - Erlang/OTP
-- PostgreSQL 16+
-- Docker & Docker Compose (for containerized deployment)
+- Docker & Docker Compose
+- WSL2 (Windows) or Linux/macOS
 
-## 🛠️ Installation & Setup
+## 🛠️ Quick Start
 
-### Local Development
+### 1. Clone and Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd ledger_bank_api
-   ```
+```bash
+git clone <repository-url>
+cd ledger_bank_api
+```
 
-2. **Install dependencies and setup database**
-   ```bash
-   mix setup
-   ```
+### 2. Configure Environment
 
-3. **Start the Phoenix server**
-   ```bash
-   mix phx.server
-   ```
+```bash
+# Copy environment template
+cp env.example .env
 
-4. **Visit the application**
-   Open [http://localhost:4000](http://localhost:4000) in your browser.
+# Edit .env with your values
+# (See DEVELOPMENT.md for detailed setup)
+```
 
-### Docker Deployment
+### 3. Start Database
 
-1. **Start the services**
-   ```bash
-   docker-compose up -d
-   ```
+```bash
+# Start PostgreSQL in Docker
+docker-compose up -d db
+```
 
-2. **Access the application**
-   The API will be available at `http://localhost:4000`
+### 4. Run Migrations
+
+```bash
+# Set environment variables (Windows PowerShell)
+. scripts/dev-db.ps1
+
+# Or manually set them
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASS=postgres
+export DB_NAME=ledger_bank_api_dev
+
+# Run migrations
+mix ecto.migrate
+```
+
+### 5. Start Development Server
+
+```bash
+# Start Phoenix server
+iex -S mix phx.server
+```
+
+### 6. Access the API
+
+- **API**: http://localhost:4000
+- **LiveDashboard**: http://localhost:4000/dev/dashboard
+- **Mailbox Preview**: http://localhost:4000/dev/mailbox
+
+## 🗄️ Database Architecture
+
+### One PostgreSQL, Everywhere
+
+This project uses a **single PostgreSQL database** that serves all environments:
+
+- **Development**: Host tools (WSL) reach it via `localhost:5432`
+- **Docker**: Containers reach it via Docker DNS name `db:5432`
+- **CI/CD**: GitHub Actions uses `localhost:5432` (service container)
+
+### Database Schema
+
+#### Accounts
+- `id` (UUID) - Primary key
+- `user_id` (UUID) - User identifier
+- `institution` (string) - Bank institution name
+- `type` (string) - Account type
+- `last4` (string) - Last 4 digits of account
+- `balance` (decimal) - Current balance
+- `inserted_at` / `updated_at` - Timestamps
+
+#### Transactions
+- `id` (UUID) - Primary key
+- `account_id` (UUID) - Foreign key to accounts
+- `description` (string) - Transaction description
+- `amount` (decimal) - Transaction amount
+- `posted_at` (datetime) - When transaction was posted
+- `inserted_at` / `updated_at` - Timestamps
 
 ## 📚 API Endpoints
 
@@ -83,32 +135,26 @@ All API endpoints require authentication. Currently using a development token.
 ### Live Snapshots
 - `GET /api/enrollments/:id/live_snapshot` - Get real-time banking data snapshot
 
-## 🗄️ Database Schema
-
-### Accounts
-- `id` (UUID) - Primary key
-- `user_id` (UUID) - User identifier
-- `institution` (string) - Bank institution name
-- `type` (string) - Account type
-- `last4` (string) - Last 4 digits of account
-- `balance` (decimal) - Current balance
-- `inserted_at` / `updated_at` - Timestamps
-
-### Transactions
-- `id` (UUID) - Primary key
-- `account_id` (UUID) - Foreign key to accounts
-- `description` (string) - Transaction description
-- `amount` (decimal) - Transaction amount
-- `posted_at` (datetime) - When transaction was posted
-- `inserted_at` / `updated_at` - Timestamps
-
 ## 🔧 Configuration
 
 ### Environment Variables
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `SECRET_KEY_BASE` - Phoenix secret key base
-- `BANK_BASE_URL` - External banking API base URL
+The application uses environment variables for configuration. Copy `env.example` to `.env` and customize:
+
+```bash
+# Database Configuration
+DB_HOST=localhost      # each dev will change this in their own .env
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=postgres
+DB_NAME=ledger_bank_api_dev
+
+# Phoenix
+SECRET_KEY_BASE=replace-me-with-mix-phx-gen-secret
+
+# External mock service
+BANK_BASE_URL=http://localhost:4001/mock
+```
 
 ### Development Configuration
 
@@ -116,16 +162,42 @@ The application includes development-specific features:
 - LiveDashboard at `/dev/dashboard`
 - Swoosh mailbox preview at `/dev/mailbox`
 
+## 🐳 Docker Deployment
+
+### Full Stack (Database + API)
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### Database Only (for development)
+
+```bash
+# Start only PostgreSQL
+docker-compose up -d db
+
+# Run migrations from host
+mix ecto.migrate
+```
+
 ## 🧪 Testing
 
-Run the test suite:
 ```bash
+# Run test suite
 mix test
+
+# Run with coverage
+mix test --cover
 ```
 
 ## 📊 Performance & Benchmarking
-
-The project includes comprehensive benchmarking:
 
 ```bash
 # Run banking benchmarks
@@ -136,25 +208,6 @@ mix bench:endpt
 
 # Run CI benchmarks
 mix bench:ci
-```
-
-## 🐳 Docker
-
-### Building the Image
-```bash
-docker build -t ledger-bank-api .
-```
-
-### Running with Docker Compose
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
 ```
 
 ## 🔍 Development Tools
@@ -175,6 +228,9 @@ mix ecto.migrate
 ```bash
 # Start with Phoenix server
 iex -S mix phx.server
+
+# Start without Phoenix
+iex -S mix
 ```
 
 ## 📈 Monitoring

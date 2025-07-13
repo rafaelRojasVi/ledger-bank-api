@@ -21,19 +21,23 @@
     RUN mix release
     
     
-# -------- 2. runtime stage (tiny image) -----------------------
-    FROM ubuntu:22.04 AS app
-    RUN apt-get update && \
-        apt-get install -y --no-install-recommends \
-          libssl3 libncurses6 libtinfo6 ca-certificates \
-          postgresql-client           # ← this adds pg_isready ✔️  \
-     && rm -rf /var/lib/apt/lists/*
-    
-    WORKDIR /app
-    COPY --from=build /app/_build/prod/rel/ledger_bank_api ./ledger_bank_api
-    COPY docker/entrypoint.sh /app/docker/entrypoint.sh
-    
-    ENV LANG=C.UTF-8 MIX_ENV=prod PHX_SERVER=true PORT=4000
-    EXPOSE 4000
-    CMD ["sh", "-c", "echo 'run via docker-compose' && sleep infinity"]
-    
+# -------- 2. runtime stage -----------------------
+  FROM ubuntu:22.04 AS app
+  RUN apt-get update && \
+      apt-get install -y --no-install-recommends \
+        libssl3 libncurses6 libtinfo6 ca-certificates \
+        postgresql-client && \
+      rm -rf /var/lib/apt/lists/*
+  
+  WORKDIR /app
+  COPY --from=build /app/_build/prod/rel/ledger_bank_api ./ledger_bank_api
+  COPY docker/entrypoint.sh /app/docker/entrypoint.sh
+  
+  ENV LANG=C.UTF-8 \
+      MIX_ENV=prod \
+      PHX_SERVER=true \
+      PORT=4000
+  
+  EXPOSE 4000
+  ENTRYPOINT ["/app/docker/entrypoint.sh"]   
+  

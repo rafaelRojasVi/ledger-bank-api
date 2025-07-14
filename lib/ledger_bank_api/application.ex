@@ -7,22 +7,24 @@ defmodule LedgerBankApi.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
+    base_children = [
       LedgerBankApiWeb.Telemetry,
       LedgerBankApi.Repo,
-      {DNSCluster, query: Application.get_env(:ledger_bank_api, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: LedgerBankApi.PubSub},
-      # Start the Finch HTTP client for sending emails
       {Finch, name: LedgerBankApi.Finch},
       {Task.Supervisor, name: LedgerBankApi.TaskSupervisor},
-      # Start a worker by calling: LedgerBankApi.Worker.start_link(arg)
-      # {LedgerBankApi.Worker, arg},
-      # Start to serve requests, typically the last entry
-      LedgerBankApiWeb.Endpoint
+      {Oban, Application.fetch_env!(:ledger_bank_api, Oban)}
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
+    http_child =
+      if Application.get_env(:ledger_bank_api, LedgerBankApiWeb.Endpoint)[:server] do
+        [LedgerBankApiWeb.Endpoint]
+      else
+        []
+      end
+
+    children = base_children ++ http_child
+
     opts = [strategy: :one_for_one, name: LedgerBankApi.Supervisor]
     Supervisor.start_link(children, opts)
   end

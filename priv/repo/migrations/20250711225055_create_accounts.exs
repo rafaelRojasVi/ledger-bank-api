@@ -12,5 +12,13 @@ defmodule LedgerBankApi.Repo.Migrations.CreateAccounts do
 
       timestamps(type: :utc_datetime)
     end
+
+    # Add indexes for better query performance
+    create index(:accounts, [:user_id])
+    create index(:accounts, [:institution])
+    create index(:accounts, [:type])
+    create index(:accounts, [:user_id, :institution])
+    create index(:accounts, [:inserted_at])
+    create index(:accounts, [:updated_at])
   end
 end

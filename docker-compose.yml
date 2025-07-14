@@ -15,6 +15,16 @@ services:
       timeout: 3s
       retries: 15
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
   web:
     build: .
     environment:
@@ -27,11 +37,15 @@ services:
       PGPASSWORD: ${DB_PASS:-postgres}
       DB_HOST: db
       DB_PORT: 5432
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASS: ${DB_PASS:-postgres}
-      DB_NAME: ${DB_NAME:-ledger_bank_api_dev}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4000:4000"
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "4000:4000"
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/deps
+      - /app/_build

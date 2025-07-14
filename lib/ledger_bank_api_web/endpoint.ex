@@ -47,5 +47,10 @@ defmodule LedgerBankApiWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+
+  # Security headers
+  # plug Plug.SSL
+  # plug :put_secure_browser_headers
+
   plug LedgerBankApiWeb.Router
 end

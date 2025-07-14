@@ -75,6 +75,43 @@ defmodule LedgerBankApiWeb.Telemetry do
           "The time the connection spent waiting before being checked out for the query"
       ),
 
+      # Custom Banking Metrics
+      summary("ledger_bank_api.banking.list_accounts.duration",
+        unit: {:native, :millisecond},
+        description: "Time to list accounts"
+      ),
+      summary("ledger_bank_api.banking.get_account.duration",
+        unit: {:native, :millisecond},
+        description: "Time to get single account"
+      ),
+      summary("ledger_bank_api.banking.list_transactions.duration",
+        unit: {:native, :millisecond},
+        description: "Time to list transactions"
+      ),
+
+      # Fetcher Metrics
+      summary("ledger_bank_api.fetcher.fetch_all.duration",
+        unit: {:native, :millisecond},
+        description: "Time to fetch all external data"
+      ),
+      counter("ledger_bank_api.fetcher.fetch_all.success_count",
+        description: "Number of successful external API calls"
+      ),
+      counter("ledger_bank_api.fetcher.fetch_all.error_count",
+        description: "Number of failed external API calls"
+      ),
+
+      # External API Metrics
+      summary("ledger_bank_api.external.bank_client.request.duration",
+        tags: [:endpoint],
+        unit: {:native, :millisecond},
+        description: "External API request duration"
+      ),
+      counter("ledger_bank_api.external.bank_client.request.count",
+        tags: [:endpoint, :status],
+        description: "External API request count by status"
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),

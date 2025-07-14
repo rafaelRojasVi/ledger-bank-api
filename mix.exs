@@ -13,12 +13,24 @@ defmodule LedgerBankApi.MixProject do
     ]
   end
 
+  def cli do
+    [
+      preferred_envs: [
+        "test:paginated": :test,
+        "test:filterable": :test,
+        "test:sortable": :test,
+        "test:error-handler": :test,
+        "test:behaviours": :test,
+        "test:controllers": :test,
+        "test:integration": :test,
+        "test:unit": :test
+      ]
+    ]
+  end
+
   # Configuration for the OTP application.
-  #
-  # Type `mix help compile.app` for more information.
   def application do
     [
-
       mod: {LedgerBankApi.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
@@ -29,8 +41,6 @@ defmodule LedgerBankApi.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
-  #
-  # Type `mix help deps` for examples and options.
   defp deps do
     [
       {:phoenix, "~> 1.7.21"},
@@ -44,28 +54,28 @@ defmodule LedgerBankApi.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
-      {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"},
-      {:benchee, "~> 1.2", only: :dev},
-      {:mox, "~> 1.0", only: :test}
+      {:bandit, "~> 1.7"},
+      {:joken, "~> 2.6"},
+      {:oban, "~> 2.18"},
+      {:mimic, "~> 1.7", only: :test}
     ]
   end
 
   # Aliases are shortcuts or tasks specific to the current project.
-  # For example, to install project dependencies and perform other setup tasks, run:
-  #
-  #     $ mix setup
-  #
-  # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      bench: ["run bench/banking_bench.exs"],
-      "bench:endpt": ["run bench/endpoint_bench.exs"],
-      "bench:ci": ["bench_ci"],
+      # Test aliases for easier test running
+      "test:paginated": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/paginated/"],
+      "test:filterable": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/filterable/"],
+      "test:sortable": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/sortable/"],
+      "test:error-handler": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/error_handler/"],
+      "test:behaviours": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/"],
+      "test:controllers": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api_web/controllers/"],
+      "test:integration": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/integration_test.exs"],
+      "test:unit": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/"]
     ]
   end
 end

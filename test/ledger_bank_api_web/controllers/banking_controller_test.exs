@@ -135,7 +135,7 @@ defmodule LedgerBankApiWeb.BankingControllerTest do
 
     # Should be sorted by amount ascending (smallest amounts first)
     amounts = Enum.map(data, & &1["amount"])
-    assert amounts == ["-50.00", "-100.00"]
+    assert amounts == ["-100.00", "-50.00"]
 
     # Verify pagination metadata
     assert pagination["page"] == 1
@@ -151,22 +151,30 @@ defmodule LedgerBankApiWeb.BankingControllerTest do
 
     # Test invalid page
     conn = get(conn, "/api/accounts/#{account.id}/transactions", %{page: 0})
-    assert json_response(conn, 400)["error"] == "Page must be greater than 0"
+    response = json_response(conn, 400)
+    assert response["error"]["message"] == "Page must be greater than 0"
+    assert response["error"]["type"] == "validation_error"
 
     # Test invalid page size
     conn = get(conn, "/api/accounts/#{account.id}/transactions", %{page_size: 101})
-    assert json_response(conn, 400)["error"] == "Page size cannot exceed 100"
+    response = json_response(conn, 400)
+    assert response["error"]["message"] == "Page size cannot exceed 100"
+    assert response["error"]["type"] == "validation_error"
 
     # Test invalid sort field
     conn = get(conn, "/api/accounts/#{account.id}/transactions", %{sort_by: "invalid_field"})
-    assert json_response(conn, 400)["error"] =~ "Invalid sort field"
+    response = json_response(conn, 400)
+    assert response["error"]["message"] =~ "Invalid sort field"
+    assert response["error"]["type"] == "validation_error"
 
     # Test invalid date range
     conn = get(conn, "/api/accounts/#{account.id}/transactions", %{
       date_from: "2025-01-02T00:00:00Z",
       date_to: "2025-01-01T00:00:00Z"
     })
-    assert json_response(conn, 400)["error"] == "Date from must be before date to"
+    response = json_response(conn, 400)
+    assert response["error"]["message"] == "Date from must be before date to"
+    assert response["error"]["type"] == "validation_error"
   end
 
   defp expect_oban_insert(ids) do

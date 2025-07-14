@@ -110,29 +110,32 @@ defmodule LedgerBankApiWeb.BankingController do
   def transactions(conn, %{"id" => account_id} = params) do
     context = %{action: :get_transactions, account_id: account_id}
 
-    case ErrorHandler.with_error_handling(fn ->
-      with {:ok, pagination_params} <- validate_pagination_params(extract_pagination_params(params)),
-           {:ok, filter_params} <- validate_filter_params(extract_filter_params(params)),
-           {:ok, sort_params} <- validate_sort_params(extract_sort_params(params), ["posted_at", "amount", "description"]),
-           account when not is_nil(account) <- Banking.get_user_bank_account!(account_id),
-           result <- Banking.list_transactions_for_user_bank_account(
-             account_id,
-             pagination: pagination_params,
-             filters: filter_params,
-             sorting: sort_params
-           ) do
+    # Handle validation errors separately to return proper 400 status
+    with {:ok, pagination_params} <- validate_pagination_params(extract_pagination_params(params)),
+         {:ok, filter_params} <- validate_filter_params(extract_filter_params(params)),
+         {:ok, sort_params} <- validate_sort_params(extract_sort_params(params), ["posted_at", "amount", "description"]) do
+
+      case ErrorHandler.with_error_handling(fn ->
+        account = Banking.get_user_bank_account!(account_id)
+        result = Banking.list_transactions_for_user_bank_account(
+          account_id,
+          pagination: pagination_params,
+          filters: filter_params,
+          sorting: sort_params
+        )
         {account, result}
-      else
-        nil -> {:error, :not_found}
-        {:error, reason} -> {:error, reason}
+      end, context) do
+        {:ok, response} ->
+          {account, result} = response.data
+          render(conn, :transactions, result: result, account: account)
+        {:error, error_response} ->
+          {status, response} = handle_error(error_response, context, [])
+          conn |> put_status(status) |> json(response)
       end
-    end, context) do
-      {:ok, response} ->
-        {account, result} = response.data
-        render(conn, :transactions, result: result, account: account)
-      {:error, error_response} ->
-        {status, response} = handle_error(error_response, context, [])
-        conn |> put_status(status) |> json(response)
+    else
+      {:error, reason} ->
+        error_response = ErrorHandler.create_error_response(:validation_error, reason, context)
+        conn |> put_status(400) |> json(error_response)
     end
   end
 

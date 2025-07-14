@@ -192,7 +192,7 @@ defmodule LedgerBankApi.Behaviours.ErrorHandler do
     try do
       case fun.() do
         {:ok, result} -> {:ok, create_success_response(result)}
-        {:error, error} -> {:error, handle_common_error(error, context)}
+        {:error, error} -> {:error, handle_common_error({:error, error}, context)}
         result -> {:ok, create_success_response(result)}
       end
     rescue

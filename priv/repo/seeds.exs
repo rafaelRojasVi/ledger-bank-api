@@ -24,8 +24,8 @@ account1 = Repo.insert!(UserBankAccount.changeset(%UserBankAccount{}, %{user_ban
 account2 = Repo.insert!(UserBankAccount.changeset(%UserBankAccount{}, %{user_bank_login_id: login2.id, currency: "GBP", account_type: "SAVINGS", balance: Decimal.new("2500.00"), last_four: "5678", account_name: "Bob Savings", status: "ACTIVE", last_sync_at: DateTime.utc_now()}))
 
 # USER PAYMENTS
-payment1 = Repo.insert!(UserPayment.changeset(%UserPayment{}, %{user_bank_account_id: account1.id, amount: Decimal.new("-100.00"), description: "Grocery Shopping", payment_type: "PAYMENT", status: "COMPLETED", posted_at: DateTime.utc_now(), external_transaction_id: "TXN1001"}))
-payment2 = Repo.insert!(UserPayment.changeset(%UserPayment{}, %{user_bank_account_id: account2.id, amount: Decimal.new("500.00"), description: "Salary Deposit", payment_type: "DEPOSIT", status: "COMPLETED", posted_at: DateTime.utc_now(), external_transaction_id: "TXN2001"}))
+_payment1 = Repo.insert!(UserPayment.changeset(%UserPayment{}, %{user_bank_account_id: account1.id, amount: Decimal.new("100.00"), description: "Grocery Shopping", payment_type: "WITHDRAWAL", status: "COMPLETED", posted_at: DateTime.utc_now(), external_transaction_id: "TXN1001"}))
+_payment2 = Repo.insert!(UserPayment.changeset(%UserPayment{}, %{user_bank_account_id: account2.id, amount: Decimal.new("500.00"), description: "Salary Deposit", payment_type: "DEPOSIT", status: "COMPLETED", posted_at: DateTime.utc_now(), external_transaction_id: "TXN2001"}))
 
 # TRANSACTIONS
 Repo.insert!(Transaction.changeset(%Transaction{}, %{account_id: account1.id, amount: Decimal.new("-45.50"), posted_at: DateTime.utc_now(), description: "Restaurant"}))

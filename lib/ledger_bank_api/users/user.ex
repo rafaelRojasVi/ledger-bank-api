@@ -1,4 +1,7 @@
 defmodule LedgerBankApi.Users.User do
+  @moduledoc """
+  Ecto schema for application users. Represents a registered user with email, name, and status.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -12,7 +15,9 @@ defmodule LedgerBankApi.Users.User do
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  Builds a changeset for user creation and updates.
+  """
   def changeset(user, attrs) do
     user
     |> cast(attrs, [:email, :full_name, :status])

@@ -1,9 +1,7 @@
 defmodule LedgerBankApi.Behaviours.Paginated do
   @moduledoc """
-  Behaviour for modules that support pagination.
-
-  This behaviour defines the contract for paginated operations,
-  ensuring consistent pagination handling across controllers, workers, and contexts.
+  Behaviour and utility functions for modules that support pagination.
+  Provides extraction, validation, and struct creation for pagination parameters in API requests.
   """
 
   @callback handle_paginated_data(any(), map(), keyword()) :: any()

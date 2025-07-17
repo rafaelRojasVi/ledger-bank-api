@@ -1,6 +1,8 @@
 defmodule LedgerBankApi.Banking do
   @moduledoc """
-  The Banking context - real banking API structure.
+  The Banking context for LedgerBankApi.
+  Provides functions for managing banks, branches, user logins, accounts, payments, and transactions.
+  Includes utilities for filtering, sorting, and paginating banking data.
   """
 
   import Ecto.Query, warn: false
@@ -13,16 +15,25 @@ defmodule LedgerBankApi.Banking do
   alias LedgerBankApi.Banking.Pagination
 
   # --- Bank Functions ---
+  @doc """
+  Lists all banks.
+  """
   def list_banks, do: Repo.all(Bank)
   def get_bank!(id), do: Repo.get!(Bank, id)
   def create_bank(attrs \\ %{}), do: %Bank{} |> Bank.changeset(attrs) |> Repo.insert()
 
   # --- Bank Branch Functions ---
+  @doc """
+  Lists all bank branches.
+  """
   def list_bank_branches, do: Repo.all(BankBranch)
   def get_bank_branch!(id), do: Repo.get!(BankBranch, id)
   def create_bank_branch(attrs \\ %{}), do: %BankBranch{} |> BankBranch.changeset(attrs) |> Repo.insert()
 
   # --- User Bank Login Functions ---
+  @doc """
+  Lists all user bank logins.
+  """
   def list_user_bank_logins, do: Repo.all(UserBankLogin)
   def get_user_bank_login!(id), do: Repo.get!(UserBankLogin, id)
   def create_user_bank_login(attrs \\ %{}), do: %UserBankLogin{} |> UserBankLogin.changeset(attrs) |> Repo.insert()
@@ -36,12 +47,18 @@ defmodule LedgerBankApi.Banking do
     Repo.all(from a in UserBankAccount, preload: [user_bank_login: [bank_branch: :bank]])
   end
 
+  @doc """
+  Gets a user bank account by its external account ID.
+  """
   def get_user_bank_account!(id), do: Repo.get!(UserBankAccount, id) |> Repo.preload(user_bank_login: [bank_branch: :bank])
   def get_user_bank_account_by_external_id(external_id), do: Repo.get_by(UserBankAccount, external_account_id: external_id)
   def create_user_bank_account(attrs \\ %{}), do: %UserBankAccount{} |> UserBankAccount.changeset(attrs) |> Repo.insert()
   def update_user_bank_account(%UserBankAccount{} = account, attrs), do: account |> UserBankAccount.changeset(attrs) |> Repo.update()
 
   # --- User Payments ---
+  @doc """
+  Lists payments for a specific user bank account.
+  """
   def list_payments_for_user_bank_account(account_id) do
     UserPayment
     |> where(user_bank_account_id: ^account_id)
@@ -49,6 +66,9 @@ defmodule LedgerBankApi.Banking do
     |> Repo.all()
   end
 
+  @doc """
+  Lists all user payments with optional filtering.
+  """
   def list_user_payments(opts \\ []) do
     UserPayment
     |> maybe_filter_by_status(opts[:status])
@@ -56,12 +76,18 @@ defmodule LedgerBankApi.Banking do
     |> Repo.all()
   end
 
+  @doc """
+  Gets a specific user payment by ID.
+  """
   def get_user_payment!(id), do: Repo.get!(UserPayment, id)
   def create_user_payment(attrs \\ %{}), do: %UserPayment{} |> UserPayment.changeset(attrs) |> Repo.insert()
   def update_user_payment(%UserPayment{} = payment, attrs), do: payment |> UserPayment.changeset(attrs) |> Repo.update()
   def list_pending_payments, do: UserPayment |> where(status: "PENDING") |> Repo.all()
 
   # --- Transactions ---
+  @doc """
+  Lists transactions for a specific user bank account with pagination and filtering.
+  """
   def list_transactions_for_user_bank_account(account_id, opts \\ []) do
     pagination_params = Keyword.get(opts, :pagination, %{page: 1, page_size: 20})
     filter_params = Keyword.get(opts, :filters, %{})
@@ -123,12 +149,18 @@ defmodule LedgerBankApi.Banking do
     end
   end
 
+  @doc """
+  Gets a specific transaction by ID.
+  """
   def get_transaction!(id), do: Repo.get!(Transaction, id)
   def create_transaction(attrs \\ %{}), do: %Transaction{} |> Transaction.changeset(attrs) |> Repo.insert()
   def update_transaction(%Transaction{} = transaction, attrs), do: transaction |> Transaction.changeset(attrs) |> Repo.update()
   def delete_transaction(%Transaction{} = transaction), do: Repo.delete(transaction)
 
   # --- User Functions ---
+  @doc """
+  Gets a specific user by ID.
+  """
   def get_user!(id), do: Repo.get!(User, id)
   def create_user(attrs \\ %{}), do: %User{} |> User.changeset(attrs) |> Repo.insert()
 

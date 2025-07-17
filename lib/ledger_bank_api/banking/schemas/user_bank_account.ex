@@ -1,4 +1,7 @@
 defmodule LedgerBankApi.Banking.UserBankAccount do
+  @moduledoc """
+  Ecto schema for user bank accounts. Represents a user's linked account at a bank branch, including balance and status.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -21,7 +24,9 @@ defmodule LedgerBankApi.Banking.UserBankAccount do
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  Builds a changeset for user bank account creation and updates.
+  """
   def changeset(user_bank_account, attrs) do
     user_bank_account
     |> cast(attrs, [:user_bank_login_id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id])

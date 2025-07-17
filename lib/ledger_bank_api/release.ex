@@ -1,11 +1,15 @@
 defmodule LedgerBankApi.Release do
   @moduledoc """
-  Helpers executed *inside the OTP release* (no Mix available).
+  Helpers executed inside the OTP release for database migrations and app loading.
+  Used for running migrations and starting dependencies in production releases.
   """
 
   @app :ledger_bank_api
 
   # ---------- public API -------------------------------------------------
+  @doc """
+  Runs all Ecto migrations for the application.
+  """
   def migrate do
     load_app()
 

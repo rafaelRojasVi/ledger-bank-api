@@ -1,9 +1,7 @@
 defmodule LedgerBankApi.Behaviours.Sortable do
   @moduledoc """
-  Behaviour for modules that support sorting.
-
-  This behaviour defines the contract for sortable operations,
-  ensuring consistent sorting handling across controllers, workers, and contexts.
+  Behaviour and utility functions for modules that support sorting.
+  Provides extraction, validation, and struct creation for sort parameters in API requests.
   """
 
   require Ecto.Query

@@ -1,6 +1,6 @@
 defmodule LedgerBankApi.Banking.Pagination do
   @moduledoc """
-  Provides pagination utilities for banking context functions.
+  Provides pagination utilities for banking context functions, including query pagination, total count, and paginated response formatting.
   """
 
   require Ecto.Query

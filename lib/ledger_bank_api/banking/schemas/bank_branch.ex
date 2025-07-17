@@ -1,4 +1,7 @@
 defmodule LedgerBankApi.Banking.BankBranch do
+  @moduledoc """
+  Ecto schema for bank branches. Represents a branch of a bank, including IBAN, SWIFT, and routing info.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -17,7 +20,9 @@ defmodule LedgerBankApi.Banking.BankBranch do
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  Builds a changeset for bank branch creation and updates.
+  """
   def changeset(bank_branch, attrs) do
     bank_branch
     |> cast(attrs, [:name, :iban, :country, :routing_number, :swift_code, :bank_id])

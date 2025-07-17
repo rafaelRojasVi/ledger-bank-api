@@ -1,4 +1,7 @@
 defmodule LedgerBankApi.Banking.UserBankLogin do
+  @moduledoc """
+  Ecto schema for user bank logins. Represents a user's login credentials for a specific bank branch.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -18,7 +21,9 @@ defmodule LedgerBankApi.Banking.UserBankLogin do
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  Builds a changeset for user bank login creation and updates.
+  """
   def changeset(user_bank_login, attrs) do
     user_bank_login
     |> cast(attrs, [:user_id, :bank_branch_id, :username, :encrypted_password, :status, :last_sync_at, :sync_frequency])

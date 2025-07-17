@@ -1,4 +1,3 @@
-# priv/repo/seeds.exs
 alias LedgerBankApi.Repo
 alias LedgerBankApi.Users.User
 alias LedgerBankApi.Banking.{Bank, BankBranch, UserBankLogin, UserBankAccount, UserPayment, Transaction}
@@ -28,9 +27,9 @@ _payment1 = Repo.insert!(UserPayment.changeset(%UserPayment{}, %{user_bank_accou
 _payment2 = Repo.insert!(UserPayment.changeset(%UserPayment{}, %{user_bank_account_id: account2.id, amount: Decimal.new("500.00"), description: "Salary Deposit", payment_type: "DEPOSIT", status: "COMPLETED", posted_at: DateTime.utc_now(), external_transaction_id: "TXN2001"}))
 
 # TRANSACTIONS
-Repo.insert!(Transaction.changeset(%Transaction{}, %{account_id: account1.id, amount: Decimal.new("-45.50"), posted_at: DateTime.utc_now(), description: "Restaurant"}))
+Repo.insert!(Transaction.changeset(%Transaction{}, %{account_id: account1.id, amount: Decimal.new("45.50"), posted_at: DateTime.utc_now(), description: "Restaurant"}))
 Repo.insert!(Transaction.changeset(%Transaction{}, %{account_id: account1.id, amount: Decimal.new("200.00"), posted_at: DateTime.utc_now(), description: "Refund"}))
-Repo.insert!(Transaction.changeset(%Transaction{}, %{account_id: account2.id, amount: Decimal.new("-60.00"), posted_at: DateTime.utc_now(), description: "Online Shopping"}))
+Repo.insert!(Transaction.changeset(%Transaction{}, %{account_id: account2.id, amount: Decimal.new("60.00"), posted_at: DateTime.utc_now(), description: "Online Shopping"}))
 Repo.insert!(Transaction.changeset(%Transaction{}, %{account_id: account2.id, amount: Decimal.new("1200.00"), posted_at: DateTime.utc_now(), description: "Bonus"}))
 
 IO.puts("Seeded users, banks, branches, logins, accounts, payments, and transactions!")

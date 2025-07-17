@@ -1,4 +1,7 @@
 defmodule LedgerBankApi.Banking.Bank do
+  @moduledoc """
+  Ecto schema for banks. Represents a financial institution.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -16,7 +19,9 @@ defmodule LedgerBankApi.Banking.Bank do
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  Builds a changeset for bank creation and updates.
+  """
   def changeset(bank, attrs) do
     bank
     |> cast(attrs, [:name, :country, :logo_url, :api_endpoint, :status])

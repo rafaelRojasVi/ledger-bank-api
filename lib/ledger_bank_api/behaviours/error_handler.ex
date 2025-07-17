@@ -1,9 +1,7 @@
 defmodule LedgerBankApi.Behaviours.ErrorHandler do
   @moduledoc """
-  Behaviour for modules that need consistent error handling.
-
-  This behaviour defines the contract for error handling operations,
-  ensuring consistent error responses across controllers, workers, and contexts.
+  Behaviour and utility functions for consistent error handling across the application.
+  Provides standardized error responses, logging, and error formatting for controllers, workers, and contexts.
   """
 
   require Logger

@@ -1,4 +1,7 @@
 defmodule LedgerBankApi.Banking.Transaction do
+  @moduledoc """
+  Ecto schema for transactions. Represents a financial transaction on a user account.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -13,7 +16,9 @@ defmodule LedgerBankApi.Banking.Transaction do
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  Builds a changeset for transaction creation and updates.
+  """
   def changeset(transaction, attrs) do
     transaction
     |> cast(attrs, [:amount, :posted_at, :description, :account_id])

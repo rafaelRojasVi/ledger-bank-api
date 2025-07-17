@@ -1,4 +1,7 @@
 defmodule LedgerBankApi.Banking.UserPayment do
+  @moduledoc """
+  Ecto schema for user payments. Represents a payment or transfer initiated by a user.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -17,7 +20,9 @@ defmodule LedgerBankApi.Banking.UserPayment do
     timestamps(type: :utc_datetime)
   end
 
-  @doc false
+  @doc """
+  Builds a changeset for user payment creation and updates.
+  """
   def changeset(user_payment, attrs) do
     user_payment
     |> cast(attrs, [:user_bank_account_id, :amount, :description, :payment_type, :status, :posted_at, :external_transaction_id])

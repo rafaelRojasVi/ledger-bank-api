@@ -1,4 +1,8 @@
 defmodule LedgerBankApi.Application do
+  @moduledoc """
+  The main application module for LedgerBankApi.
+  Starts the supervision tree, including Repo, Endpoint, Oban, and other core services.
+  """
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
@@ -29,6 +33,9 @@ defmodule LedgerBankApi.Application do
     Supervisor.start_link(children, opts)
   end
 
+  @doc """
+  Callback for application config changes.
+  """
   # Tell Phoenix to update the endpoint configuration
   # whenever the application is updated.
   @impl true

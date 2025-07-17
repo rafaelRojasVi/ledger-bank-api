@@ -1,9 +1,7 @@
 defmodule LedgerBankApi.Behaviours.Filterable do
   @moduledoc """
-  Behaviour for modules that support filtering.
-
-  This behaviour defines the contract for filterable operations,
-  ensuring consistent filtering handling across controllers, workers, and contexts.
+  Behaviour and utility functions for modules that support filtering.
+  Provides extraction, validation, and struct creation for filter parameters in API requests.
   """
 
   @callback handle_filtered_data(any(), map(), keyword()) :: any()

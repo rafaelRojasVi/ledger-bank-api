@@ -1,6 +1,7 @@
 defmodule LedgerBankApi.Users do
   @moduledoc """
-  The Users context.
+  The Users context for LedgerBankApi.
+  Provides functions for managing application users, including creation, updates, and status changes.
   """
 
   import Ecto.Query, warn: false

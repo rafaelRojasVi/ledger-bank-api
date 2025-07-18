@@ -2,13 +2,13 @@ defmodule LedgerBankApiWeb.BankingController do
   use LedgerBankApiWeb, :controller
   require Logger
 
-  @behaviour LedgerBankApi.Behaviours.Paginated
-  @behaviour LedgerBankApi.Behaviours.Filterable
-  @behaviour LedgerBankApi.Behaviours.Sortable
-  @behaviour LedgerBankApi.Behaviours.ErrorHandler
+  @behaviour LedgerBankApi.Banking.Behaviours.Paginated
+  @behaviour LedgerBankApi.Banking.Behaviours.Filterable
+  @behaviour LedgerBankApi.Banking.Behaviours.Sortable
+  @behaviour LedgerBankApi.Banking.Behaviours.ErrorHandler
 
-  alias LedgerBankApi.Banking
-  alias LedgerBankApi.Behaviours.{Paginated, Filterable, Sortable, ErrorHandler}
+  alias LedgerBankApi.Banking.Context
+  alias LedgerBankApi.Banking.Behaviours.{Paginated, Filterable, Sortable, ErrorHandler}
 
   @impl Paginated
   def extract_pagination_params(params) do
@@ -84,7 +84,7 @@ defmodule LedgerBankApiWeb.BankingController do
   List all bank accounts (public, no user filtering).
   """
   def index(conn, _params) do
-    case ErrorHandler.with_error_handling(fn -> Banking.list_user_bank_accounts() end, %{action: :list_accounts}) do
+    case ErrorHandler.with_error_handling(fn -> Context.list_user_bank_accounts() end, %{action: :list_accounts}) do
       {:ok, response} -> render(conn, :index, accounts: response.data)
       {:error, error_response} ->
         {status, response} = handle_error(error_response, %{action: :list_accounts}, [])
@@ -96,7 +96,7 @@ defmodule LedgerBankApiWeb.BankingController do
   Get account details (public).
   """
   def show(conn, %{"id" => account_id}) do
-    case ErrorHandler.with_error_handling(fn -> Banking.get_user_bank_account!(account_id) end, %{action: :get_account, account_id: account_id}) do
+    case ErrorHandler.with_error_handling(fn -> Context.get_user_bank_account!(account_id) end, %{action: :get_account, account_id: account_id}) do
       {:ok, response} -> render(conn, :show, account: response.data)
       {:error, error_response} ->
         {status, response} = handle_error(error_response, %{action: :get_account, account_id: account_id}, [])
@@ -116,8 +116,8 @@ defmodule LedgerBankApiWeb.BankingController do
          {:ok, sort_params} <- validate_sort_params(extract_sort_params(params), ["posted_at", "amount", "description"]) do
 
       case ErrorHandler.with_error_handling(fn ->
-        account = Banking.get_user_bank_account!(account_id)
-        result = Banking.list_transactions_for_user_bank_account(
+        account = Context.get_user_bank_account!(account_id)
+        result = Context.list_transactions_for_user_bank_account(
           account_id,
           pagination: pagination_params,
           filters: filter_params,
@@ -143,7 +143,7 @@ defmodule LedgerBankApiWeb.BankingController do
   Get account balances (public).
   """
   def balances(conn, %{"id" => account_id}) do
-    case ErrorHandler.with_error_handling(fn -> Banking.get_user_bank_account!(account_id) end, %{action: :get_balances, account_id: account_id}) do
+    case ErrorHandler.with_error_handling(fn -> Context.get_user_bank_account!(account_id) end, %{action: :get_balances, account_id: account_id}) do
       {:ok, response} -> render(conn, :balances, account: response.data)
       {:error, error_response} ->
         {status, response} = handle_error(error_response, %{action: :get_balances, account_id: account_id}, [])
@@ -156,8 +156,8 @@ defmodule LedgerBankApiWeb.BankingController do
   """
   def payments(conn, %{"id" => account_id}) do
     case ErrorHandler.with_error_handling(fn ->
-      account = Banking.get_user_bank_account!(account_id)
-      payments = Banking.list_payments_for_user_bank_account(account_id)
+      account = Context.get_user_bank_account!(account_id)
+      payments = Context.list_payments_for_user_bank_account(account_id)
       {account, payments}
     end, %{action: :get_payments, account_id: account_id}) do
       {:ok, response} ->

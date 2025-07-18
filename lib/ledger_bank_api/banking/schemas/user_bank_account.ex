@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Banking.UserBankAccount do
+defmodule LedgerBankApi.Banking.Schemas.UserBankAccount do
   @moduledoc """
   Ecto schema for user bank accounts. Represents a user's linked account at a bank branch, including balance and status.
   """
@@ -17,9 +17,9 @@ defmodule LedgerBankApi.Banking.UserBankAccount do
     field :last_sync_at, :utc_datetime
     field :external_account_id, :string
 
-    belongs_to :user_bank_login, LedgerBankApi.Banking.UserBankLogin
-    has_many :user_payments, LedgerBankApi.Banking.UserPayment
-    has_many :transactions, LedgerBankApi.Banking.Transaction, foreign_key: :account_id
+    belongs_to :user_bank_login, LedgerBankApi.Banking.Schemas.UserBankLogin
+    has_many :user_payments, LedgerBankApi.Banking.Schemas.UserPayment
+    has_many :transactions, LedgerBankApi.Banking.Schemas.Transaction, foreign_key: :account_id
 
     timestamps(type: :utc_datetime)
   end

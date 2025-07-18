@@ -1,14 +1,28 @@
 alias LedgerBankApi.Repo
 alias LedgerBankApi.Users.User
-alias LedgerBankApi.Banking.{Bank, BankBranch, UserBankLogin, UserBankAccount, UserPayment, Transaction}
+alias LedgerBankApi.Banking.Schemas.{Bank, BankBranch, UserBankLogin, UserBankAccount, UserPayment, Transaction}
 
 # USERS
 user1 = Repo.insert!(User.changeset(%User{}, %{email: "alice@example.com", full_name: "Alice Example", status: "ACTIVE"}))
 user2 = Repo.insert!(User.changeset(%User{}, %{email: "bob@example.com", full_name: "Bob Example", status: "ACTIVE"}))
 
 # BANKS
-bank1 = Repo.insert!(Bank.changeset(%Bank{}, %{name: "Demo Bank", country: "US", logo_url: "https://logo1.png", api_endpoint: "https://api.demobank.com", status: "ACTIVE"}))
-bank2 = Repo.insert!(Bank.changeset(%Bank{}, %{name: "Test Bank", country: "UK", logo_url: "https://logo2.png", api_endpoint: "https://api.testbank.com", status: "ACTIVE"}))
+bank1 = Repo.insert!(Bank.changeset(%Bank{}, %{
+  name: "Demo Bank",
+  country: "US",
+  logo_url: "https://logo1.png",
+  api_endpoint: "https://api.demobank.com",
+  status: "ACTIVE",
+  integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
+}))
+bank2 = Repo.insert!(Bank.changeset(%Bank{}, %{
+  name: "Test Bank",
+  country: "UK",
+  logo_url: "https://logo2.png",
+  api_endpoint: "https://api.testbank.com",
+  status: "ACTIVE",
+  integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
+}))
 
 # BANK BRANCHES
 branch1 = Repo.insert!(BankBranch.changeset(%BankBranch{}, %{name: "Main Branch", iban: "US1234567890", country: "US", routing_number: "111000025", swift_code: "DEMOUS33", bank_id: bank1.id}))

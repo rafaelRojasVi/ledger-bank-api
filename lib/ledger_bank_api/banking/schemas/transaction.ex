@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Banking.Transaction do
+defmodule LedgerBankApi.Banking.Schemas.Transaction do
   @moduledoc """
   Ecto schema for transactions. Represents a financial transaction on a user account.
   """
@@ -11,7 +11,7 @@ defmodule LedgerBankApi.Banking.Transaction do
     field :description, :string
     field :amount, :decimal
     field :posted_at, :utc_datetime
-    belongs_to :user_bank_account, LedgerBankApi.Banking.UserBankAccount, foreign_key: :account_id, type: :binary_id
+    belongs_to :user_bank_account, LedgerBankApi.Banking.Schemas.UserBankAccount, foreign_key: :account_id, type: :binary_id
 
     timestamps(type: :utc_datetime)
   end

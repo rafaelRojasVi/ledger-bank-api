@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Behaviours.ErrorHandler do
+defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   @moduledoc """
   Behaviour and utility functions for consistent error handling across the application.
   Provides standardized error responses, logging, and error formatting for controllers, workers, and contexts.
@@ -205,7 +205,7 @@ defmodule LedgerBankApi.Behaviours.ErrorHandler do
   end
 end
 
-defmodule LedgerBankApi.Behaviours.ErrorResponse do
+defmodule LedgerBankApi.Banking.Behaviours.ErrorResponse do
   @moduledoc """
   Struct for standardized error responses.
   """

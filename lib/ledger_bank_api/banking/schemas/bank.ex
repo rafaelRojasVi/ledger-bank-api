@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Banking.Bank do
+defmodule LedgerBankApi.Banking.Schemas.Bank do
   @moduledoc """
   Ecto schema for banks. Represents a financial institution.
   """
@@ -13,8 +13,9 @@ defmodule LedgerBankApi.Banking.Bank do
     field :logo_url, :string
     field :api_endpoint, :string
     field :status, :string, default: "ACTIVE"
+    field :integration_module, :string
 
-    has_many :bank_branches, LedgerBankApi.Banking.BankBranch
+    has_many :bank_branches, LedgerBankApi.Banking.Schemas.BankBranch
 
     timestamps(type: :utc_datetime)
   end
@@ -24,7 +25,7 @@ defmodule LedgerBankApi.Banking.Bank do
   """
   def changeset(bank, attrs) do
     bank
-    |> cast(attrs, [:name, :country, :logo_url, :api_endpoint, :status])
+    |> cast(attrs, [:name, :country, :logo_url, :api_endpoint, :status, :integration_module])
     |> validate_required([:name, :country])
     |> unique_constraint(:name)
     |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])

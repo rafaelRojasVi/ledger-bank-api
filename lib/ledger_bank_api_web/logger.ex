@@ -158,16 +158,11 @@ defmodule LedgerBankApiWeb.Logger do
     |> to_string()
   end
 
-  defp format_stacktrace(error) do
-    case error do
-      %{__struct__: _} ->
-        try do
-          Exception.format_stacktrace()
-        rescue
-          _ -> "Stacktrace not available"
-        end
-      _ ->
-        "No stacktrace available"
+  defp format_stacktrace(_error) do
+    try do
+      Exception.format_stacktrace()
+    rescue
+      _ -> "Stacktrace not available"
     end
   end
 

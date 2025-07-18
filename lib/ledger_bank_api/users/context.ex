@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Users do
+defmodule LedgerBankApi.Users.Context do
   @moduledoc """
   The Users context for LedgerBankApi.
   Provides functions for managing application users, including creation, updates, and status changes.
@@ -6,51 +6,15 @@ defmodule LedgerBankApi.Users do
 
   import Ecto.Query, warn: false
   alias LedgerBankApi.Repo
-
   alias LedgerBankApi.Users.User
 
-  @doc """
-  Returns the list of users.
-  """
-  def list_users do
-    Repo.all(User)
-  end
-
-  @doc """
-  Gets a single user.
-  """
-  def get_user!(id), do: Repo.get!(User, id)
+  use LedgerBankApi.CrudHelpers, schema: User
 
   @doc """
   Gets a user by email.
   """
   def get_user_by_email(email) do
     Repo.get_by(User, email: email)
-  end
-
-  @doc """
-  Creates a user.
-  """
-  def create_user(attrs \\ %{}) do
-    %User{}
-    |> User.changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Updates a user.
-  """
-  def update_user(%User{} = user, attrs) do
-    user
-    |> User.changeset(attrs)
-    |> Repo.update()
-  end
-
-  @doc """
-  Deletes a user.
-  """
-  def delete_user(%User{} = user) do
-    Repo.delete(user)
   end
 
   @doc """
@@ -82,13 +46,13 @@ defmodule LedgerBankApi.Users do
   Suspends a user.
   """
   def suspend_user(%User{} = user) do
-    update_user(user, %{status: "SUSPENDED"})
+    __MODULE__.update(user, %{status: "SUSPENDED"})
   end
 
   @doc """
   Activates a user.
   """
   def activate_user(%User{} = user) do
-    update_user(user, %{status: "ACTIVE"})
+    __MODULE__.update(user, %{status: "ACTIVE"})
   end
 end

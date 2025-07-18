@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Banking.UserPayment do
+defmodule LedgerBankApi.Banking.Schemas.UserPayment do
   @moduledoc """
   Ecto schema for user payments. Represents a payment or transfer initiated by a user.
   """
@@ -15,7 +15,7 @@ defmodule LedgerBankApi.Banking.UserPayment do
     field :posted_at, :utc_datetime
     field :external_transaction_id, :string
 
-    belongs_to :user_bank_account, LedgerBankApi.Banking.UserBankAccount
+    belongs_to :user_bank_account, LedgerBankApi.Banking.Schemas.UserBankAccount
 
     timestamps(type: :utc_datetime)
   end

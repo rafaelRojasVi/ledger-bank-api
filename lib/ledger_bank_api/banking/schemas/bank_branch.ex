@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Banking.BankBranch do
+defmodule LedgerBankApi.Banking.Schemas.BankBranch do
   @moduledoc """
   Ecto schema for bank branches. Represents a branch of a bank, including IBAN, SWIFT, and routing info.
   """
@@ -14,8 +14,8 @@ defmodule LedgerBankApi.Banking.BankBranch do
     field :routing_number, :string
     field :swift_code, :string
 
-    belongs_to :bank, LedgerBankApi.Banking.Bank
-    has_many :user_bank_logins, LedgerBankApi.Banking.UserBankLogin
+    belongs_to :bank, LedgerBankApi.Banking.Schemas.Bank
+    has_many :user_bank_logins, LedgerBankApi.Banking.Schemas.UserBankLogin
 
     timestamps(type: :utc_datetime)
   end

@@ -57,7 +57,8 @@ defmodule LedgerBankApi.MixProject do
       {:bandit, "~> 1.7"},
       {:joken, "~> 2.6"},
       {:oban, "~> 2.18"},
-      {:mimic, "~> 1.7", only: :test}
+      {:mimic, "~> 1.7", only: :test},
+      {:req, "~> 0.5.10"}
     ]
   end
 

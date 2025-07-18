@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Banking.Account do
+defmodule LedgerBankApi.Banking.Schemas.Account do
   @moduledoc """
   Ecto schema for bank accounts. Represents a user's account at a financial institution.
   """

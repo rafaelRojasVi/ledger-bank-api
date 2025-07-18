@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Banking.UserBankLogin do
+defmodule LedgerBankApi.Banking.Schemas.UserBankLogin do
   @moduledoc """
   Ecto schema for user bank logins. Represents a user's login credentials for a specific bank branch.
   """
@@ -15,8 +15,8 @@ defmodule LedgerBankApi.Banking.UserBankLogin do
     field :sync_frequency, :integer, default: 3600 # seconds
 
     belongs_to :user, LedgerBankApi.Users.User
-    belongs_to :bank_branch, LedgerBankApi.Banking.BankBranch
-    has_many :user_bank_accounts, LedgerBankApi.Banking.UserBankAccount
+    belongs_to :bank_branch, LedgerBankApi.Banking.Schemas.BankBranch
+    has_many :user_bank_accounts, LedgerBankApi.Banking.Schemas.UserBankAccount
 
     timestamps(type: :utc_datetime)
   end

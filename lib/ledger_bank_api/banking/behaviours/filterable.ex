@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Behaviours.Filterable do
+defmodule LedgerBankApi.Banking.Behaviours.Filterable do
   @moduledoc """
   Behaviour and utility functions for modules that support filtering.
   Provides extraction, validation, and struct creation for filter parameters in API requests.
@@ -68,13 +68,13 @@ defmodule LedgerBankApi.Behaviours.Filterable do
   """
   def create_filter_struct(params) do
     case validate_filter_params(extract_filter_params(params)) do
-      {:ok, validated_params} -> {:ok, struct(LedgerBankApi.Behaviours.FilterParams, validated_params)}
+      {:ok, validated_params} -> {:ok, struct(LedgerBankApi.Banking.Behaviours.FilterParams, validated_params)}
       {:error, reason} -> {:error, reason}
     end
   end
 end
 
-defmodule LedgerBankApi.Behaviours.FilterParams do
+defmodule LedgerBankApi.Banking.Behaviours.FilterParams do
   @moduledoc """
   Struct for filter parameters.
   """

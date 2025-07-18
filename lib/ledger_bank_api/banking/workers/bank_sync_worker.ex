@@ -1,16 +1,28 @@
 defmodule LedgerBankApi.Workers.BankSyncWorker do
-  @moduledoc """
-  Oban worker for syncing user bank logins with external bank systems.
-  Enqueues background jobs to fetch and update account data for a given login.
-  """
   use Oban.Worker, queue: :banking
+  require Logger
+  alias LedgerBankApi.Repo
+  alias LedgerBankApi.Banking.Schemas.UserBankLogin
+  alias LedgerBankApi.Banking.Behaviours.ErrorHandler
 
   @impl Oban.Worker
-  @doc """
-  Performs the sync operation for the given login_id.
-  """
   def perform(%Oban.Job{args: %{"login_id" => login_id}}) do
-    IO.puts("[Stub] Would sync user login: #{login_id}")
-    :ok
+    context = %{worker: __MODULE__, login_id: login_id}
+
+    ErrorHandler.with_error_handling(fn ->
+      login =
+        Repo.get!(UserBankLogin, login_id)
+        |> Repo.preload(bank_branch: :bank)
+
+      integration_mod = login.bank_branch.bank.integration_module |> String.to_existing_atom()
+
+      case integration_mod.fetch_accounts(%{access_token: login.encrypted_password}) do
+        {:ok, accounts} ->
+          Logger.info("Fetched accounts: #{inspect(accounts)}")
+          :ok
+        {:error, reason} ->
+          raise "Failed to fetch accounts: #{inspect(reason)}"
+      end
+    end, context)
   end
 end

@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Behaviours.Paginated do
+defmodule LedgerBankApi.Banking.Behaviours.Paginated do
   @moduledoc """
   Behaviour and utility functions for modules that support pagination.
   Provides extraction, validation, and struct creation for pagination parameters in API requests.
@@ -62,13 +62,13 @@ defmodule LedgerBankApi.Behaviours.Paginated do
   """
   def create_pagination_struct(params) do
     case validate_pagination_params(extract_pagination_params(params)) do
-      {:ok, validated_params} -> {:ok, struct(LedgerBankApi.Behaviours.PaginationParams, validated_params)}
+      {:ok, validated_params} -> {:ok, struct(LedgerBankApi.Banking.Behaviours.PaginationParams, validated_params)}
       {:error, reason} -> {:error, reason}
     end
   end
 end
 
-defmodule LedgerBankApi.Behaviours.PaginationParams do
+defmodule LedgerBankApi.Banking.Behaviours.PaginationParams do
   @moduledoc """
   Struct for pagination parameters.
   """

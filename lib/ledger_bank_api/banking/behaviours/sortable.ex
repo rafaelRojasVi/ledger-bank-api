@@ -1,4 +1,4 @@
-defmodule LedgerBankApi.Behaviours.Sortable do
+defmodule LedgerBankApi.Banking.Behaviours.Sortable do
   @moduledoc """
   Behaviour and utility functions for modules that support sorting.
   Provides extraction, validation, and struct creation for sort parameters in API requests.
@@ -54,13 +54,13 @@ defmodule LedgerBankApi.Behaviours.Sortable do
   """
   def create_sort_struct(params, allowed_fields) do
     case validate_sort_params(extract_sort_params(params), allowed_fields) do
-      {:ok, validated_params} -> {:ok, struct(LedgerBankApi.Behaviours.SortParams, validated_params)}
+      {:ok, validated_params} -> {:ok, struct(LedgerBankApi.Banking.Behaviours.SortParams, validated_params)}
       {:error, reason} -> {:error, reason}
     end
   end
 end
 
-defmodule LedgerBankApi.Behaviours.SortParams do
+defmodule LedgerBankApi.Banking.Behaviours.SortParams do
   @moduledoc """
   Struct for sort parameters.
   """

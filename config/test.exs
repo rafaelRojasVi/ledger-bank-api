@@ -34,3 +34,6 @@ config :phoenix, :plug_init_mode, :runtime
 
 # Use mock for bank client in tests
 config :ledger_bank_api, :bank_client, LedgerBankApi.External.BankClientMock
+
+# JWT secret key for testing
+config :ledger_bank_api, :jwt_secret_key, "super-secret-key"

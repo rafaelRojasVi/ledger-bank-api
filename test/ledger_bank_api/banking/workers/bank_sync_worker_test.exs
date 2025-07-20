@@ -16,16 +16,16 @@ defmodule LedgerBankApi.Workers.BankSyncWorkerTest do
   end
 
   test "BankSyncWorker calls integration and logs success" do
-    # Insert all required parent records
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{

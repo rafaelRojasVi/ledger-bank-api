@@ -4,6 +4,7 @@ defmodule LedgerBankApi.Banking.Schemas.Account do
   """
   use Ecto.Schema
   import Ecto.Changeset
+  import LedgerBankApi.CrudHelpers
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -17,12 +18,10 @@ defmodule LedgerBankApi.Banking.Schemas.Account do
     timestamps(type: :utc_datetime)
   end
 
-  @doc """
-  Builds a changeset for account creation and updates.
-  """
-  def changeset(account, attrs) do
-    account
-    |> cast(attrs, [:user_id, :institution, :type, :last4, :balance])
-    |> validate_required([:user_id, :institution, :type, :last4, :balance])
-  end
+  @fields [:user_id, :institution, :type, :last4, :balance]
+  @required_fields [:user_id, :institution, :type, :last4, :balance]
+
+  default_changeset(:base_changeset, @fields, @required_fields)
+
+  def changeset(struct, attrs), do: base_changeset(struct, attrs)
 end

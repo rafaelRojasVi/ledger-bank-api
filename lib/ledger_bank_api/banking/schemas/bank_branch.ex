@@ -4,6 +4,7 @@ defmodule LedgerBankApi.Banking.Schemas.BankBranch do
   """
   use Ecto.Schema
   import Ecto.Changeset
+  import LedgerBankApi.CrudHelpers
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -20,13 +21,14 @@ defmodule LedgerBankApi.Banking.Schemas.BankBranch do
     timestamps(type: :utc_datetime)
   end
 
-  @doc """
-  Builds a changeset for bank branch creation and updates.
-  """
+  @fields [:name, :iban, :country, :routing_number, :swift_code, :bank_id]
+  @required_fields [:name, :country, :bank_id]
+
+  default_changeset(:base_changeset, @fields, @required_fields)
+
   def changeset(bank_branch, attrs) do
     bank_branch
-    |> cast(attrs, [:name, :iban, :country, :routing_number, :swift_code, :bank_id])
-    |> validate_required([:name, :country, :bank_id])
+    |> base_changeset(attrs)
     |> unique_constraint(:iban)
     |> foreign_key_constraint(:bank_id)
   end

@@ -13,14 +13,15 @@ defmodule LedgerBankApi.Banking.UserBankLoginsTest do
 
   test "create_user_bank_login/1 creates a login" do
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{
@@ -36,5 +37,34 @@ defmodule LedgerBankApi.Banking.UserBankLoginsTest do
     }
     assert {:ok, %UserBankLogin{} = login} = UserBankLogins.create_user_bank_login(attrs)
     assert login.username == "test"
+  end
+
+  test "create_user_bank_login/1 enforces uniqueness of user_id, bank_branch_id, username" do
+    bank = Repo.insert!(%Bank{
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
+      integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
+    })
+    branch = Repo.insert!(%BankBranch{
+      name: "Test Branch",
+      iban: "IBAN123",
+      country: "UK",
+      bank_id: bank.id
+    })
+    user = Repo.insert!(%User{
+      email: "test@example.com",
+      full_name: "Test User",
+      status: "ACTIVE"
+    })
+    attrs = %{
+      user_id: user.id,
+      bank_branch_id: branch.id,
+      username: "test",
+      encrypted_password: "pw"
+    }
+    assert {:ok, %UserBankLogin{}} = UserBankLogins.create_user_bank_login(attrs)
+    assert {:error, changeset} = UserBankLogins.create_user_bank_login(attrs)
+    assert {:user_id, {"has already been taken", _}} = Enum.find(changeset.errors, fn {k, _} -> k == :user_id end)
   end
 end

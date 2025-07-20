@@ -1,17 +1,22 @@
 # LedgerBankApi
 
+> **Note:** For the latest updates and detailed changes, see [CHANGELOG.md](./CHANGELOG.md).
+
 A modern Elixir/Phoenix API for banking and financial data management with clean architecture, reusable behaviours, and comprehensive testing. This API provides access to account information, transactions, and payment processing with built-in pagination, filtering, sorting, and error handling.
 
 ## 🚀 Features
 
+- **JWT Authentication**: Secure authentication system with support for access and refresh tokens, and user roles included in JWT claims
+- **Centralized Error Handling**: Unified error handling for payment processing and bank synchronization workers
 - **Account Management**: Create and manage user bank accounts
 - **Transaction Tracking**: Record and query financial transactions with pagination
 - **Payment Processing**: Background job processing for payments using Oban
 - **RESTful API**: Clean, REST-compliant endpoints with consistent error handling
 - **PostgreSQL Database**: Robust data persistence with Ecto
 - **Docker Support**: Containerized deployment with Docker Compose
-- **JWT Authentication**: Secure authentication system
 - **Reusable Behaviours**: Consistent patterns for pagination, filtering, and sorting
+- **CRUD Helpers**: Refactored helpers for better struct creation and validation
+- **New Macros**: For unique constraints, required fields, and validations
 - **Comprehensive Testing**: Organized test suite with focused test categories
 - **Background Jobs**: Oban for reliable background job processing
 

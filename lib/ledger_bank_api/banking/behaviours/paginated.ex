@@ -58,13 +58,20 @@ defmodule LedgerBankApi.Banking.Behaviours.Paginated do
   end
 
   @doc """
+  Generic helper for struct creation/validation from params, validation function, and struct module.
+  """
+  def create_struct(params, validate_fun, struct_mod) do
+    case validate_fun.(params) do
+      {:ok, validated_params} -> {:ok, struct(struct_mod, validated_params)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
   Creates a pagination struct for easy handling.
   """
   def create_pagination_struct(params) do
-    case validate_pagination_params(extract_pagination_params(params)) do
-      {:ok, validated_params} -> {:ok, struct(LedgerBankApi.Banking.Behaviours.PaginationParams, validated_params)}
-      {:error, reason} -> {:error, reason}
-    end
+    create_struct(extract_pagination_params(params), &validate_pagination_params/1, LedgerBankApi.Banking.Behaviours.PaginationParams)
   end
 end
 

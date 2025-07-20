@@ -6,6 +6,9 @@ defmodule LedgerBankApi.Workers.BankSyncWorker do
   alias LedgerBankApi.Banking.Behaviours.ErrorHandler
 
   @impl Oban.Worker
+  @doc """
+  Performs bank sync for a given login_id, with centralized error handling.
+  """
   def perform(%Oban.Job{args: %{"login_id" => login_id}}) do
     context = %{worker: __MODULE__, login_id: login_id}
 

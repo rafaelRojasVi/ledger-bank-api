@@ -15,14 +15,15 @@ defmodule LedgerBankApi.Banking.UserPaymentsTest do
 
   test "create/1 creates a user payment" do
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{
@@ -41,21 +42,22 @@ defmodule LedgerBankApi.Banking.UserPaymentsTest do
       currency: "USD",
       account_type: "CHECKING"
     })
-    attrs = %{user_bank_account_id: account.id, amount: Decimal.new("20.00"), payment_type: "PAYMENT", status: "PENDING"}
+    attrs = %{user_bank_account_id: account.id, amount: Decimal.new("20.00"), payment_type: "PAYMENT", status: "PENDING", direction: "DEBIT"}
     assert {:ok, %UserPayment{} = payment} = UserPayments.create(attrs)
     assert payment.amount == Decimal.new("20.00")
   end
 
   test "list_for_account/1 returns payments for account" do
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{
@@ -74,7 +76,7 @@ defmodule LedgerBankApi.Banking.UserPaymentsTest do
       currency: "USD",
       account_type: "CHECKING"
     })
-    UserPayments.create(%{user_bank_account_id: account.id, amount: Decimal.new("10.00"), payment_type: "PAYMENT", status: "PENDING"})
+    UserPayments.create(%{user_bank_account_id: account.id, amount: Decimal.new("10.00"), payment_type: "PAYMENT", status: "PENDING", direction: "DEBIT"})
     payments = UserPayments.list_for_account(account.id)
     assert Enum.all?(payments, &(&1.user_bank_account_id == account.id))
   end

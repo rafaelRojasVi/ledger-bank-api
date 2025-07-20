@@ -15,14 +15,15 @@ defmodule LedgerBankApi.Banking.TransactionsTest do
 
   test "create/1 creates a transaction" do
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{
@@ -41,21 +42,22 @@ defmodule LedgerBankApi.Banking.TransactionsTest do
       currency: "USD",
       account_type: "CHECKING"
     })
-    attrs = %{account_id: account.id, amount: Decimal.new("100.00"), posted_at: DateTime.utc_now(), description: "Test Txn"}
+    attrs = %{account_id: account.id, amount: Decimal.new("100.00"), posted_at: DateTime.utc_now(), description: "Test Txn", direction: "DEBIT"}
     assert {:ok, %Transaction{} = txn} = Transactions.create(attrs)
     assert txn.amount == Decimal.new("100.00")
   end
 
   test "list_for_account/2 returns transactions for account" do
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{
@@ -74,7 +76,7 @@ defmodule LedgerBankApi.Banking.TransactionsTest do
       currency: "USD",
       account_type: "CHECKING"
     })
-    Transactions.create(%{account_id: account.id, amount: Decimal.new("50.00"), posted_at: DateTime.utc_now(), description: "A"})
+    Transactions.create(%{account_id: account.id, amount: Decimal.new("50.00"), posted_at: DateTime.utc_now(), description: "A", direction: "DEBIT"})
     txns = Transactions.list_for_account(account.id)
     assert Enum.all?(txns, &(&1.account_id == account.id))
   end

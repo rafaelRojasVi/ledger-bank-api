@@ -4,6 +4,7 @@ defmodule LedgerBankApi.Banking.Schemas.Bank do
   """
   use Ecto.Schema
   import Ecto.Changeset
+  import LedgerBankApi.CrudHelpers
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -14,20 +15,24 @@ defmodule LedgerBankApi.Banking.Schemas.Bank do
     field :api_endpoint, :string
     field :status, :string, default: "ACTIVE"
     field :integration_module, :string
+    field :code, :string
 
     has_many :bank_branches, LedgerBankApi.Banking.Schemas.BankBranch
 
     timestamps(type: :utc_datetime)
   end
 
-  @doc """
-  Builds a changeset for bank creation and updates.
-  """
+  @fields [:name, :country, :logo_url, :api_endpoint, :status, :integration_module, :code]
+  @required_fields [:name, :country, :code]
+
+  default_changeset(:base_changeset, @fields, @required_fields)
+
   def changeset(bank, attrs) do
     bank
-    |> cast(attrs, [:name, :country, :logo_url, :api_endpoint, :status, :integration_module])
-    |> validate_required([:name, :country])
-    |> unique_constraint(:name)
-    |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])
+    |> base_changeset(attrs)
+    |> unique_constraints([:name, :code])
+    |> validate_inclusions([status: ["ACTIVE", "INACTIVE"]])
+    |> validate_formats([code: ~r/^[A-Z0-9_]+$/])
+    |> validate_lengths([code: [min: 3, max: 32]])
   end
 end

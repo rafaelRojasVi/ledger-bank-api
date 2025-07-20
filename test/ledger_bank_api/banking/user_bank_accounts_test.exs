@@ -14,14 +14,15 @@ defmodule LedgerBankApi.Banking.UserBankAccountsTest do
 
   test "create/1 creates a user bank account" do
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{
@@ -42,14 +43,15 @@ defmodule LedgerBankApi.Banking.UserBankAccountsTest do
 
   test "list/0 returns all user bank accounts" do
     bank = Repo.insert!(%Bank{
-      name: "Test Bank",
-      country: "US",
+      name: "Monzo",
+      country: "UK",
+      code: "MONZO_UK",
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     branch = Repo.insert!(%BankBranch{
       name: "Test Branch",
       iban: "IBAN123",
-      country: "US",
+      country: "UK",
       bank_id: bank.id
     })
     user = Repo.insert!(%User{

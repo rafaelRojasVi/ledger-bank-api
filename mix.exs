@@ -58,7 +58,8 @@ defmodule LedgerBankApi.MixProject do
       {:joken, "~> 2.6"},
       {:oban, "~> 2.18"},
       {:mimic, "~> 1.7", only: :test},
-      {:req, "~> 0.5.10"}
+      {:req, "~> 0.5.10"},
+      {:argon2_elixir, "~> 3.0"}
     ]
   end
 

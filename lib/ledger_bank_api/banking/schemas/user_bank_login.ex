@@ -4,6 +4,7 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankLogin do
   """
   use Ecto.Schema
   import Ecto.Changeset
+  import LedgerBankApi.CrudHelpers
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -24,12 +25,22 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankLogin do
   @doc """
   Builds a changeset for user bank login creation and updates.
   """
+
+  @fields [
+    :user_id, :bank_branch_id, :username, :encrypted_password, :status, :last_sync_at, :sync_frequency
+  ]
+  @required_fields [
+    :user_id, :bank_branch_id, :username, :encrypted_password
+  ]
+
   def changeset(user_bank_login, attrs) do
     user_bank_login
-    |> cast(attrs, [:user_id, :bank_branch_id, :username, :encrypted_password, :status, :last_sync_at, :sync_frequency])
-    |> validate_required([:user_id, :bank_branch_id, :username, :encrypted_password])
-    |> validate_inclusion(:status, ["ACTIVE", "INACTIVE", "ERROR"])
-    |> foreign_key_constraint(:user_id)
-    |> foreign_key_constraint(:bank_branch_id)
+    |> base_changeset(attrs)
+    |> validate_inclusions([status: ["ACTIVE", "INACTIVE", "ERROR"]])
+    |> foreign_key_constraints([:user_id, :bank_branch_id])
+    |> unique_constraints([:user_id, :bank_branch_id, :username])
+    |> unique_constraint(:user_id, name: "user_bank_logins_user_id_bank_branch_id_index")
   end
+
+  default_changeset(:base_changeset, @fields, @required_fields)
 end

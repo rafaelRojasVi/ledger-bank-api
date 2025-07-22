@@ -163,12 +163,14 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   Logs error with structured logging.
   """
   def log_error(error, context \\ %{}) do
-    Logger.error("Application error", %{
-      error: inspect(error),
-      context: context,
-      timestamp: DateTime.utc_now(),
-      stacktrace: Process.info(self(), :current_stacktrace)
-    })
+    unless Mix.env() == :test do
+      Logger.error("Application error", %{
+        error: inspect(error),
+        context: context,
+        timestamp: DateTime.utc_now(),
+        stacktrace: Process.info(self(), :current_stacktrace)
+      })
+    end
   end
 
   @doc """

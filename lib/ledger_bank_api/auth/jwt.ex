@@ -61,9 +61,6 @@ defmodule LedgerBankApi.Auth.JWT do
     sign_token(claims)
   end
 
-  @doc """
-  Signs a map of claims into a JWT.
-  """
   defp sign_token(claims) do
     token = generate_and_sign!(claims, signer())
     {:ok, token}
@@ -124,8 +121,6 @@ defmodule LedgerBankApi.Auth.JWT do
       _ -> {:error, :invalid_refresh_token}
     end
   end
-
-  defp get_secret, do: @jwt_secret_key
 
   defp signer do
     Joken.Signer.create("HS256", @jwt_secret_key)

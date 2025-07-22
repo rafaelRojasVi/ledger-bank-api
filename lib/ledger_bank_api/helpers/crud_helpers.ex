@@ -8,6 +8,19 @@ defmodule LedgerBankApi.CrudHelpers do
       def create(attrs \\ %{}), do: %unquote(schema){} |> unquote(schema).changeset(attrs) |> Repo.insert()
       def update(struct, attrs), do: struct |> unquote(schema).changeset(attrs) |> Repo.update()
       def delete(struct), do: Repo.delete(struct)
+
+      def list_by(field, value) do
+        import Ecto.Query
+        Repo.all(from s in unquote(schema), where: field(s, ^field) == ^value)
+      end
+
+      def list_by_fields(fields) do
+        import Ecto.Query
+        query = Enum.reduce(fields, unquote(schema), fn {field, value}, acc ->
+          from s in acc, where: field(s, ^field) == ^value
+        end)
+        Repo.all(query)
+      end
     end
   end
 

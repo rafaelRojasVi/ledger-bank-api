@@ -6,8 +6,7 @@ import Config
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :ledger_bank_api, LedgerBankApi.Repo,
-  username: System.get_env("DB_USER", "postgres"),
-  password: System.get_env("DB_PASS", "postgres"),
+  username: System.get_env("DB_USER", "postgres"),password: System.get_env("DB_PASS", "postgres"),
   hostname: System.get_env("DB_HOST", "localhost"),
   database: "ledger_bank_api_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
@@ -27,7 +26,7 @@ config :ledger_bank_api, LedgerBankApi.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
 
 # Print only warnings and errors during test
-config :logger, level: :warning
+config :logger, level: :error
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
@@ -37,3 +36,5 @@ config :ledger_bank_api, :bank_client, LedgerBankApi.External.BankClientMock
 
 # JWT secret key for testing
 config :ledger_bank_api, :jwt_secret_key, "super-secret-key"
+
+config :ledger_bank_api, Oban, testing: :inline

@@ -3,7 +3,6 @@ defmodule LedgerBankApi.Banking.Schemas.Account do
   Ecto schema for bank accounts. Represents a user's account at a financial institution.
   """
   use Ecto.Schema
-  import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
 
   @primary_key {:id, :binary_id, autogenerate: true}

@@ -69,6 +69,7 @@ defmodule LedgerBankApi.Users.User do
   @doc """
   Returns true if the user has the given role.
   """
+  def has_role?(%__MODULE__{role: "admin"}, _), do: true
   def has_role?(%__MODULE__{role: role}, role), do: true
   def has_role?(_, _), do: false
 end

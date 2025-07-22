@@ -3,7 +3,6 @@ defmodule LedgerBankApi.Banking.Schemas.Bank do
   Ecto schema for banks. Represents a financial institution.
   """
   use Ecto.Schema
-  import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
 
   @primary_key {:id, :binary_id, autogenerate: true}

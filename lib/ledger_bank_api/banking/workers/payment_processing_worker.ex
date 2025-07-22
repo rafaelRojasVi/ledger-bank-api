@@ -13,8 +13,7 @@ defmodule LedgerBankApi.Workers.PaymentWorker do
   def perform(%Oban.Job{args: %{"payment_id" => payment_id}}) do
     context = %{worker: __MODULE__, payment_id: payment_id}
     ErrorHandler.with_error_handling(fn ->
-      IO.puts("[Stub] Would process payment: #{payment_id}")
-      :ok
+      LedgerBankApi.Banking.UserPayments.process_payment(payment_id)
     end, context)
   end
 end

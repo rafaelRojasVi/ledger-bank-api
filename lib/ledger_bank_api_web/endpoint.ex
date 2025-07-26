@@ -52,5 +52,8 @@ defmodule LedgerBankApiWeb.Endpoint do
   # plug Plug.SSL
   # plug :put_secure_browser_headers
 
+  # Global error handling
+  plug LedgerBankApiWeb.Plugs.ErrorHandler
+
   plug LedgerBankApiWeb.Router
 end

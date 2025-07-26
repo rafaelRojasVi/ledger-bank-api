@@ -4,7 +4,7 @@ defmodule LedgerBankApi.Repo.Migrations.CreateTransactions do
   def change do
     create table(:transactions, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all)
+      add :account_id, references(:accounts, type: :binary_id, on_delete: :restrict)
       add :description, :string
       add :amount, :decimal
       add :posted_at, :utc_datetime

@@ -4,7 +4,7 @@ defmodule LedgerBankApi.Repo.Migrations.CreateUserPayments do
   def change do
     create table(:user_payments, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :user_bank_account_id, references(:user_bank_accounts, type: :binary_id, on_delete: :delete_all), null: false
+      add :user_bank_account_id, references(:user_bank_accounts, type: :binary_id, on_delete: :restrict), null: false
       add :amount, :decimal, precision: 20, scale: 2, null: false
       add :description, :string
       add :payment_type, :string, null: false

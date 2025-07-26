@@ -11,6 +11,10 @@ defmodule LedgerBankApi.Helpers.CrudHelpersIntegrationTest do
       field :role, :string
     end
     default_changeset(:base_changeset, [:status, :role], [:status, :role])
+
+    def changeset(schema, attrs) do
+      base_changeset(schema, attrs)
+    end
   end
 
   defmodule DummyContext do

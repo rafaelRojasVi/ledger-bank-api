@@ -1,7 +1,7 @@
 defmodule LedgerBankApi.Users.ContextAuthTest do
   use ExUnit.Case, async: true
   alias LedgerBankApi.Users.Context
-  alias LedgerBankApi.Users.User, as: _User
+
   alias LedgerBankApi.Repo
 
   setup do
@@ -23,7 +23,7 @@ defmodule LedgerBankApi.Users.ContextAuthTest do
 
   test "refresh_tokens rotates and revokes old token", %{user: user} do
     assert {:ok, _db_user, _access, refresh} = Context.login_user(user.email, "abc12345")
-    assert {:ok, _db_user2, _new_access, new_refresh} = Context.refresh_tokens(refresh)
+    assert {:ok, db_user2, _new_access, new_refresh} = Context.refresh_tokens(refresh)
     assert db_user2.id == user.id
     refute refresh == new_refresh
     # Old refresh token should now be revoked

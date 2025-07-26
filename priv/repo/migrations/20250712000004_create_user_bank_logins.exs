@@ -9,8 +9,8 @@ defmodule LedgerBankApi.Repo.Migrations.CreateUserBankLogins do
       add :status, :string, null: false, default: "ACTIVE"
       add :last_sync_at, :utc_datetime
       add :sync_frequency, :integer, default: 3600
-      add :user_id, references(:users, type: :binary_id, on_delete: :delete_all), null: false
-      add :bank_branch_id, references(:bank_branches, type: :binary_id, on_delete: :delete_all), null: false
+      add :user_id, references(:users, type: :binary_id, on_delete: :restrict), null: false
+      add :bank_branch_id, references(:bank_branches, type: :binary_id, on_delete: :restrict), null: false
 
       timestamps(type: :utc_datetime)
     end

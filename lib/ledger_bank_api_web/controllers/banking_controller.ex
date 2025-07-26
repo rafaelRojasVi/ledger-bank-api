@@ -1,69 +1,118 @@
-defmodule LedgerBankApiWeb.BankingController do
-  use LedgerBankApiWeb, :controller
-  require Logger
+defmodule LedgerBankApiWeb.BankingControllerV2 do
+  @moduledoc """
+  Optimized banking controller using base controller patterns.
+  Provides account management, transactions, and banking operations.
+  """
 
-  @behaviour LedgerBankApi.Banking.Behaviours.Paginated
-  @behaviour LedgerBankApi.Banking.Behaviours.Filterable
-  @behaviour LedgerBankApi.Banking.Behaviours.Sortable
-  @behaviour LedgerBankApi.Banking.Behaviours.ErrorHandler
+  use LedgerBankApiWeb, :controller
+  import LedgerBankApiWeb.BaseController
+  import LedgerBankApiWeb.JSON.BaseJSON
 
   alias LedgerBankApi.Banking.Context
   alias LedgerBankApi.Banking.Behaviours.{Paginated, Filterable, Sortable, ErrorHandler}
 
-  @impl Paginated
-  def extract_pagination_params(params) do
-    Paginated.extract_pagination_params(params)
+  # Implement behaviours for pagination, filtering, and sorting
+  @behaviour Paginated
+  @behaviour Filterable
+  @behaviour Sortable
+  @behaviour ErrorHandler
+
+  # Standard CRUD operations for user bank accounts
+  crud_operations(
+    Context,
+    LedgerBankApi.Banking.Schemas.UserBankAccount,
+    "user_bank_account",
+    user_filter: &filter_accounts_by_user/2,
+    authorization: :user_ownership
+  )
+
+  # Custom banking actions
+  action :transactions do
+    account = Context.get_user_bank_account!(params["id"])
+    # Ensure user can only access their own accounts
+    if account.user_bank_login.user_id != user_id do
+      raise "Unauthorized access to account"
+    end
+
+    # Handle pagination, filtering, and sorting
+    with {:ok, pagination_params} <- validate_pagination_params(extract_pagination_params(params)),
+         {:ok, filter_params} <- validate_filter_params(extract_filter_params(params)),
+         {:ok, sort_params} <- validate_sort_params(extract_sort_params(params), ["posted_at", "amount", "description"]) do
+
+      transactions = Context.list_transactions_for_user_bank_account(account.id)
+      %{transactions: transactions, account: account}
+    else
+      {:error, reason} ->
+        raise "Validation error: #{reason}"
+    end
   end
 
-  @impl Paginated
-  def validate_pagination_params(params) do
-    Paginated.validate_pagination_params(params)
+  action :balances do
+    account = Context.get_user_bank_account!(params["id"])
+    # Ensure user can only access their own accounts
+    if account.user_bank_login.user_id != user_id do
+      raise "Unauthorized access to account"
+    end
+    %{account: account}
   end
+
+  action :payments do
+    account = Context.get_user_bank_account!(params["id"])
+    # Ensure user can only access their own accounts
+    if account.user_bank_login.user_id != user_id do
+      raise "Unauthorized access to account"
+    end
+
+    payments = Context.list_payments_for_user_bank_account(account.id)
+    %{payments: payments, account: account}
+  end
+
+  async_action :sync do
+    # Verify the login belongs to the user
+    login = Context.get_user_bank_login!(params["login_id"])
+    if login.user_id != user_id do
+      raise "Unauthorized access to bank login"
+    end
+
+    # Queue the sync job
+    Oban.insert(%Oban.Job{
+      queue: :banking,
+      worker: "LedgerBankApi.Workers.BankSyncWorker",
+      args: %{"login_id" => params["login_id"]}
+    })
+
+    format_job_response("bank_sync", params["login_id"])
+  end
+
+  # Behaviour implementations
+  @impl Paginated
+  def extract_pagination_params(params), do: Paginated.extract_pagination_params(params)
+  @impl Paginated
+  def validate_pagination_params(params), do: Paginated.validate_pagination_params(params)
+  @impl Paginated
+  def handle_paginated_data(data, pagination, opts), do: {data, pagination, opts}
 
   @impl Filterable
-  def extract_filter_params(params) do
-    Filterable.extract_filter_params(params)
-  end
-
+  def extract_filter_params(params), do: Filterable.extract_filter_params(params)
   @impl Filterable
-  def validate_filter_params(params) do
-    Filterable.validate_filter_params(params)
-  end
-
+  def validate_filter_params(params), do: Filterable.validate_filter_params(params)
   @impl Filterable
-  def handle_filtered_data(data, filters, opts) do
-    {data, filters, opts}
-  end
-
-  @impl Paginated
-  def handle_paginated_data(data, pagination, opts) do
-    {data, pagination, opts}
-  end
+  def handle_filtered_data(data, filters, opts), do: {data, filters, opts}
 
   @impl Sortable
-  def extract_sort_params(params) do
-    Sortable.extract_sort_params(params)
-  end
-
+  def extract_sort_params(params), do: Sortable.extract_sort_params(params)
   @impl Sortable
-  def validate_sort_params(params, allowed_fields) do
-    Sortable.validate_sort_params(params, allowed_fields)
-  end
-
+  def validate_sort_params(params, allowed_fields), do: Sortable.validate_sort_params(params, allowed_fields)
   @impl Sortable
-  def handle_sorted_data(data, sorting, opts) do
-    {data, sorting, opts}
-  end
+  def handle_sorted_data(data, sorting, opts), do: {data, sorting, opts}
 
   @impl ErrorHandler
   def handle_error(error, context, _opts) do
     case error do
       %{error: error_details} ->
-        # Already formatted error response
         status_code = ErrorHandler.error_types()[error_details.type] || 500
         {status_code, error}
       _ ->
-        # Raw error, format it
         error_response = ErrorHandler.handle_common_error(error, context)
         status_code = ErrorHandler.error_types()[error_response.error.type] || 500
         {status_code, error_response}
@@ -71,126 +120,15 @@ defmodule LedgerBankApiWeb.BankingController do
   end
 
   @impl ErrorHandler
-  def format_error(error, opts) do
-    ErrorHandler.handle_common_error(error, opts)
-  end
-
+  def format_error(error, opts), do: ErrorHandler.handle_common_error(error, opts)
   @impl ErrorHandler
-  def log_error(error, opts) do
-    ErrorHandler.log_error(error, opts)
-  end
+  def log_error(error, opts), do: ErrorHandler.log_error(error, opts)
 
-  @doc """
-  List all bank accounts (public, no user filtering).
-  """
-  def index(conn, _params) do
-    case ErrorHandler.with_error_handling(fn -> Context.list_user_bank_accounts() end, %{action: :list_accounts}) do
-      {:ok, response} -> render(conn, :index, accounts: response.data)
-      {:error, error_response} ->
-        {status, response} = handle_error(error_response, %{action: :list_accounts}, [])
-        conn |> put_status(status) |> json(response)
-    end
-  end
+  # Private helper functions
 
-  @doc """
-  Get account details (public).
-  """
-  def show(conn, %{"id" => account_id}) do
-    case ErrorHandler.with_error_handling(fn -> Context.get_user_bank_account!(account_id) end, %{action: :get_account, account_id: account_id}) do
-      {:ok, response} -> render(conn, :show, account: response.data)
-      {:error, error_response} ->
-        {status, response} = handle_error(error_response, %{action: :get_account, account_id: account_id}, [])
-        conn |> put_status(status) |> json(response)
-    end
-  end
-
-  @doc """
-  Get account transactions (public) with pagination, filtering, and sorting.
-  """
-  def transactions(conn, %{"id" => account_id} = params) do
-    context = %{action: :get_transactions, account_id: account_id}
-
-    # Handle validation errors separately to return proper 400 status
-    with {:ok, pagination_params} <- validate_pagination_params(extract_pagination_params(params)),
-         {:ok, filter_params} <- validate_filter_params(extract_filter_params(params)),
-         {:ok, sort_params} <- validate_sort_params(extract_sort_params(params), ["posted_at", "amount", "description"]) do
-
-      case ErrorHandler.with_error_handling(fn ->
-        account = Context.get_user_bank_account!(account_id)
-        result = Context.list_transactions_for_user_bank_account(
-          account_id,
-          pagination: pagination_params,
-          filters: filter_params,
-          sorting: sort_params
-        )
-        {account, result}
-      end, context) do
-        {:ok, response} ->
-          {account, result} = response.data
-          render(conn, :transactions, result: result, account: account)
-        {:error, error_response} ->
-          {status, response} = handle_error(error_response, context, [])
-          conn |> put_status(status) |> json(response)
-      end
-    else
-      {:error, reason} ->
-        error_response = ErrorHandler.create_error_response(:validation_error, reason, context)
-        conn |> put_status(400) |> json(error_response)
-    end
-  end
-
-  @doc """
-  Get account balances (public).
-  """
-  def balances(conn, %{"id" => account_id}) do
-    case ErrorHandler.with_error_handling(fn -> Context.get_user_bank_account!(account_id) end, %{action: :get_balances, account_id: account_id}) do
-      {:ok, response} -> render(conn, :balances, account: response.data)
-      {:error, error_response} ->
-        {status, response} = handle_error(error_response, %{action: :get_balances, account_id: account_id}, [])
-        conn |> put_status(status) |> json(response)
-    end
-  end
-
-  @doc """
-  Get account payments (public).
-  """
-  def payments(conn, %{"id" => account_id}) do
-    case ErrorHandler.with_error_handling(fn ->
-      account = Context.get_user_bank_account!(account_id)
-      payments = Context.list_payments_for_user_bank_account(account_id)
-      {account, payments}
-    end, %{action: :get_payments, account_id: account_id}) do
-      {:ok, response} ->
-        {account, payments} = response.data
-        render(conn, :payments, payments: payments, account: account)
-      {:error, error_response} ->
-        {status, response} = handle_error(error_response, %{action: :get_payments, account_id: account_id}, [])
-        conn |> put_status(status) |> json(response)
-    end
-  end
-
-  @doc """
-  Sync bank data for a specific login (public).
-  """
-  def sync(conn, %{"login_id" => login_id}) do
-    case ErrorHandler.with_error_handling(fn ->
-      Oban.insert(%Oban.Job{
-        queue: :banking,
-        worker: "LedgerBankApi.Workers.BankSyncWorker",
-        args: %{"user_bank_login_id" => login_id}
-      })
-
-      %{
-        message: "Bank sync initiated",
-        login_id: login_id,
-        status: "queued"
-      }
-    end, %{action: :sync_bank, login_id: login_id}) do
-      {:ok, response} ->
-        conn |> put_status(202) |> json(response.data)
-      {:error, error_response} ->
-        {status, response} = handle_error(error_response, %{action: :sync_bank, login_id: login_id}, [])
-        conn |> put_status(status) |> json(response)
-    end
+  defp filter_accounts_by_user(accounts, user_id) do
+    Enum.filter(accounts, fn account ->
+      account.user_bank_login.user_id == user_id
+    end)
   end
 end

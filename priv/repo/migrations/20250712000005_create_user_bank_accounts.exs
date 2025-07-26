@@ -12,7 +12,7 @@ defmodule LedgerBankApi.Repo.Migrations.CreateUserBankAccounts do
       add :status, :string, null: false, default: "ACTIVE"
       add :last_sync_at, :utc_datetime
       add :external_account_id, :string
-      add :user_bank_login_id, references(:user_bank_logins, type: :binary_id, on_delete: :delete_all), null: false
+      add :user_bank_login_id, references(:user_bank_logins, type: :binary_id, on_delete: :restrict), null: false
 
       timestamps(type: :utc_datetime)
     end

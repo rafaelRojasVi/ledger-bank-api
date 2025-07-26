@@ -5,6 +5,7 @@ defmodule LedgerBankApiWeb.ConnCase do
     quote do
       import Plug.Conn
       import Phoenix.ConnTest
+      import LedgerBankApiWeb.AuthHelpers
       alias LedgerBankApiWeb.Router.Helpers, as: Routes
       @endpoint LedgerBankApiWeb.Endpoint
     end

@@ -1,14 +1,15 @@
-defmodule LedgerBankApiWeb.AuthControllerV2 do
+defmodule LedgerBankApiWeb.AuthController do
   @moduledoc """
   Optimized auth controller using base controller patterns.
   Provides authentication and user profile operations.
   """
 
   use LedgerBankApiWeb, :controller
-  import LedgerBankApiWeb.BaseController
-  import LedgerBankApiWeb.JSON.BaseJSON
+  require LedgerBankApiWeb.BaseController
 
   alias LedgerBankApi.Users.Context
+  alias LedgerBankApiWeb.AuthJSON
+  alias LedgerBankApi.Banking.Behaviours.ErrorHandler
 
   @doc """
   Register a new user.
@@ -27,12 +28,22 @@ defmodule LedgerBankApiWeb.AuthControllerV2 do
 
         conn
         |> put_status(201)
-        |> json(format_auth_response(user, access_token, refresh_token, "User registered successfully"))
+        |> json(AuthJSON.auth_response(user, access_token, refresh_token, "User registered successfully"))
 
       {:error, error_response} ->
-        {status, response} = ErrorHandler.handle_error(error_response, context, [])
-        conn |> put_status(status) |> json(response)
+        status_code = error_response.error.code
+        conn |> put_status(status_code) |> json(error_response)
     end
+  end
+
+  def register(conn, _params) do
+    context = %{action: :register}
+    error_response = ErrorHandler.create_error_response(
+      :validation_error,
+      "Validation failed",
+      %{errors: %{user: ["is required"]}, context: context}
+    )
+    conn |> put_status(400) |> json(error_response)
   end
 
   @doc """
@@ -41,20 +52,26 @@ defmodule LedgerBankApiWeb.AuthControllerV2 do
   def login(conn, %{"email" => email, "password" => password}) do
     context = %{action: :login, email: email}
 
-    case ErrorHandler.with_error_handling(fn ->
-      Context.login_user(email, password)
-    end, context) do
-      {:ok, response} ->
-        {user, access_token, refresh_token} = response.data
-
+    case Context.login_user(email, password) do
+      {:ok, user, access_token, refresh_token} ->
         conn
         |> put_status(200)
-        |> json(format_auth_response(user, access_token, refresh_token, "Login successful"))
+        |> json(AuthJSON.auth_response(user, access_token, refresh_token, "Login successful"))
 
-      {:error, error_response} ->
-        {status, response} = ErrorHandler.handle_error(error_response, context, [])
-        conn |> put_status(status) |> json(response)
+      {:error, :invalid_credentials} ->
+        error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
+        conn |> put_status(401) |> json(error_response)
     end
+  end
+
+  def login(conn, _params) do
+    context = %{action: :login}
+    error_response = ErrorHandler.create_error_response(
+      :validation_error,
+      "Validation failed",
+      %{errors: %{email: ["is required"], password: ["is required"]}, context: context}
+    )
+    conn |> put_status(400) |> json(error_response)
   end
 
   @doc """
@@ -63,20 +80,26 @@ defmodule LedgerBankApiWeb.AuthControllerV2 do
   def refresh(conn, %{"refresh_token" => refresh_token}) do
     context = %{action: :refresh_token}
 
-    case ErrorHandler.with_error_handling(fn ->
-      Context.refresh_tokens(refresh_token)
-    end, context) do
-      {:ok, response} ->
-        {user, new_access_token, new_refresh_token} = response.data
-
+    case Context.refresh_tokens(refresh_token) do
+      {:ok, user, new_access_token, new_refresh_token} ->
         conn
         |> put_status(200)
-        |> json(format_auth_response(user, new_access_token, new_refresh_token, "Tokens refreshed successfully"))
+        |> json(AuthJSON.auth_response(user, new_access_token, new_refresh_token, "Tokens refreshed successfully"))
 
-      {:error, error_response} ->
-        {status, response} = ErrorHandler.handle_error(error_response, context, [])
-        conn |> put_status(status) |> json(response)
+      {:error, :invalid_refresh_token} ->
+        error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
+        conn |> put_status(401) |> json(error_response)
     end
+  end
+
+  def refresh(conn, _params) do
+    context = %{action: :refresh_token}
+    error_response = ErrorHandler.create_error_response(
+      :validation_error,
+      "Validation failed",
+      %{errors: %{refresh_token: ["is required"]}, context: context}
+    )
+    conn |> put_status(400) |> json(error_response)
   end
 
   @doc """
@@ -92,11 +115,11 @@ defmodule LedgerBankApiWeb.AuthControllerV2 do
       {:ok, _response} ->
         conn
         |> put_status(200)
-        |> json(format_logout_response())
+        |> json(AuthJSON.logout_response())
 
       {:error, error_response} ->
-        {status, response} = ErrorHandler.handle_error(error_response, context, [])
-        conn |> put_status(status) |> json(response)
+        status_code = error_response.error.code
+        conn |> put_status(status_code) |> json(error_response)
     end
   end
 
@@ -108,13 +131,19 @@ defmodule LedgerBankApiWeb.AuthControllerV2 do
     context = %{action: :get_profile, user_id: user_id}
 
     case ErrorHandler.with_error_handling(fn ->
-      Context.get_user!(user_id)
+      Context.get!(user_id)
     end, context) do
       {:ok, response} ->
-        render(conn, :show, %{user: response.data})
+        conn
+        |> put_status(200)
+        |> json(%{
+          data: %{
+            user: LedgerBankApiWeb.JSON.UserJSON.format(response.data)
+          }
+        })
       {:error, error_response} ->
-        {status, response} = ErrorHandler.handle_error(error_response, context, [])
-        conn |> put_status(status) |> json(response)
+        status_code = error_response.error.code
+        conn |> put_status(status_code) |> json(error_response)
     end
   end
 end

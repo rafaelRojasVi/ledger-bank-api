@@ -53,4 +53,35 @@ defmodule LedgerBankApi.Banking.UserPayments do
       end)
     end, context)
   end
+
+  @doc """
+  List user payments with advanced filtering, pagination, and sorting.
+  """
+  def list_with_filters(_pagination, _filters, _sorting, user_id, _user_filter) do
+    # Get all user bank account IDs for the user first
+    account_ids =
+      LedgerBankApi.Banking.UserBankAccounts
+      |> join(:inner, [a], login in assoc(a, :user_bank_login))
+      |> where([a, login], login.user_id == ^user_id)
+      |> select([a, _login], a.id)
+      |> Repo.all()
+
+    # Get payments for those accounts
+    payments =
+      from(p in LedgerBankApi.Banking.Schemas.UserPayment,
+        where: p.user_bank_account_id in ^account_ids
+      )
+      |> Repo.all()
+
+    payments
+  end
+
+  @doc """
+  Get user payment with preloads.
+  """
+  def get_with_preloads!(id, preloads) do
+    UserPayment
+    |> Repo.get!(id)
+    |> Repo.preload(preloads)
+  end
 end

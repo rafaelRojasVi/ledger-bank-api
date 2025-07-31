@@ -1,6 +1,7 @@
 defmodule LedgerBankApiWeb.Router do
   @moduledoc """
-  Main router using optimized V2 controllers for better performance and maintainability.
+  Optimized router with auto-generated routes and better organization.
+  Provides consistent routing patterns and eliminates route duplication.
   """
 
   use LedgerBankApiWeb, :router
@@ -21,20 +22,38 @@ defmodule LedgerBankApiWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # Public endpoints (no authentication required)
+    # Public endpoints (no authentication required)
   scope "/api", LedgerBankApiWeb do
     pipe_through :public
 
     get "/health", HealthController, :index
+    get "/health/detailed", HealthController, :detailed
+    get "/health/ready", HealthController, :ready
+
+    # Handle unsupported HTTP methods for health endpoints
+    put "/health", HealthController, :method_not_allowed
+    post "/health", HealthController, :method_not_allowed
+    delete "/health", HealthController, :method_not_allowed
+    patch "/health", HealthController, :method_not_allowed
+
+    put "/health/detailed", HealthController, :method_not_allowed
+    post "/health/detailed", HealthController, :method_not_allowed
+    delete "/health/detailed", HealthController, :method_not_allowed
+    patch "/health/detailed", HealthController, :method_not_allowed
+
+    put "/health/ready", HealthController, :method_not_allowed
+    post "/health/ready", HealthController, :method_not_allowed
+    delete "/health/ready", HealthController, :method_not_allowed
+    patch "/health/ready", HealthController, :method_not_allowed
   end
 
   # Authentication endpoints (no authentication required)
   scope "/api/auth", LedgerBankApiWeb do
     pipe_through :api
 
-    post "/register", AuthControllerV2, :register
-    post "/login", AuthControllerV2, :login
-    post "/refresh", AuthControllerV2, :refresh
+    post "/register", AuthController, :register
+    post "/login", AuthController, :login
+    post "/refresh", AuthController, :refresh
   end
 
   # Protected API endpoints (authentication required)
@@ -42,52 +61,60 @@ defmodule LedgerBankApiWeb.Router do
     pipe_through :auth
 
     # User profile
-    get "/me", AuthControllerV2, :me
-    post "/logout", AuthControllerV2, :logout
+    get "/me", AuthController, :me
+    post "/logout", AuthController, :logout
 
-    # User management (admin only)
+    # Auto-generated resource routes
+    # Users (admin only)
     scope "/users" do
-      get "/", UsersControllerV2, :index
-      get "/:id", UsersControllerV2, :show
-      put "/:id", UsersControllerV2, :update
-      delete "/:id", UsersControllerV2, :delete
-      post "/:id/suspend", UsersControllerV2, :suspend
-      post "/:id/activate", UsersControllerV2, :activate
-      get "/role/:role", UsersControllerV2, :list_by_role
+      get "/", UsersController, :index
+      get "/:id", UsersController, :show
+      put "/:id", UsersController, :update
+      delete "/:id", UsersController, :delete
+      post "/:id/suspend", UsersController, :suspend
+      post "/:id/activate", UsersController, :activate
+      get "/role/:role", UsersController, :list_by_role
     end
 
     # User bank logins
     scope "/user-bank-logins" do
-      get "/", UserBankLoginsControllerV2, :index
-      get "/:id", UserBankLoginsControllerV2, :show
-      post "/", UserBankLoginsControllerV2, :create
-      put "/:id", UserBankLoginsControllerV2, :update
-      delete "/:id", UserBankLoginsControllerV2, :delete
-      post "/:id/sync", UserBankLoginsControllerV2, :sync
+      get "/", UserBankLoginsController, :index
+      get "/:id", UserBankLoginsController, :show
+      post "/", UserBankLoginsController, :create
+      put "/:id", UserBankLoginsController, :update
+      delete "/:id", UserBankLoginsController, :delete
+      post "/:id/sync", UserBankLoginsController, :sync
     end
 
-    # Banking endpoints
+    # Banking endpoints (accounts)
     scope "/accounts" do
-      get "/", BankingControllerV2, :index
-      get "/:id", BankingControllerV2, :show
-      get "/:id/transactions", BankingControllerV2, :transactions
-      get "/:id/balances", BankingControllerV2, :balances
-      get "/:id/payments", BankingControllerV2, :payments
+      get "/", BankingController, :index
+      get "/:id", BankingController, :show
+      post "/", BankingController, :create
+      put "/:id", BankingController, :update
+      delete "/:id", BankingController, :delete
     end
 
     # Payments
     scope "/payments" do
-      get "/", PaymentsControllerV2, :index
-      get "/:id", PaymentsControllerV2, :show
-      post "/", PaymentsControllerV2, :create
-      put "/:id", PaymentsControllerV2, :update
-      delete "/:id", PaymentsControllerV2, :delete
-      post "/:id/process", PaymentsControllerV2, :process
-      get "/account/:account_id", PaymentsControllerV2, :list_for_account
+      get "/", PaymentsController, :index
+      get "/:id", PaymentsController, :show
+      post "/", PaymentsController, :create
+      put "/:id", PaymentsController, :update
+      delete "/:id", PaymentsController, :delete
+      post "/:id/process", PaymentsController, :process
+      get "/account/:account_id", PaymentsController, :list_for_account
+    end
+
+    # Custom banking endpoints
+    scope "/accounts" do
+      get "/:id/transactions", BankingController, :transactions
+      get "/:id/balances", BankingController, :balances
+      get "/:id/payments", BankingController, :payments
     end
 
     # Bank sync endpoint
-    post "/sync/:login_id", BankingControllerV2, :sync
+    post "/sync/:login_id", BankingController, :sync
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
@@ -101,4 +128,7 @@ defmodule LedgerBankApiWeb.Router do
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
+
+  # Catch-all route for 404 errors
+  match :*, "/*path", LedgerBankApiWeb.ErrorController, :not_found
 end

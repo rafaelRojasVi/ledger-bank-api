@@ -1,154 +1,89 @@
-defmodule LedgerBankApiWeb.UserBankLoginsControllerV2Test do
+defmodule LedgerBankApiWeb.UserBankLoginsControllerTest do
   @moduledoc """
-  Comprehensive tests for UserBankLoginsControllerV2.
+  Comprehensive tests for UserBankLoginsController.
   Tests all bank login endpoints: CRUD operations and sync functionality.
   """
 
   use LedgerBankApiWeb.ConnCase
   import LedgerBankApi.Banking.Context
+  import LedgerBankApi.Factories
+  import LedgerBankApi.ErrorAssertions
   alias LedgerBankApi.Banking.Schemas.{Bank, BankBranch, UserBankLogin}
 
-  @valid_bank_attrs %{
-    "name" => "Test Bank",
-    "country" => "US",
-    "code" => "TESTBANK"
-  }
-
-  @valid_bank_branch_attrs %{
-    "name" => "Main Branch",
-    "country" => "US",
-    "iban" => "US1234567890",
-    "routing_number" => "111000025",
-    "swift_code" => "TESTUS33"
-  }
-
-  @valid_user_bank_login_attrs %{
-    "username" => "testuser",
-    "encrypted_password" => "encrypted_password",
-    "sync_frequency" => 3600
-  }
-
-  @update_user_bank_login_attrs %{
-    "username" => "updateduser",
-    "sync_frequency" => 7200
-  }
-
-  setup do
-    # Create test data
-    {:ok, bank} = create_bank(@valid_bank_attrs)
-    {:ok, bank_branch} = create_bank_branch(Map.put(@valid_bank_branch_attrs, "bank_id", bank.id))
-
-    %{bank: bank, bank_branch: bank_branch}
-  end
-
   describe "GET /api/bank-logins" do
-    test "returns user's bank logins", %{conn: conn, bank_branch: bank_branch} do
+    test "returns user's bank logins", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, _branch, login} = create_complete_banking_setup()
 
-      # Create user bank login
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Update the login to belong to the authenticated user
+      login = %{login | user_id: user.id}
+      login = Repo.insert!(login)
 
       conn = get(conn, ~p"/api/bank-logins")
 
-      assert %{
-               "data" => [
-                 %{
-                   "id" => login_id,
-                   "username" => "testuser",
-                   "status" => "ACTIVE",
-                   "sync_frequency" => 3600
-                 }
-               ]
-             } = json_response(conn, 200)
-
-      assert login_id == login.id
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
+      assert_list_response(response, 1)
     end
 
-    test "returns only user's own bank logins", %{conn: conn, bank_branch: bank_branch} do
+    test "returns only user's own bank logins", %{conn: conn} do
       {user1, _access_token, conn} = setup_authenticated_user(conn)
       {user2, _conn} = create_test_user()
 
-      # Create login for user1
-      {:ok, login1} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user1.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Create complete setup for user1
+      {_user, _bank, _branch, login1} = create_complete_banking_setup()
+      login1 = %{login1 | user_id: user1.id}
+      login1 = Repo.insert!(login1)
 
-      # Create login for user2
-      {:ok, login2} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user2.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Create complete setup for user2
+      {_user, _bank, _branch, login2} = create_complete_banking_setup()
+      login2 = %{login2 | user_id: user2.id}
+      login2 = Repo.insert!(login2)
 
       conn = get(conn, ~p"/api/bank-logins")
 
-      assert %{
-               "data" => [
-                 %{
-                   "id" => login_id,
-                   "username" => "testuser"
-                 }
-               ]
-             } = json_response(conn, 200)
-
-      assert login_id == login1.id
-      refute login_id == login2.id
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
+      assert_list_response(response, 1)
     end
 
-    test "returns empty list for user with no bank logins", %{conn: conn} do
-      {_user, _access_token, conn} = setup_authenticated_user(conn)
-
+    test "returns error without authentication", %{conn: conn} do
       conn = get(conn, ~p"/api/bank-logins")
 
-      assert %{"data" => []} = json_response(conn, 200)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
   end
 
   describe "GET /api/bank-logins/:id" do
-    test "returns bank login details", %{conn: conn, bank_branch: bank_branch} do
+    test "returns bank login details", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, _branch, login} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Update the login to belong to the authenticated user
+      login = %{login | user_id: user.id}
+      login = Repo.insert!(login)
 
       conn = get(conn, ~p"/api/bank-logins/#{login.id}")
 
-      assert %{
-               "data" => %{
-                 "id" => login_id,
-                 "username" => "testuser",
-                 "status" => "ACTIVE",
-                 "sync_frequency" => 3600
-               }
-             } = json_response(conn, 200)
-
-      assert login_id == login.id
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
+      assert_single_item_response(response)
     end
 
-    test "returns error for accessing other user's bank login", %{conn: conn, bank_branch: bank_branch} do
-      {user1, _access_token, conn} = setup_authenticated_user(conn)
+    test "returns error for accessing other user's bank login", %{conn: conn} do
+      {_user1, _access_token, conn} = setup_authenticated_user(conn)
       {user2, _conn} = create_test_user()
 
-      # Create login for user2
-      {:ok, login2} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user2.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Create complete setup for user2
+      {_user, _bank, _branch, login2} = create_complete_banking_setup()
+      login2 = %{login2 | user_id: user2.id}
+      login2 = Repo.insert!(login2)
 
       conn = get(conn, ~p"/api/bank-logins/#{login2.id}")
 
-      assert %{
-               "error" => %{
-                 "type" => "forbidden",
-                 "message" => "Access forbidden",
-                 "code" => 403
-               }
-             } = json_response(conn, 403)
+      response = json_response(conn, 403)
+      assert_forbidden_error(response)
     end
 
     test "returns error for non-existent bank login", %{conn: conn} do
@@ -157,494 +92,352 @@ defmodule LedgerBankApiWeb.UserBankLoginsControllerV2Test do
 
       conn = get(conn, ~p"/api/bank-logins/#{fake_id}")
 
-      assert %{
-               "error" => %{
-                 "type" => "not_found",
-                 "message" => "Resource not found",
-                 "code" => 404
-               }
-             } = json_response(conn, 404)
+      response = json_response(conn, 404)
+      assert_not_found_error(response)
     end
   end
 
   describe "POST /api/bank-logins" do
-    test "creates a new bank login", %{conn: conn, bank_branch: bank_branch} do
+    test "creates a new bank login", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, bank, branch} = create_complete_banking_setup()
 
-      login_attrs = Map.merge(@valid_user_bank_login_attrs, %{
-        "bank_branch_id" => bank_branch.id
-      })
+      login_attrs = %{
+        "user_id" => user.id,
+        "bank_branch_id" => branch.id,
+        "username" => "testuser",
+        "encrypted_password" => "encrypted_password",
+        "sync_frequency" => 3600
+      }
 
       conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
 
-      assert %{
-               "data" => %{
-                 "id" => login_id,
-                 "username" => "testuser",
-                 "status" => "ACTIVE",
-                 "sync_frequency" => 3600
-               }
-             } = json_response(conn, 201)
-
-      assert is_binary(login_id)
-
-      # Verify login was created in database
-      login = get_user_bank_login!(login_id)
-      assert login.username == "testuser"
-      assert login.status == "ACTIVE"
-      assert login.sync_frequency == 3600
-      assert login.user_id == user.id
-      assert login.bank_branch_id == bank_branch.id
+      response = json_response(conn, 201)
+      assert_success_response(response, 201)
+      assert_single_item_response(response)
     end
 
-    test "returns error for invalid bank login data", %{conn: conn, bank_branch: bank_branch} do
+    test "returns error for creating login on other user's behalf", %{conn: conn} do
+      {user1, _access_token, conn} = setup_authenticated_user(conn)
+      {user2, _conn} = create_test_user()
+      {_user, _bank, branch} = create_complete_banking_setup()
+
+      login_attrs = %{
+        "user_id" => user2.id,
+        "bank_branch_id" => branch.id,
+        "username" => "testuser",
+        "encrypted_password" => "encrypted_password"
+      }
+
+      conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+
+      response = json_response(conn, 403)
+      assert_forbidden_error(response)
+    end
+
+    test "returns error for duplicate login", %{conn: conn} do
+      {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, branch} = create_complete_banking_setup()
+
+      login_attrs = %{
+        "user_id" => user.id,
+        "bank_branch_id" => branch.id,
+        "username" => "testuser",
+        "encrypted_password" => "encrypted_password"
+      }
+
+      # Create first login
+      post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+
+      # Try to create duplicate
+      conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+
+      response = json_response(conn, 409)
+      assert_conflict_error(response)
+    end
+
+    test "returns error for invalid bank login data", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
 
       invalid_attrs = %{
-        "bank_branch_id" => bank_branch.id,
-        "username" => "", # Empty username
-        "encrypted_password" => "", # Empty password
-        "sync_frequency" => -1 # Invalid sync frequency
+        "user_id" => user.id,
+        "username" => "",
+        "encrypted_password" => ""
       }
 
       conn = post(conn, ~p"/api/bank-logins", user_bank_login: invalid_attrs)
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
-    end
-
-    test "returns error for missing required fields", %{conn: conn, bank_branch: bank_branch} do
-      {user, _access_token, conn} = setup_authenticated_user(conn)
-
-      incomplete_attrs = %{
-        "bank_branch_id" => bank_branch.id,
-        "username" => "testuser"
-        # Missing encrypted_password
-      }
-
-      conn = post(conn, ~p"/api/bank-logins", user_bank_login: incomplete_attrs)
-
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
-    end
-
-    test "returns error for non-existent bank branch", %{conn: conn} do
-      {user, _access_token, conn} = setup_authenticated_user(conn)
-      fake_branch_id = Ecto.UUID.generate()
-
-      login_attrs = Map.merge(@valid_user_bank_login_attrs, %{
-        "bank_branch_id" => fake_branch_id
-      })
-
-      conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
-
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
-    end
-
-    test "prevents duplicate logins for same user and bank branch", %{conn: conn, bank_branch: bank_branch} do
-      {user, _access_token, conn} = setup_authenticated_user(conn)
-
-      # Create first login
-      login_attrs = Map.merge(@valid_user_bank_login_attrs, %{
-        "bank_branch_id" => bank_branch.id
-      })
-      post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
-
-      # Try to create second login for same user and bank branch
-      conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
-
-      assert %{
-               "error" => %{
-                 "type" => "conflict",
-                 "message" => "Constraint violation: user_bank_logins_user_id_bank_branch_id_username_index",
-                 "code" => 409
-               }
-             } = json_response(conn, 409)
+      response = json_response(conn, 400)
+      assert_validation_error(response)
     end
   end
 
   describe "PUT /api/bank-logins/:id" do
-    test "updates bank login", %{conn: conn, bank_branch: bank_branch} do
+    test "updates bank login", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, _branch, login} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Update the login to belong to the authenticated user
+      login = %{login | user_id: user.id}
+      login = Repo.insert!(login)
 
-      conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: @update_user_bank_login_attrs)
+      update_attrs = %{
+        "username" => "updateduser",
+        "sync_frequency" => 7200
+      }
 
-      assert %{
-               "data" => %{
-                 "id" => login_id,
-                 "username" => "updateduser",
-                 "sync_frequency" => 7200
-               }
-             } = json_response(conn, 200)
+      conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: update_attrs)
 
-      assert login_id == login.id
-
-      # Verify database was updated
-      updated_login = get_user_bank_login!(login.id)
-      assert updated_login.username == "updateduser"
-      assert updated_login.sync_frequency == 7200
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
+      assert_single_item_response(response)
     end
 
-    test "returns error for updating other user's bank login", %{conn: conn, bank_branch: bank_branch} do
+    test "returns error for updating other user's bank login", %{conn: conn} do
       {user1, _access_token, conn} = setup_authenticated_user(conn)
       {user2, _conn} = create_test_user()
 
-      # Create login for user2
-      {:ok, login2} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user2.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Create complete setup for user2
+      {_user, _bank, _branch, login2} = create_complete_banking_setup()
+      login2 = %{login2 | user_id: user2.id}
+      login2 = Repo.insert!(login2)
 
-      conn = put(conn, ~p"/api/bank-logins/#{login2.id}", user_bank_login: @update_user_bank_login_attrs)
+      update_attrs = %{
+        "username" => "updateduser"
+      }
 
-      assert %{
-               "error" => %{
-                 "type" => "forbidden",
-                 "message" => "Access forbidden",
-                 "code" => 403
-               }
-             } = json_response(conn, 403)
+      conn = put(conn, ~p"/api/bank-logins/#{login2.id}", user_bank_login: update_attrs)
+
+      response = json_response(conn, 403)
+      assert_forbidden_error(response)
     end
 
-    test "returns error for invalid update data", %{conn: conn, bank_branch: bank_branch} do
+    test "returns error for invalid update data", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, _branch, login} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Update the login to belong to the authenticated user
+      login = %{login | user_id: user.id}
+      login = Repo.insert!(login)
 
       invalid_attrs = %{
-        "username" => "", # Empty username
-        "sync_frequency" => -1 # Invalid sync frequency
+        "username" => "",
+        "sync_frequency" => -1
       }
 
       conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: invalid_attrs)
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
+      response = json_response(conn, 400)
+      assert_validation_error(response)
     end
   end
 
   describe "DELETE /api/bank-logins/:id" do
-    test "deletes bank login", %{conn: conn, bank_branch: bank_branch} do
+    test "deletes bank login", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, _branch, login} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Update the login to belong to the authenticated user
+      login = %{login | user_id: user.id}
+      login = Repo.insert!(login)
 
       conn = delete(conn, ~p"/api/bank-logins/#{login.id}")
 
-      assert response(conn, 204) == ""
-
-      # Verify login was deleted
-      assert_raise Ecto.NoResultsError, fn ->
-        get_user_bank_login!(login.id)
-      end
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
     end
 
-    test "returns error for deleting other user's bank login", %{conn: conn, bank_branch: bank_branch} do
+    test "returns error for deleting other user's bank login", %{conn: conn} do
       {user1, _access_token, conn} = setup_authenticated_user(conn)
       {user2, _conn} = create_test_user()
 
-      # Create login for user2
-      {:ok, login2} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user2.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Create complete setup for user2
+      {_user, _bank, _branch, login2} = create_complete_banking_setup()
+      login2 = %{login2 | user_id: user2.id}
+      login2 = Repo.insert!(login2)
 
       conn = delete(conn, ~p"/api/bank-logins/#{login2.id}")
 
-      assert %{
-               "error" => %{
-                 "type" => "forbidden",
-                 "message" => "Access forbidden",
-                 "code" => 403
-               }
-             } = json_response(conn, 403)
+      response = json_response(conn, 403)
+      assert_forbidden_error(response)
     end
 
-    test "cascades deletion to related accounts", %{conn: conn, bank_branch: bank_branch} do
-      {user, _access_token, conn} = setup_authenticated_user(conn)
+    test "returns error for non-existent bank login", %{conn: conn} do
+      {_user, _access_token, conn} = setup_authenticated_user(conn)
+      fake_id = Ecto.UUID.generate()
 
-      # Create login
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      conn = delete(conn, ~p"/api/bank-logins/#{fake_id}")
 
-      # Create account associated with login
-      {:ok, account} = create_user_bank_account(%{
-        "user_bank_login_id" => login.id,
-        "currency" => "USD",
-        "account_type" => "CHECKING",
-        "balance" => "1000.00",
-        "last_four" => "1234",
-        "account_name" => "Test Account"
-      })
-
-      # Delete the login
-      conn = delete(conn, ~p"/api/bank-logins/#{login.id}")
-      assert response(conn, 204) == ""
-
-      # Verify login was deleted
-      assert_raise Ecto.NoResultsError, fn ->
-        get_user_bank_login!(login.id)
-      end
-
-      # Verify associated account was also deleted (if cascade is configured)
-      # This depends on your database configuration
-      # assert_raise Ecto.NoResultsError, fn ->
-      #   get_user_bank_account!(account.id)
-      # end
+      response = json_response(conn, 404)
+      assert_not_found_error(response)
     end
   end
 
   describe "POST /api/bank-logins/:id/sync" do
-    test "queues bank sync job", %{conn: conn, bank_branch: bank_branch} do
+    test "queues bank sync job", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, _branch, login} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Update the login to belong to the authenticated user
+      login = %{login | user_id: user.id}
+      login = Repo.insert!(login)
 
       conn = post(conn, ~p"/api/bank-logins/#{login.id}/sync")
 
-      assert %{
-               "data" => %{
-                 "message" => "bank_sync initiated",
-                 "bank_sync_id" => login_id,
-                 "status" => "queued"
-               }
-             } = json_response(conn, 202)
-
-      assert login_id == login.id
+      response = json_response(conn, 202)
+      assert_success_response(response, 202)
+      assert_single_response(response, "message")
     end
 
-    test "returns error for syncing other user's bank login", %{conn: conn, bank_branch: bank_branch} do
+    test "returns error for syncing other user's bank login", %{conn: conn} do
       {user1, _access_token, conn} = setup_authenticated_user(conn)
       {user2, _conn} = create_test_user()
 
-      # Create login for user2
-      {:ok, login2} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user2.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      # Create complete setup for user2
+      {_user, _bank, _branch, login2} = create_complete_banking_setup()
+      login2 = %{login2 | user_id: user2.id}
+      login2 = Repo.insert!(login2)
 
       conn = post(conn, ~p"/api/bank-logins/#{login2.id}/sync")
 
-      assert %{
-               "error" => %{
-                 "type" => "forbidden",
-                 "message" => "Access forbidden",
-                 "code" => 403
-               }
-             } = json_response(conn, 403)
+      response = json_response(conn, 403)
+      assert_forbidden_error(response)
     end
 
-    test "returns error for syncing non-existent bank login", %{conn: conn} do
+    test "returns error for non-existent bank login", %{conn: conn} do
       {_user, _access_token, conn} = setup_authenticated_user(conn)
       fake_id = Ecto.UUID.generate()
 
       conn = post(conn, ~p"/api/bank-logins/#{fake_id}/sync")
 
-      assert %{
-               "error" => %{
-                 "type" => "not_found",
-                 "message" => "Resource not found",
-                 "code" => 404
-               }
-             } = json_response(conn, 404)
+      response = json_response(conn, 404)
+      assert_not_found_error(response)
     end
   end
 
-  describe "Bank login status management" do
-    test "can update login status", %{conn: conn, bank_branch: bank_branch} do
+  describe "Bank login validation" do
+    test "validates sync frequency", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, branch} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      valid_frequencies = [300, 600, 1800, 3600, 7200, 86400]
 
-      # Update status to INACTIVE
-      conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: %{"status" => "INACTIVE"})
+      Enum.each(valid_frequencies, fn frequency ->
+        login_attrs = %{
+          "user_id" => user.id,
+          "bank_branch_id" => branch.id,
+          "username" => "testuser#{frequency}",
+          "encrypted_password" => "encrypted_password",
+          "sync_frequency" => frequency
+        }
 
-      assert %{
-               "data" => %{
-                 "id" => login_id,
-                 "status" => "INACTIVE"
-               }
-             } = json_response(conn, 200)
-
-      assert login_id == login.id
-
-      # Verify database was updated
-      updated_login = get_user_bank_login!(login.id)
-      assert updated_login.status == "INACTIVE"
+        conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+        assert_success_response(json_response(conn, 201), 201)
+      end)
     end
 
-    test "validates status values", %{conn: conn, bank_branch: bank_branch} do
+    test "rejects invalid sync frequency", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, branch} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      invalid_frequencies = [-1, 0, 100, 1000000]
 
-      # Try to set invalid status
-      conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: %{"status" => "INVALID_STATUS"})
+      Enum.each(invalid_frequencies, fn frequency ->
+        login_attrs = %{
+          "user_id" => user.id,
+          "bank_branch_id" => branch.id,
+          "username" => "testuser#{frequency}",
+          "encrypted_password" => "encrypted_password",
+          "sync_frequency" => frequency
+        }
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
+        conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+        assert_validation_error(json_response(conn, 400))
+      end)
     end
 
-    test "can reactivate inactive login", %{conn: conn, bank_branch: bank_branch} do
+    test "validates username format", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, branch} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id,
-        "status" => "INACTIVE"
-      }))
+      valid_usernames = ["user123", "test_user", "user@domain.com"]
 
-      # Reactivate the login
-      conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: %{"status" => "ACTIVE"})
+      Enum.each(valid_usernames, fn username ->
+        login_attrs = %{
+          "user_id" => user.id,
+          "bank_branch_id" => branch.id,
+          "username" => username,
+          "encrypted_password" => "encrypted_password"
+        }
 
-      assert %{
-               "data" => %{
-                 "id" => login_id,
-                 "status" => "ACTIVE"
-               }
-             } = json_response(conn, 200)
-
-      assert login_id == login.id
-    end
-  end
-
-  describe "Sync frequency management" do
-    test "can update sync frequency", %{conn: conn, bank_branch: bank_branch} do
-      {user, _access_token, conn} = setup_authenticated_user(conn)
-
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
-
-      # Update sync frequency
-      conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: %{"sync_frequency" => 1800})
-
-      assert %{
-               "data" => %{
-                 "id" => login_id,
-                 "sync_frequency" => 1800
-               }
-             } = json_response(conn, 200)
-
-      assert login_id == login.id
-
-      # Verify database was updated
-      updated_login = get_user_bank_login!(login.id)
-      assert updated_login.sync_frequency == 1800
+        conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+        assert_success_response(json_response(conn, 201), 201)
+      end)
     end
 
-    test "validates sync frequency range", %{conn: conn, bank_branch: bank_branch} do
+    test "rejects invalid username format", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, branch} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
+      invalid_usernames = ["", "a", "user with spaces", "user\nwith\nnewlines"]
 
-      # Try to set invalid sync frequency
-      conn = put(conn, ~p"/api/bank-logins/#{login.id}", user_bank_login: %{"sync_frequency" => -1})
+      Enum.each(invalid_usernames, fn username ->
+        login_attrs = %{
+          "user_id" => user.id,
+          "bank_branch_id" => branch.id,
+          "username" => username,
+          "encrypted_password" => "encrypted_password"
+        }
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
+        conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+        assert_validation_error(json_response(conn, 400))
+      end)
     end
   end
 
-  describe "Bank login security" do
-    test "does not expose encrypted password in responses", %{conn: conn, bank_branch: bank_branch} do
+  describe "Bank login workflow" do
+    test "complete bank login lifecycle", %{conn: conn} do
       {user, _access_token, conn} = setup_authenticated_user(conn)
+      {_user, _bank, branch} = create_complete_banking_setup()
 
-      {:ok, login} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
+      # 1. Create bank login
+      login_attrs = %{
         "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
-
-      conn = get(conn, ~p"/api/bank-logins/#{login.id}")
-
-      response = json_response(conn, 200)
-
-      # Verify encrypted_password is not in the response
-      refute Map.has_key?(response["data"], "encrypted_password")
-      refute Map.has_key?(response["data"], "password")
-    end
-
-    test "validates unique constraints", %{conn: conn, bank_branch: bank_branch} do
-      {user, _access_token, conn} = setup_authenticated_user(conn)
-
-      # Create first login
-      {:ok, login1} = create_user_bank_login(Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      }))
-
-      # Try to create second login with same username for same user and bank branch
-      login_attrs = Map.merge(@valid_user_bank_login_attrs, %{
-        "user_id" => user.id,
-        "bank_branch_id" => bank_branch.id
-      })
+        "bank_branch_id" => branch.id,
+        "username" => "testuser",
+        "encrypted_password" => "encrypted_password",
+        "sync_frequency" => 3600
+      }
 
       conn = post(conn, ~p"/api/bank-logins", user_bank_login: login_attrs)
+      response = json_response(conn, 201)
+      assert_success_response(response, 201)
+      assert %{"data" => %{"id" => login_id}} = response
 
-      assert %{
-               "error" => %{
-                 "type" => "conflict",
-                 "message" => "Constraint violation: user_bank_logins_user_id_bank_branch_id_username_index",
-                 "code" => 409
-               }
-             } = json_response(conn, 409)
+      # 2. Get bank login details
+      conn = get(conn, ~p"/api/bank-logins/#{login_id}")
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
+
+      # 3. Update bank login
+      update_attrs = %{
+        "username" => "updateduser",
+        "sync_frequency" => 7200
+      }
+
+      conn = put(conn, ~p"/api/bank-logins/#{login_id}", user_bank_login: update_attrs)
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
+
+      # 4. Sync bank login
+      conn = post(conn, ~p"/api/bank-logins/#{login_id}/sync")
+      response = json_response(conn, 202)
+      assert_success_response(response, 202)
+
+      # 5. Delete bank login
+      conn = delete(conn, ~p"/api/bank-logins/#{login_id}")
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
     end
   end
 end

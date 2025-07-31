@@ -13,43 +13,43 @@ defmodule LedgerBankApi.Banking.Behaviours.Paginated do
   """
   def extract_pagination_params(params) do
     page = Map.get(params, "page", "1") |> String.to_integer()
-    page_size = Map.get(params, "page_size", "20") |> String.to_integer()
+    per_page = Map.get(params, "page_size", "20") |> String.to_integer()
 
-    %{page: page, page_size: page_size}
+    %{page: page, per_page: per_page}
   end
 
   @doc """
   Validates pagination parameters and returns normalized values.
   """
-  def validate_pagination_params(%{page: page, page_size: page_size}) do
+  def validate_pagination_params(%{page: page, per_page: per_page}) do
     cond do
       page < 1 ->
         {:error, "Page must be greater than 0"}
-      page_size < 1 ->
+      per_page < 1 ->
         {:error, "Page size must be greater than 0"}
-      page_size > 100 ->
+      per_page > 100 ->
         {:error, "Page size cannot exceed 100"}
       true ->
-        {:ok, %{page: page, page_size: page_size}}
+        {:ok, %{page: page, per_page: per_page}}
     end
   end
 
   @doc """
-  Calculates offset from page and page_size.
+  Calculates offset from page and per_page.
   """
-  def calculate_offset(page, page_size) do
-    (page - 1) * page_size
+  def calculate_offset(page, per_page) do
+    (page - 1) * per_page
   end
 
   @doc """
   Builds pagination metadata for response.
   """
-  def build_pagination_metadata(page, page_size, total_count) do
-    total_pages = ceil(total_count / page_size)
+  def build_pagination_metadata(page, per_page, total_count) do
+    total_pages = ceil(total_count / per_page)
 
     %{
       page: page,
-      page_size: page_size,
+      per_page: per_page,
       total_count: total_count,
       total_pages: total_pages,
       has_next: page < total_pages,

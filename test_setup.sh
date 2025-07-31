@@ -25,4 +25,17 @@ MIX_ENV=test mix ecto.drop
 MIX_ENV=test mix ecto.create
 MIX_ENV=test mix ecto.migrate
 
-echo "✅ Test environment ready! Run 'mix test' to execute tests." 
+echo "📊 Verifying database indexes..."
+MIX_ENV=test mix ecto.migrate
+
+echo "🧹 Clearing any existing cache..."
+# Clear any existing cache data (if running in test mode)
+MIX_ENV=test mix run -e "if Process.whereis(LedgerBankApi.Cache.Store), do: :ets.delete_all_objects(:ledger_cache)"
+
+echo "✅ Test environment ready! Run 'mix test' to execute tests."
+echo ""
+echo "💡 Testing Tips:"
+echo "  - Run specific tests: mix test test/path/to/test.exs"
+echo "  - Run with coverage: mix test --cover"
+echo "  - Run integration tests: mix test test/integration/"
+echo "  - Run performance tests: mix test test/performance/" 

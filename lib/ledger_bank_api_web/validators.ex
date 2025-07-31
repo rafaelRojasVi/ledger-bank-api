@@ -19,50 +19,6 @@ defmodule LedgerBankApiWeb.Validators do
   def validate_uuid(_), do: {:error, "UUID must be a string"}
 
   @doc """
-  Validates pagination parameters.
-  """
-  def validate_pagination(params) do
-    page = parse_integer(params["page"], 1)
-    per_page = parse_integer(params["per_page"], 20)
-
-    cond do
-      page < 1 ->
-        {:error, "Page must be greater than 0"}
-
-      per_page < 1 ->
-        {:error, "Per page must be greater than 0"}
-
-      per_page > 100 ->
-        {:error, "Per page cannot exceed 100"}
-
-      true ->
-        {:ok, %{page: page, per_page: per_page}}
-    end
-  end
-
-  @doc """
-  Validates date range parameters.
-  """
-  def validate_date_range(params) do
-    from_date = parse_datetime(params["from_date"])
-    to_date = parse_datetime(params["to_date"])
-
-    case {from_date, to_date} do
-      {{:ok, from}, {:ok, to}} when from > to ->
-        {:error, "From date must be before to date"}
-
-      {{:ok, from}, {:ok, to}} ->
-        {:ok, %{from_date: from, to_date: to}}
-
-      {{:error, reason}, _} ->
-        {:error, "Invalid from_date: #{reason}"}
-
-      {_, {:error, reason}} ->
-        {:error, "Invalid to_date: #{reason}"}
-    end
-  end
-
-  @doc """
   Validates account filters.
   """
   def validate_account_filters(params) do
@@ -77,29 +33,6 @@ defmodule LedgerBankApiWeb.Validators do
         {:error, reason}
 
       {_, {:error, reason}} ->
-        {:error, reason}
-    end
-  end
-
-  @doc """
-  Validates transaction filters.
-  """
-  def validate_transaction_filters(params) do
-    account_id = validate_uuid(params["account_id"])
-    date_range = validate_date_range(params)
-    order_by = validate_order_by(params["order_by"])
-
-    case {account_id, date_range, order_by} do
-      {{:ok, aid}, {:ok, dr}, {:ok, ob}} ->
-        {:ok, Map.merge(dr, %{account_id: aid, order_by: ob})}
-
-      {{:error, reason}, _, _} ->
-        {:error, reason}
-
-      {_, {:error, reason}, _} ->
-        {:error, reason}
-
-      {_, _, {:error, reason}} ->
         {:error, reason}
     end
   end
@@ -134,39 +67,4 @@ defmodule LedgerBankApiWeb.Validators do
 
   def validate_string(nil, _), do: {:ok, nil}
   def validate_string(_, field_name), do: {:error, "#{field_name} must be a string"}
-
-  @doc """
-  Validates order by parameter.
-  """
-  def validate_order_by(order_by) when is_binary(order_by) do
-    case String.downcase(order_by) do
-      "asc" -> {:ok, :asc}
-      "desc" -> {:ok, :desc}
-      _ -> {:error, "Order by must be 'asc' or 'desc'"}
-    end
-  end
-
-  def validate_order_by(nil), do: {:ok, :desc}
-  def validate_order_by(_), do: {:error, "Order by must be a string"}
-
-  # Private helper functions
-
-  defp parse_integer(value, default) when is_binary(value) do
-    case Integer.parse(value) do
-      {int, _} -> int
-      :error -> default
-    end
-  end
-
-  defp parse_integer(_, default), do: default
-
-  defp parse_datetime(nil), do: {:ok, nil}
-  defp parse_datetime(value) when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, datetime, _} -> {:ok, datetime}
-      {:error, _} -> {:error, "Invalid date format. Use ISO8601 format"}
-    end
-  end
-
-  defp parse_datetime(_), do: {:error, "Date must be a string"}
 end

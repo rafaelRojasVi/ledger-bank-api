@@ -10,14 +10,23 @@ defmodule LedgerBankApiWeb.AuthJSON do
   Renders authentication response with tokens.
   """
   def auth_response(user, access_token, refresh_token, message) do
-    format_auth_response(user, access_token, refresh_token, message)
+    %{
+      data: %{
+        user: LedgerBankApiWeb.JSON.UserJSON.format(user),
+        access_token: access_token,
+        refresh_token: refresh_token
+      },
+      message: message
+    }
   end
 
   @doc """
   Renders logout response.
   """
   def logout_response do
-    format_logout_response()
+    %{
+      message: "Logged out successfully"
+    }
   end
 
   @doc """

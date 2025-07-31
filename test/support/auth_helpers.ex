@@ -5,18 +5,23 @@ defmodule LedgerBankApiWeb.AuthHelpers do
   """
 
   import LedgerBankApi.Users.Context
-  alias LedgerBankApi.Users.User
+  import Plug.Conn, only: [put_req_header: 3]
 
   @doc """
   Creates a test user with the given attributes.
   """
   def create_test_user(attrs \\ %{}) do
     default_attrs = %{
-      email: "test#{System.unique_integer()}@example.com",
-      full_name: "Test User",
-      password: "password123",
-      role: "user"
+      "email" => "test#{System.unique_integer()}@example.com",
+      "full_name" => "Test User",
+      "password" => "password123",
+      "role" => "user"
     }
+
+    # Convert atom keys to string keys to match create_user expectations
+    attrs = attrs
+            |> Enum.map(fn {k, v} -> {if(is_atom(k), do: Atom.to_string(k), else: k), v} end)
+            |> Enum.into(%{})
 
     attrs = Map.merge(default_attrs, attrs)
     create_user(attrs)
@@ -26,8 +31,20 @@ defmodule LedgerBankApiWeb.AuthHelpers do
   Creates a test admin user.
   """
   def create_test_admin(attrs \\ %{}) do
-    attrs = Map.put(attrs, :role, "admin")
-    create_test_user(attrs)
+    default_attrs = %{
+      "email" => "test#{System.unique_integer()}@example.com",
+      "full_name" => "Test User",
+      "password" => "password123",
+      "role" => "admin"
+    }
+
+    # Convert atom keys to string keys to match create_user expectations
+    attrs = attrs
+            |> Enum.map(fn {k, v} -> {if(is_atom(k), do: Atom.to_string(k), else: k), v} end)
+            |> Enum.into(%{})
+
+    attrs = Map.merge(default_attrs, attrs)
+    create_user(attrs)
   end
 
   @doc """
@@ -35,7 +52,7 @@ defmodule LedgerBankApiWeb.AuthHelpers do
   """
   def authenticate_user(user, password \\ "password123") do
     case login_user(user.email, password) do
-      {:ok, access_token, _refresh_token} -> {:ok, access_token}
+      {:ok, _user, access_token, _refresh_token} -> {:ok, access_token}
       error -> error
     end
   end
@@ -44,7 +61,10 @@ defmodule LedgerBankApiWeb.AuthHelpers do
   Authenticates a user and returns both access and refresh tokens.
   """
   def authenticate_user_with_tokens(user, password \\ "password123") do
-    login_user(user.email, password)
+    case login_user(user.email, password) do
+      {:ok, _user, access_token, refresh_token} -> {:ok, access_token, refresh_token}
+      error -> error
+    end
   end
 
   @doc """
@@ -87,8 +107,8 @@ defmodule LedgerBankApiWeb.AuthHelpers do
   def create_test_users(count, attrs \\ %{}) do
     Enum.map(1..count, fn i ->
       user_attrs = Map.merge(attrs, %{
-        email: "user#{i}@example.com",
-        full_name: "User #{i}"
+        "email" => "user#{i}@example.com",
+        "full_name" => "User #{i}"
       })
       {:ok, user} = create_test_user(user_attrs)
       user
@@ -113,7 +133,19 @@ defmodule LedgerBankApiWeb.AuthHelpers do
   Creates a user with a specific role for testing role-based scenarios.
   """
   def create_user_with_role(role, attrs \\ %{}) do
-    attrs = Map.put(attrs, :role, role)
-    create_test_user(attrs)
+    default_attrs = %{
+      "email" => "test#{System.unique_integer()}@example.com",
+      "full_name" => "Test User",
+      "password" => "password123",
+      "role" => role
+    }
+
+    # Convert atom keys to string keys to match create_user expectations
+    attrs = attrs
+            |> Enum.map(fn {k, v} -> {if(is_atom(k), do: Atom.to_string(k), else: k), v} end)
+            |> Enum.into(%{})
+
+    attrs = Map.merge(default_attrs, attrs)
+    create_user(attrs)
   end
 end

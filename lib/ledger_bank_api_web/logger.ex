@@ -43,23 +43,6 @@ defmodule LedgerBankApiWeb.Logger do
     })
   end
 
-  # Logs authentication events.
-  # def log_auth_success(user_id, token_jti) do
-  #   Logger.info("Authentication successful", %{
-  #     user_id: user_id,
-  #     token_jti: token_jti,
-  #     event: "auth_success"
-  #   })
-  # end
-  #
-  # def log_auth_failure(reason, token \\ nil) do
-  #   Logger.warning("Authentication failed", %{
-  #     reason: reason,
-  #     token_preview: if(token, do: String.slice(token, 0, 20) <> "...", else: nil),
-  #     event: "auth_failure"
-  #   })
-  # end
-
   @doc """
   Logs rate limiting events.
   """
@@ -102,21 +85,6 @@ defmodule LedgerBankApiWeb.Logger do
   end
 
   @doc """
-  Logs cache operations.
-  """
-  def log_cache_operation(operation, key, success, duration_ms \\ nil) do
-    level = if success, do: :debug, else: :warning
-
-    Logger.log(level, "Cache operation", %{
-      operation: operation,
-      key: key,
-      success: success,
-      duration_ms: duration_ms,
-      event: "cache_operation"
-    })
-  end
-
-  @doc """
   Logs business events.
   """
   def log_business_event(event_type, data) do
@@ -135,18 +103,6 @@ defmodule LedgerBankApiWeb.Logger do
       event_type: event_type,
       data: data,
       event: "security_event"
-    })
-  end
-
-  @doc """
-  Logs performance metrics.
-  """
-  def log_performance_metric(metric_name, value, unit \\ "ms") do
-    Logger.info("Performance metric", %{
-      metric_name: metric_name,
-      value: value,
-      unit: unit,
-      event: "performance_metric"
     })
   end
 

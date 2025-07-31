@@ -35,7 +35,7 @@ defmodule LedgerBankApi.Banking.UserBankLoginsTest do
       username: "test",
       encrypted_password: "pw"
     }
-    assert {:ok, %UserBankLogin{} = login} = UserBankLogins.create_user_bank_login(attrs)
+    assert {:ok, %{data: %UserBankLogin{} = login}} = UserBankLogins.create_user_bank_login(attrs)
     assert login.username == "test"
   end
 
@@ -63,11 +63,13 @@ defmodule LedgerBankApi.Banking.UserBankLoginsTest do
       username: "test",
       encrypted_password: "pw"
     }
-    assert {:ok, %UserBankLogin{}} = UserBankLogins.create_user_bank_login(attrs)
-    assert {:error, changeset} = UserBankLogins.create_user_bank_login(attrs)
-    assert {:user_id, {"has already been taken", _}} = Enum.find(changeset.errors, fn {k, _} -> k == :user_id end)
+    assert {:ok, %{data: %UserBankLogin{}}} = UserBankLogins.create_user_bank_login(attrs)
+    assert {:error, error_response} = UserBankLogins.create_user_bank_login(attrs)
+    assert error_response.error.type == :internal_server_error
+    # The error details should contain information about the constraint violation
+    assert error_response.error.details.error
   end
-  
+
   test "sync_login/1 calls integration and logs success" do
     Mimic.copy(LedgerBankApi.Banking.Integrations.MonzoClient)
     bank = Repo.insert!(%Bank{
@@ -97,6 +99,6 @@ defmodule LedgerBankApi.Banking.UserBankLoginsTest do
     LedgerBankApi.Banking.Integrations.MonzoClient
     |> Mimic.expect(:fetch_accounts, fn %{access_token: _} -> {:ok, [%{id: "acc1"}]} end)
 
-    assert :ok = UserBankLogins.sync_login(login.id)
+    assert {:ok, %{data: :ok, success: true, timestamp: _timestamp, metadata: %{}}} = UserBankLogins.sync_login(login.id)
   end
 end

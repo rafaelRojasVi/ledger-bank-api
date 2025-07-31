@@ -9,7 +9,7 @@ defmodule LedgerBankApi.Helpers.AuthorizationHelpers do
   defmacro require_role!(user, role) do
     quote do
       unless LedgerBankApi.Users.User.has_role?(unquote(user), unquote(role)) do
-        raise "Insufficient permissions"
+        raise %RuntimeError{message: "Insufficient permissions"}
       end
     end
   end

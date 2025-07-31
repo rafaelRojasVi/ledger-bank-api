@@ -45,6 +45,6 @@ defmodule LedgerBankApi.Workers.BankSyncWorkerTest do
     |> expect(:fetch_accounts, fn %{access_token: _} -> {:ok, [%{id: "acc1"}]} end)
 
     job = %Oban.Job{args: %{"login_id" => login.id}}
-    assert {:ok, %{data: :ok, success: true}} = BankSyncWorker.perform(job)
+    assert {:ok, %{data: :ok, success: true, timestamp: _timestamp, metadata: %{}}} = BankSyncWorker.perform(job)
   end
 end

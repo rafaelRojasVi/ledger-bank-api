@@ -19,6 +19,9 @@ defmodule LedgerBankApi.Application do
       {Oban, Application.fetch_env!(:ledger_bank_api, Oban)}
     ]
 
+    # Initialize cache table
+    :ets.new(:ledger_cache, [:set, :public, :named_table])
+
     http_child =
       if Application.get_env(:ledger_bank_api, LedgerBankApiWeb.Endpoint)[:server] do
         [LedgerBankApiWeb.Endpoint]

@@ -6,6 +6,8 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankAccount do
   import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
 
+  @derive {Jason.Encoder, only: [:id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id, :user_bank_login_id, :inserted_at, :updated_at]}
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "user_bank_accounts" do

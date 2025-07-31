@@ -37,7 +37,7 @@ defmodule LedgerBankApi.Integration.UserPaymentFlowTest do
       integration_module: "Elixir.LedgerBankApi.Banking.Integrations.MonzoClient"
     })
     {:ok, branch} = BankingContext.create_bank_branch(%{name: "Main", country: "US", bank_id: bank.id})
-    {:ok, login} = BankingContext.create_user_bank_login(%{
+    {:ok, %{data: login}} = BankingContext.create_user_bank_login(%{
       user_id: user.id,
       bank_branch_id: branch.id,
       username: "flowuser",
@@ -51,7 +51,7 @@ defmodule LedgerBankApi.Integration.UserPaymentFlowTest do
 
     # 3b. Create multiple logins for the same user
     {:ok, branch2} = BankingContext.create_bank_branch(%{name: "Branch2", country: "US", bank_id: bank.id})
-    {:ok, login2} = BankingContext.create_user_bank_login(%{
+    {:ok, %{data: login2}} = BankingContext.create_user_bank_login(%{
       user_id: user.id,
       bank_branch_id: branch2.id,
       username: "flowuser2",
@@ -108,18 +108,17 @@ defmodule LedgerBankApi.Integration.UserPaymentFlowTest do
     Mimic.copy(LedgerBankApi.Banking.Integrations.MonzoClient)
     LedgerBankApi.Banking.Integrations.MonzoClient
     |> Mimic.expect(:fetch_accounts, fn %{access_token: _} -> {:ok, [%{id: "acc1"}]} end)
-    assert :ok = LedgerBankApi.Banking.UserBankLogins.sync_login(login.id)
+    assert {:ok, %{data: :ok}} = LedgerBankApi.Banking.UserBankLogins.sync_login(login.id)
 
     # 6b. Simulate sync worker for many logins (simulate all for user)
     LedgerBankApi.Banking.Integrations.MonzoClient
     |> Mimic.expect(:fetch_accounts, 2, fn %{access_token: _} -> {:ok, [%{id: "acc1"}]} end)
     for l <- [login, login2] do
-      assert :ok = LedgerBankApi.Banking.UserBankLogins.sync_login(l.id)
+      assert {:ok, %{data: :ok}} = LedgerBankApi.Banking.UserBankLogins.sync_login(l.id)
     end
 
     # 6c. Simulate sync worker failure (bad login id)
-    assert_raise Ecto.NoResultsError, fn ->
+    assert {:error, %{error: %{type: :internal_server_error}}} =
       LedgerBankApi.Banking.UserBankLogins.sync_login(Ecto.UUID.generate())
-    end
   end
 end

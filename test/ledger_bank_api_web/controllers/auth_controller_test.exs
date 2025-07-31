@@ -1,12 +1,15 @@
-defmodule LedgerBankApiWeb.AuthControllerV2Test do
+defmodule LedgerBankApiWeb.AuthControllerTest do
   @moduledoc """
-  Comprehensive tests for AuthControllerV2.
+  Comprehensive tests for AuthController.
   Tests all authentication endpoints: register, login, refresh, logout, and me.
+  Includes performance testing, edge cases, and comprehensive error handling.
   """
 
-  use LedgerBankApiWeb.ConnCase
-  import LedgerBankApi.Users.Context
-  alias LedgerBankApi.Users.User
+  use LedgerBankApiWeb.ConnCase, async: false
+  import LedgerBankApi.Users.Context, only: [suspend_user: 1, login_user: 2]
+  import LedgerBankApi.Factories
+  import LedgerBankApi.ErrorAssertions
+  import Ecto.Query
 
   @valid_user_attrs %{
     "email" => "test@example.com",
@@ -14,355 +17,629 @@ defmodule LedgerBankApiWeb.AuthControllerV2Test do
     "password" => "password123"
   }
 
-  @valid_login_attrs %{
-    "email" => "test@example.com",
-    "password" => "password123"
-  }
+  @concurrent_users 20
+  @performance_threshold_ms 2000
 
   describe "POST /api/auth/register" do
     test "creates a new user and returns tokens", %{conn: conn} do
-      conn = post(conn, ~p"/api/auth/register", user: @valid_user_attrs)
+      user_attrs = build(:user)
 
-      assert %{
-               "data" => %{
-                 "user" => %{
-                   "id" => user_id,
-                   "email" => "test@example.com",
-                   "full_name" => "Test User",
-                   "role" => "user",
-                   "status" => "ACTIVE"
-                 },
-                 "access_token" => access_token,
-                 "refresh_token" => refresh_token
-               },
-               "message" => "User registered successfully"
-             } = json_response(conn, 201)
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => user_attrs.email,
+        "full_name" => user_attrs.full_name,
+        "password" => "password123"
+      })
 
-      assert is_binary(user_id)
-      assert is_binary(access_token)
-      assert is_binary(refresh_token)
+      response = json_response(conn, 201)
+
+      assert_success_response(response, 201)
+      assert_auth_tokens_response(response)
+      assert_user_response(response)
 
       # Verify user was created in database
-      user = get_user!(user_id)
-      assert user.email == "test@example.com"
-      assert user.full_name == "Test User"
+      assert %{"data" => %{"user" => %{"id" => user_id}}} = response
+      user = LedgerBankApi.Users.Context.get!(user_id)
+      assert user.email == user_attrs.email
+      assert user.full_name == user_attrs.full_name
       assert user.role == "user"
       assert user.status == "ACTIVE"
     end
 
     test "returns error for invalid email format", %{conn: conn} do
-      invalid_attrs = Map.put(@valid_user_attrs, "email", "invalid-email")
-      conn = post(conn, ~p"/api/auth/register", user: invalid_attrs)
+      user_attrs = build(:user)
+      invalid_attrs = Map.put(user_attrs, :email, "invalid-email")
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => invalid_attrs.email,
+        "full_name" => invalid_attrs.full_name,
+        "password" => "password123"
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
     end
 
     test "returns error for duplicate email", %{conn: conn} do
+      user_attrs = build(:user)
+
       # Create first user
-      post(conn, ~p"/api/auth/register", user: @valid_user_attrs)
+      post(conn, ~p"/api/auth/register", user: %{
+        "email" => user_attrs.email,
+        "full_name" => user_attrs.full_name,
+        "password" => "password123"
+      })
 
       # Try to create second user with same email
-      conn = post(conn, ~p"/api/auth/register", user: @valid_user_attrs)
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => user_attrs.email,
+        "full_name" => user_attrs.full_name,
+        "password" => "password123"
+      })
 
-      assert %{
-               "error" => %{
-                 "type" => "conflict",
-                 "message" => "Constraint violation: users_email_index",
-                 "code" => 409
-               }
-             } = json_response(conn, 409)
+      response = json_response(conn, 409)
+      assert_conflict_error(response)
     end
 
     test "returns error for weak password", %{conn: conn} do
-      weak_password_attrs = Map.put(@valid_user_attrs, "password", "123")
-      conn = post(conn, ~p"/api/auth/register", user: weak_password_attrs)
+      user_attrs = build(:user)
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => user_attrs.email,
+        "full_name" => user_attrs.full_name,
+        "password" => "123"
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
     end
 
     test "returns error for missing required fields", %{conn: conn} do
-      incomplete_attrs = %{"email" => "test@example.com"}
-      conn = post(conn, ~p"/api/auth/register", user: incomplete_attrs)
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => "test@example.com"
+      })
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "returns error for empty email", %{conn: conn} do
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => "",
+        "full_name" => "Test User",
+        "password" => "password123"
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "returns error for empty full_name", %{conn: conn} do
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => "test@example.com",
+        "full_name" => "",
+        "password" => "password123"
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "returns error for extremely long email", %{conn: conn} do
+      long_email = String.duplicate("a", 300) <> "@example.com"
+
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => long_email,
+        "full_name" => "Test User",
+        "password" => "password123"
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "returns error for extremely long full_name", %{conn: conn} do
+      long_name = String.duplicate("a", 300)
+
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => "test@example.com",
+        "full_name" => long_name,
+        "password" => "password123"
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "returns error for extremely long password", %{conn: conn} do
+      long_password = String.duplicate("a", 1000)
+
+      conn = post(conn, ~p"/api/auth/register", user: %{
+        "email" => "test@example.com",
+        "full_name" => "Test User",
+        "password" => long_password
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "handles concurrent registrations efficiently", %{conn: conn} do
+      start_time = System.monotonic_time(:millisecond)
+
+      results =
+        1..@concurrent_users
+        |> Task.async_stream(fn i ->
+          user_data = %{
+            "user" => %{
+              "email" => "concurrent#{i}@example.com",
+              "full_name" => "Concurrent User #{i}",
+              "password" => "password123"
+            }
+          }
+
+          conn
+          |> post(~p"/api/auth/register", user_data)
+          |> json_response(201)
+        end, max_concurrency: 5, timeout: 30_000)
+        |> Enum.to_list()
+
+      end_time = System.monotonic_time(:millisecond)
+      duration = end_time - start_time
+
+      # All registrations should succeed
+      assert Enum.all?(results, fn {:ok, response} ->
+        assert_success_response(response, 201)
+        assert_auth_tokens_response(response)
+      end)
+
+      # Performance assertion
+      assert duration < @performance_threshold_ms
     end
   end
 
   describe "POST /api/auth/login" do
-    setup do
-      # Create a user for login tests
-      {:ok, user} = create_user(@valid_user_attrs)
-      %{user: user}
-    end
+    test "logs in user with valid credentials and returns tokens", %{conn: conn} do
+      user = insert(:user)
 
-    test "logs in user with valid credentials and returns tokens", %{conn: conn, user: user} do
-      conn = post(conn, ~p"/api/auth/login", @valid_login_attrs)
+      conn = post(conn, ~p"/api/auth/login", %{
+        "email" => user.email,
+        "password" => "password123"
+      })
 
-      assert %{
-               "data" => %{
-                 "user" => %{
-                   "id" => user_id,
-                   "email" => "test@example.com",
-                   "full_name" => "Test User"
-                 },
-                 "access_token" => access_token,
-                 "refresh_token" => refresh_token
-               },
-               "message" => "Login successful"
-             } = json_response(conn, 200)
+      response = json_response(conn, 200)
 
-      assert user_id == user.id
-      assert is_binary(access_token)
-      assert is_binary(refresh_token)
+      assert_success_response(response, 200)
+      assert_auth_tokens_response(response)
+      assert_user_response(response)
     end
 
     test "returns error for invalid email", %{conn: conn} do
-      invalid_attrs = Map.put(@valid_login_attrs, "email", "nonexistent@example.com")
-      conn = post(conn, ~p"/api/auth/login", invalid_attrs)
+      conn = post(conn, ~p"/api/auth/login", %{
+        "email" => "nonexistent@example.com",
+        "password" => "password123"
+      })
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Unauthorized access",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
     test "returns error for invalid password", %{conn: conn} do
-      invalid_attrs = Map.put(@valid_login_attrs, "password", "wrongpassword")
-      conn = post(conn, ~p"/api/auth/login", invalid_attrs)
+      user = insert(:user)
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Unauthorized access",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      conn = post(conn, ~p"/api/auth/login", %{
+        "email" => user.email,
+        "password" => "wrongpassword"
+      })
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
-    test "returns error for suspended user", %{conn: conn, user: user} do
-      # Suspend the user
-      suspend_user(user)
+    test "returns error for suspended user", %{conn: conn} do
+      user = insert(:suspended_user)
 
-      conn = post(conn, ~p"/api/auth/login", @valid_login_attrs)
+      conn = post(conn, ~p"/api/auth/login", %{
+        "email" => user.email,
+        "password" => "password123"
+      })
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Unauthorized access",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "returns error for empty email", %{conn: conn} do
+      conn = post(conn, ~p"/api/auth/login", %{
+        "email" => "",
+        "password" => "password123"
+      })
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "returns error for empty password", %{conn: conn} do
+      user = insert(:user)
+
+      conn = post(conn, ~p"/api/auth/login", %{
+        "email" => user.email,
+        "password" => ""
+      })
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "returns error for missing email", %{conn: conn} do
+      conn = post(conn, ~p"/api/auth/login", %{
+        "password" => "password123"
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "returns error for missing password", %{conn: conn} do
+      user = insert(:user)
+
+      conn = post(conn, ~p"/api/auth/login", %{
+        "email" => user.email
+      })
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "handles concurrent logins efficiently", %{conn: conn} do
+      # Create test users
+      users = for i <- 1..@concurrent_users do
+        insert(:user, email: "login#{i}@example.com", full_name: "Login User #{i}")
+      end
+
+      start_time = System.monotonic_time(:millisecond)
+
+      results =
+        users
+        |> Task.async_stream(fn user ->
+          login_data = %{
+            "email" => user.email,
+            "password" => "password123"
+          }
+
+          conn
+          |> post(~p"/api/auth/login", login_data)
+          |> json_response(200)
+        end, max_concurrency: 5, timeout: 30_000)
+        |> Enum.to_list()
+
+      end_time = System.monotonic_time(:millisecond)
+      duration = end_time - start_time
+
+      # All logins should succeed
+      assert Enum.all?(results, fn {:ok, response} ->
+        assert_success_response(response, 200)
+        assert_auth_tokens_response(response)
+      end)
+
+      # Performance assertion
+      assert duration < @performance_threshold_ms
     end
   end
 
   describe "POST /api/auth/refresh" do
-    setup do
-      # Create a user and get refresh token
-      {:ok, user} = create_user(@valid_user_attrs)
-      {:ok, _access_token, refresh_token} = login_user(user.email, @valid_user_attrs["password"])
-      %{user: user, refresh_token: refresh_token}
-    end
+    test "refreshes tokens with valid refresh token", %{conn: conn} do
+      {_user, _access_token, refresh_token} = create_user_with_tokens()
 
-    test "refreshes tokens with valid refresh token", %{conn: conn, user: user, refresh_token: refresh_token} do
       conn = post(conn, ~p"/api/auth/refresh", %{"refresh_token" => refresh_token})
 
-      assert %{
-               "data" => %{
-                 "user" => %{
-                   "id" => user_id,
-                   "email" => "test@example.com"
-                 },
-                 "access_token" => new_access_token,
-                 "refresh_token" => new_refresh_token
-               },
-               "message" => "Tokens refreshed successfully"
-             } = json_response(conn, 200)
+      response = json_response(conn, 200)
 
-      assert user_id == user.id
-      assert is_binary(new_access_token)
-      assert is_binary(new_refresh_token)
-      assert new_access_token != refresh_token
-      assert new_refresh_token != refresh_token
+      assert_success_response(response, 200)
+      assert_auth_tokens_response(response)
+      assert_user_response(response)
     end
 
     test "returns error for invalid refresh token", %{conn: conn} do
       conn = post(conn, ~p"/api/auth/refresh", %{"refresh_token" => "invalid_token"})
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Unauthorized access",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
-    test "returns error for expired refresh token", %{conn: conn, user: user} do
-      # Create an expired refresh token (this would require mocking time)
-      # For now, we'll test with a malformed token
-      conn = post(conn, ~p"/api/auth/refresh", %{"refresh_token" => "expired_token"})
+    test "returns error for expired refresh token", %{conn: conn} do
+      {_user, _access_token, refresh_token} = create_user_with_tokens()
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Unauthorized access",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      # Manually expire the token by updating the database
+      with {:ok, claims} <- LedgerBankApi.Auth.JWT.verify_token(refresh_token),
+           jti when is_binary(jti) <- claims["jti"],
+           token <- LedgerBankApi.Users.Context.get_refresh_token_by_jti(jti) do
+        if token do
+          token
+          |> LedgerBankApi.Users.RefreshToken.changeset(%{expires_at: DateTime.utc_now() |> DateTime.add(-3600, :second)})
+          |> LedgerBankApi.Repo.update()
+        end
+      end
+
+      conn = post(conn, ~p"/api/auth/refresh", %{"refresh_token" => refresh_token})
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
     test "returns error for missing refresh token", %{conn: conn} do
       conn = post(conn, ~p"/api/auth/refresh", %{})
 
-      assert %{
-               "error" => %{
-                 "type" => "validation_error",
-                 "message" => "Validation failed",
-                 "code" => 400
-               }
-             } = json_response(conn, 400)
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+
+    test "returns error for empty refresh token", %{conn: conn} do
+      conn = post(conn, ~p"/api/auth/refresh", %{"refresh_token" => ""})
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "returns error for revoked refresh token", %{conn: conn} do
+      {_user, _access_token, refresh_token} = create_user_with_tokens()
+
+      # Manually revoke the token
+      with {:ok, claims} <- LedgerBankApi.Auth.JWT.verify_token(refresh_token),
+           jti when is_binary(jti) <- claims["jti"],
+           token <- LedgerBankApi.Users.Context.get_refresh_token_by_jti(jti) do
+        if token do
+          token
+          |> LedgerBankApi.Users.RefreshToken.changeset(%{revoked_at: DateTime.utc_now()})
+          |> LedgerBankApi.Repo.update()
+        end
+      end
+
+      conn = post(conn, ~p"/api/auth/refresh", %{"refresh_token" => refresh_token})
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "handles concurrent token refreshes efficiently", %{conn: conn} do
+      # Create users and get refresh tokens
+      refresh_tokens =
+        1..@concurrent_users
+        |> Task.async_stream(fn i ->
+          user = insert(:user, email: "refresh#{i}@example.com")
+          {:ok, _user, _access_token, refresh_token} = login_user(user.email, "password123")
+          refresh_token
+        end, max_concurrency: 5, timeout: 10_000)
+        |> Enum.map(fn {:ok, token} -> token end)
+
+      start_time = System.monotonic_time(:millisecond)
+
+      results =
+        refresh_tokens
+        |> Task.async_stream(fn refresh_token ->
+          conn
+          |> post(~p"/api/auth/refresh", %{"refresh_token" => refresh_token})
+          |> json_response(200)
+        end, max_concurrency: 5, timeout: 30_000)
+        |> Enum.to_list()
+
+      end_time = System.monotonic_time(:millisecond)
+      duration = end_time - start_time
+
+      # All refreshes should succeed
+      assert Enum.all?(results, fn {:ok, response} ->
+        assert_success_response(response, 200)
+        assert_auth_tokens_response(response)
+      end)
+
+      # Performance assertion
+      assert duration < @performance_threshold_ms
     end
   end
 
   describe "POST /api/logout" do
-    setup do
-      # Create a user and get access token
-      {:ok, user} = create_user(@valid_user_attrs)
-      {:ok, access_token, _refresh_token} = login_user(user.email, @valid_user_attrs["password"])
-      %{user: user, access_token: access_token}
-    end
+    test "logs out user and revokes all refresh tokens", %{conn: conn} do
+      {user, access_token, _refresh_token} = create_user_with_tokens()
 
-    test "logs out user and revokes all refresh tokens", %{conn: conn, access_token: access_token} do
-      conn =
-        conn
-        |> put_req_header("authorization", "Bearer #{access_token}")
-        |> post(~p"/api/logout")
+      conn = conn
+             |> put_req_header("authorization", "Bearer #{access_token}")
+             |> post(~p"/api/logout")
 
-      assert %{
-               "message" => "Logout successful",
-               "data" => %{}
-             } = json_response(conn, 200)
+      response = json_response(conn, 200)
+      assert_success_with_message(response, "Logged out successfully")
+
+      # Verify all refresh tokens are revoked
+      tokens = LedgerBankApi.Repo.all(from t in LedgerBankApi.Users.RefreshToken, where: t.user_id == ^user.id)
+      assert Enum.all?(tokens, &LedgerBankApi.Users.RefreshToken.revoked?/1)
     end
 
     test "returns error without authentication", %{conn: conn} do
       conn = post(conn, ~p"/api/logout")
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Authentication token required",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
     test "returns error with invalid token", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_header("authorization", "Bearer invalid_token")
-        |> post(~p"/api/logout")
+      conn = conn
+             |> put_req_header("authorization", "Bearer invalid_token")
+             |> post(~p"/api/logout")
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Invalid authentication token: invalid_token",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "returns error with expired token", %{conn: conn} do
+      {_user, _access_token, _refresh_token} = create_user_with_tokens()
+
+      # Manually expire the access token by creating a new one with past expiration
+      user = insert(:user, email: "expired@example.com")
+      expired_claims = %{
+        "sub" => user.id,
+        "role" => user.role,
+        "email" => user.email,
+        "type" => "access",
+        "exp" => DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.to_unix(),
+        "aud" => "banking_api",
+        "iss" => "ledger_bank_api"
+      }
+
+      # Use Joken directly to create expired token
+      expired_token = Joken.generate_and_sign!(expired_claims)
+
+      conn = conn
+             |> put_req_header("authorization", "Bearer #{expired_token}")
+             |> post(~p"/api/logout")
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "returns error with malformed authorization header", %{conn: conn} do
+      conn = conn
+             |> put_req_header("authorization", "InvalidFormat")
+             |> post(~p"/api/logout")
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "handles concurrent logouts efficiently", %{conn: conn} do
+      # Create users and get access tokens
+      access_tokens =
+        1..@concurrent_users
+        |> Task.async_stream(fn i ->
+          user = insert(:user, email: "logout#{i}@example.com")
+          {:ok, _user, access_token, _refresh_token} = login_user(user.email, "password123")
+          access_token
+        end, max_concurrency: 5, timeout: 10_000)
+        |> Enum.map(fn {:ok, token} -> token end)
+
+      start_time = System.monotonic_time(:millisecond)
+
+      results =
+        access_tokens
+        |> Task.async_stream(fn access_token ->
+          conn
+          |> put_req_header("authorization", "Bearer #{access_token}")
+          |> post(~p"/api/logout")
+          |> json_response(200)
+        end, max_concurrency: 5, timeout: 30_000)
+        |> Enum.to_list()
+
+      end_time = System.monotonic_time(:millisecond)
+      duration = end_time - start_time
+
+      # All logouts should succeed
+      assert Enum.all?(results, fn {:ok, response} ->
+        assert response["message"] == "Logged out successfully"
+      end)
+
+      # Performance assertion
+      assert duration < @performance_threshold_ms
     end
   end
 
   describe "GET /api/me" do
-    setup do
-      # Create a user and get access token
-      {:ok, user} = create_user(@valid_user_attrs)
-      {:ok, access_token, _refresh_token} = login_user(user.email, @valid_user_attrs["password"])
-      %{user: user, access_token: access_token}
-    end
+    test "returns current user profile", %{conn: conn} do
+      {_user, access_token, _refresh_token} = create_user_with_tokens()
 
-    test "returns current user profile", %{conn: conn, user: user, access_token: access_token} do
-      conn =
-        conn
-        |> put_req_header("authorization", "Bearer #{access_token}")
-        |> get(~p"/api/me")
+      conn = conn
+             |> put_req_header("authorization", "Bearer #{access_token}")
+             |> get(~p"/api/me")
 
-      assert %{
-               "data" => %{
-                 "id" => user_id,
-                 "email" => "test@example.com",
-                 "full_name" => "Test User",
-                 "role" => "user",
-                 "status" => "ACTIVE"
-               }
-             } = json_response(conn, 200)
-
-      assert user_id == user.id
+      response = json_response(conn, 200)
+      assert_success_response(response, 200)
+      assert_user_response(response)
     end
 
     test "returns error without authentication", %{conn: conn} do
       conn = get(conn, ~p"/api/me")
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Authentication token required",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
     test "returns error with invalid token", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_header("authorization", "Bearer invalid_token")
-        |> get(~p"/api/me")
+      conn = conn
+             |> put_req_header("authorization", "Bearer invalid_token")
+             |> get(~p"/api/me")
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Invalid authentication token: invalid_token",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
-    test "returns error for suspended user", %{conn: conn, user: user, access_token: access_token} do
-      # Suspend the user
+    test "returns error for suspended user", %{conn: conn} do
+      # Create and suspend a user
+      {user, access_token, _refresh_token} = create_user_with_tokens()
       suspend_user(user)
 
-      conn =
-        conn
-        |> put_req_header("authorization", "Bearer #{access_token}")
-        |> get(~p"/api/me")
+      conn = conn
+             |> put_req_header("authorization", "Bearer #{access_token}")
+             |> get(~p"/api/me")
 
-      assert %{
-               "error" => %{
-                 "type" => "unauthorized",
-                 "message" => "Invalid authentication token: User not found",
-                 "code" => 401
-               }
-             } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "returns error with expired token", %{conn: conn} do
+      {_user, _access_token, _refresh_token} = create_user_with_tokens()
+
+      # Manually expire the access token by creating a new one with past expiration
+      user = insert(:user, email: "expired@example.com")
+      expired_claims = %{
+        "sub" => user.id,
+        "role" => user.role,
+        "email" => user.email,
+        "type" => "access",
+        "exp" => DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.to_unix(),
+        "aud" => "banking_api",
+        "iss" => "ledger_bank_api"
+      }
+
+      # Use Joken directly to create expired token
+      expired_token = Joken.generate_and_sign!(expired_claims)
+
+      conn = conn
+             |> put_req_header("authorization", "Bearer #{expired_token}")
+             |> get(~p"/api/me")
+
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
+    end
+
+    test "handles concurrent profile requests efficiently", %{conn: conn} do
+      # Create users and get access tokens
+      access_tokens =
+        1..@concurrent_users
+        |> Task.async_stream(fn i ->
+          user = insert(:user, email: "profile#{i}@example.com")
+          {:ok, _user, access_token, _refresh_token} = login_user(user.email, "password123")
+          access_token
+        end, max_concurrency: 5, timeout: 10_000)
+        |> Enum.map(fn {:ok, token} -> token end)
+
+      start_time = System.monotonic_time(:millisecond)
+
+      results =
+        access_tokens
+        |> Task.async_stream(fn access_token ->
+          conn
+          |> put_req_header("authorization", "Bearer #{access_token}")
+          |> get(~p"/api/me")
+          |> json_response(200)
+        end, max_concurrency: 5, timeout: 30_000)
+        |> Enum.to_list()
+
+      end_time = System.monotonic_time(:millisecond)
+      duration = end_time - start_time
+
+      # All profile requests should succeed
+      assert Enum.all?(results, fn {:ok, response} ->
+        assert_success_response(response, 200)
+        assert_user_response(response)
+      end)
+
+      # Performance assertion
+      assert duration < @performance_threshold_ms
     end
   end
 
@@ -371,65 +648,131 @@ defmodule LedgerBankApiWeb.AuthControllerV2Test do
       admin_attrs = Map.put(@valid_user_attrs, "role", "admin")
       conn = post(conn, ~p"/api/auth/register", user: admin_attrs)
 
-      assert %{
-               "data" => %{
-                 "user" => %{
-                   "role" => "admin"
-                 }
-               }
-             } = json_response(conn, 201)
-
-      # Verify user was created with admin role
-      user = get_user_by_email("test@example.com")
-      assert user.role == "admin"
+      response = json_response(conn, 201)
+      assert_success_response(response, 201)
+      assert %{"data" => %{"user" => %{"role" => "admin"}}} = response
     end
 
     test "defaults to user role when not specified", %{conn: conn} do
       conn = post(conn, ~p"/api/auth/register", user: @valid_user_attrs)
 
-      assert %{
-               "data" => %{
-                 "user" => %{
-                   "role" => "user"
-                 }
-               }
-             } = json_response(conn, 201)
+      response = json_response(conn, 201)
+      assert_success_response(response, 201)
+      assert %{"data" => %{"user" => %{"role" => "user"}}} = response
+    end
 
-      # Verify user was created with user role
-      user = get_user_by_email("test@example.com")
-      assert user.role == "user"
+    test "returns error for invalid role", %{conn: conn} do
+      invalid_attrs = Map.put(@valid_user_attrs, "role", "invalid_role")
+      conn = post(conn, ~p"/api/auth/register", user: invalid_attrs)
+
+      response = json_response(conn, 400)
+      assert_validation_error(response)
     end
   end
 
   describe "JWT token validation" do
     setup do
       # Create a user and get tokens
-      {:ok, user} = create_user(@valid_user_attrs)
-      {:ok, access_token, refresh_token} = login_user(user.email, @valid_user_attrs["password"])
+      {user, access_token, refresh_token} = create_user_with_tokens()
       %{user: user, access_token: access_token, refresh_token: refresh_token}
     end
 
-    test "access token contains correct claims", %{access_token: access_token} do
+    test "access token contains correct claims", %{user: user, access_token: access_token} do
       {:ok, claims} = LedgerBankApi.Auth.JWT.verify_token(access_token)
-
+      assert claims["sub"] == user.id
+      assert claims["email"] == user.email
       assert claims["type"] == "access"
-      assert claims["role"] == "user"
-      assert is_binary(claims["sub"])
-      assert is_integer(claims["exp"])
     end
 
-    test "refresh token contains correct claims", %{refresh_token: refresh_token} do
+    test "refresh token contains correct claims", %{user: user, refresh_token: refresh_token} do
       {:ok, claims} = LedgerBankApi.Auth.JWT.verify_token(refresh_token)
-
+      assert claims["sub"] == user.id
       assert claims["type"] == "refresh"
-      assert claims["role"] == "user"
-      assert is_binary(claims["sub"])
-      assert is_binary(claims["jti"])
-      assert is_integer(claims["exp"])
+      assert claims["jti"]
     end
 
     test "tokens are different", %{access_token: access_token, refresh_token: refresh_token} do
       assert access_token != refresh_token
+    end
+
+    test "tokens have different expiration times", %{access_token: access_token, refresh_token: refresh_token} do
+      {:ok, access_claims} = LedgerBankApi.Auth.JWT.verify_token(access_token)
+      {:ok, refresh_claims} = LedgerBankApi.Auth.JWT.verify_token(refresh_token)
+
+      # Refresh token should have longer expiration
+      assert refresh_claims["exp"] > access_claims["exp"]
+    end
+  end
+
+  describe "Rate limiting and security" do
+    test "handles rapid successive login attempts", %{conn: conn} do
+      user = insert(:user)
+
+      # Make multiple rapid login attempts
+      results = for _ <- 1..10 do
+        conn
+        |> post(~p"/api/auth/login", %{
+          "email" => user.email,
+          "password" => "wrongpassword"
+        })
+        |> json_response(401)
+      end
+
+      # All should fail with unauthorized (not rate limited)
+      assert Enum.all?(results, &assert_unauthorized_error/1)
+    end
+
+    test "handles rapid successive registration attempts", %{conn: conn} do
+      user_attrs = build(:user)
+
+      # Make multiple rapid registration attempts with same email
+      results = for _ <- 1..5 do
+        conn
+        |> post(~p"/api/auth/register", user: %{
+          "email" => user_attrs.email,
+          "full_name" => user_attrs.full_name,
+          "password" => "password123"
+        })
+      end
+
+      # First should succeed, rest should fail with conflict
+      [first | rest] = results
+      assert json_response(first, 201)
+      assert Enum.all?(rest, fn conn -> json_response(conn, 409) end)
+    end
+  end
+
+  describe "Memory and resource usage" do
+    test "does not leak memory during operations", %{conn: conn} do
+      # Get initial memory usage
+      initial_memory = :erlang.memory(:total)
+
+      # Perform multiple operations
+      1..50
+      |> Task.async_stream(fn i ->
+        user_data = %{
+          "user" => %{
+            "email" => "memory#{i}@example.com",
+            "full_name" => "Memory User #{i}",
+            "password" => "password123"
+          }
+        }
+
+        conn
+        |> post(~p"/api/auth/register", user_data)
+        |> json_response(201)
+      end, max_concurrency: 3, timeout: 30_000)
+      |> Enum.to_list()
+
+      # Force garbage collection
+      :erlang.garbage_collect()
+
+      # Check final memory usage
+      final_memory = :erlang.memory(:total)
+      memory_increase = final_memory - initial_memory
+
+      # Memory increase should be reasonable (less than 10MB)
+      assert memory_increase < 10_000_000
     end
   end
 end

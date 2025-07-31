@@ -20,7 +20,7 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
         |> json(%{
           error: %{
             type: :unauthorized,
-            message: "Authentication token required",
+            message: "Unauthorized access",
             code: 401
           }
         })
@@ -33,13 +33,13 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
             |> assign(:current_user, user)
             |> assign(:current_user_id, user.id)
 
-          {:error, reason} ->
+          {:error, _reason} ->
             conn
             |> put_status(401)
             |> json(%{
               error: %{
                 type: :unauthorized,
-                message: "Invalid authentication token: #{reason}",
+                message: "Unauthorized access",
                 code: 401
               }
             })
@@ -60,7 +60,7 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
          true <- claims["type"] == "access",
          false <- JWT.token_expired?(token),
          user_id when is_binary(user_id) <- claims["sub"],
-         %LedgerBankApi.Users.User{} = user <- Context.get_user!(user_id),
+         %LedgerBankApi.Users.User{} = user <- Context.get!(user_id),
          true <- user.status == "ACTIVE" do
       {:ok, user}
     else

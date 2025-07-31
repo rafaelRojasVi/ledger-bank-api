@@ -1,4 +1,4 @@
-defmodule LedgerBankApiWeb.PaymentsJSONV2 do
+defmodule LedgerBankApiWeb.PaymentsJSON do
   @moduledoc """
   Optimized payments JSON view using base JSON patterns.
   Provides standardized response formatting for payment endpoints.

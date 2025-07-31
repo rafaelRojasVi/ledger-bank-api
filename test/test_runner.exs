@@ -26,32 +26,32 @@ defmodule TestRunner do
 
   def run_pagination_tests do
     IO.puts("🧪 Running Pagination Tests...")
-    System.cmd("mix", ["test", "test/ledger_bank_api/behaviours/paginated/"])
+    System.cmd("mix", ["test", "test/ledger_bank_api/banking/behaviours/"])
   end
 
   def run_filtering_tests do
     IO.puts("🔍 Running Filtering Tests...")
-    System.cmd("mix", ["test", "test/ledger_bank_api/behaviours/filterable/"])
+    System.cmd("mix", ["test", "test/ledger_bank_api/banking/behaviours/"])
   end
 
   def run_sorting_tests do
     IO.puts("📊 Running Sorting Tests...")
-    System.cmd("mix", ["test", "test/ledger_bank_api/behaviours/sortable/"])
+    System.cmd("mix", ["test", "test/ledger_bank_api/banking/behaviours/"])
   end
 
   def run_error_handling_tests do
     IO.puts("⚠️  Running Error Handling Tests...")
-    System.cmd("mix", ["test", "test/ledger_bank_api/behaviours/error_handler/"])
+    System.cmd("mix", ["test", "test/ledger_bank_api/banking/behaviours/"])
   end
 
   def run_all_behaviour_tests do
     IO.puts("🎭 Running All Behaviour Tests...")
-    System.cmd("mix", ["test", "test/ledger_bank_api/behaviours/"])
+    System.cmd("mix", ["test", "test/ledger_bank_api/banking/behaviours/"])
   end
 
   def run_integration_tests do
     IO.puts("🔗 Running Integration Tests...")
-    System.cmd("mix", ["test", "test/ledger_bank_api/behaviours/integration_test.exs"])
+    System.cmd("mix", ["test", "test/ledger_bank_api/integration/"])
   end
 
   def run_controller_tests do

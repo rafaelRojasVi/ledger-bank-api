@@ -1,134 +1,232 @@
-defmodule LedgerBankApiWeb.BankingControllerV2 do
+defmodule LedgerBankApiWeb.BankingController do
   @moduledoc """
-  Optimized banking controller using base controller patterns.
-  Provides account management, transactions, and banking operations.
+  Optimized banking controller using enhanced base controller patterns.
+  Provides account management, transactions, and banking operations with advanced querying.
   """
 
   use LedgerBankApiWeb, :controller
-  import LedgerBankApiWeb.BaseController
-  import LedgerBankApiWeb.JSON.BaseJSON
+
+  import LedgerBankApiWeb.ResponseHelpers
+  require LedgerBankApi.Helpers.AuthorizationHelpers
 
   alias LedgerBankApi.Banking.Context
   alias LedgerBankApi.Banking.Behaviours.{Paginated, Filterable, Sortable, ErrorHandler}
+  alias LedgerBankApi.Workers.BankSyncWorker
 
-  # Implement behaviours for pagination, filtering, and sorting
-  @behaviour Paginated
-  @behaviour Filterable
-  @behaviour Sortable
-  @behaviour ErrorHandler
 
-  # Standard CRUD operations for user bank accounts
-  crud_operations(
-    Context,
-    LedgerBankApi.Banking.Schemas.UserBankAccount,
-    "user_bank_account",
-    user_filter: &filter_accounts_by_user/2,
-    authorization: :user_ownership
-  )
+
+  # Custom CRUD operations for user bank accounts with indirect user relationship
+  def index(conn, params) do
+    user_id = conn.assigns.current_user_id
+    context = %{action: :list_user_bank_accounts, user_id: user_id}
+
+        case ErrorHandler.with_error_handling(fn ->
+      # Handle pagination, filtering, and sorting
+      with {:ok, pagination_params} <- Paginated.validate_pagination_params(Paginated.extract_pagination_params(params)),
+           {:ok, filter_params} <- Filterable.validate_filter_params(Filterable.extract_filter_params(params)) do
+
+        # Extract and validate sort params with correct default for user bank accounts
+        sort_params = %{
+          sort_by: Map.get(params, "sort_by", "created_at"),
+          sort_order: Map.get(params, "sort_order", "desc")
+        }
+
+        with {:ok, validated_sort_params} <- Sortable.validate_sort_params(sort_params, ["balance", "account_name", "created_at", "updated_at"]) do
+          accounts = Context.list_user_bank_accounts_with_filters(pagination_params, filter_params, validated_sort_params, user_id, :user_id)
+
+          # Preload associations needed for JSON rendering
+          LedgerBankApi.Repo.preload(accounts, [user_bank_login: [bank_branch: :bank]])
+        else
+          {:error, reason} ->
+            {:error, %{type: :validation_error, message: reason}}
+        end
+      else
+        {:error, reason} ->
+          {:error, %{type: :validation_error, message: reason}}
+      end
+    end, context) do
+      {:ok, response} ->
+        render(conn, :index, %{user_bank_account: response.data})
+      {:error, error_response} ->
+        handle_error_response(conn, error_response, context)
+    end
+  end
+
+  def show(conn, %{"id" => id}) do
+    user_id = conn.assigns.current_user_id
+    context = %{action: :get_user_bank_account, user_id: user_id, resource_id: id}
+
+    case ErrorHandler.with_error_handling(fn ->
+      # Validate UUID format first
+      case Ecto.UUID.cast(id) do
+        :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
+        {:ok, _uuid} ->
+          # Get account first, then check authorization
+          account = Context.get_user_bank_account_with_preloads!(id, [user_bank_login: [bank_branch: :bank]])
+
+          # Ensure user can only access their own accounts
+          if account.user_bank_login.user_id != user_id do
+            {:error, %{type: :forbidden, message: "Unauthorized access to account"}}
+          else
+            account
+          end
+      end
+    end, context) do
+      {:ok, response} ->
+        render(conn, :show, %{account: response.data})
+      {:error, error_response} ->
+        handle_error_response(conn, error_response, context)
+    end
+  end
 
   # Custom banking actions
-  action :transactions do
-    account = Context.get_user_bank_account!(params["id"])
-    # Ensure user can only access their own accounts
-    if account.user_bank_login.user_id != user_id do
-      raise "Unauthorized access to account"
-    end
+  def transactions(conn, %{"id" => account_id} = params) do
+    user_id = conn.assigns.current_user_id
+    context = %{action: :transactions, user_id: user_id}
 
-    # Handle pagination, filtering, and sorting
-    with {:ok, pagination_params} <- validate_pagination_params(extract_pagination_params(params)),
-         {:ok, filter_params} <- validate_filter_params(extract_filter_params(params)),
-         {:ok, sort_params} <- validate_sort_params(extract_sort_params(params), ["posted_at", "amount", "description"]) do
+    case ErrorHandler.with_error_handling(fn ->
+      # Validate UUID format first
+      case Ecto.UUID.cast(account_id) do
+        :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
+        {:ok, _uuid} ->
+          account = Context.get_user_bank_account_with_preloads!(account_id, [user_bank_login: [bank_branch: :bank]])
 
-      transactions = Context.list_transactions_for_user_bank_account(account.id)
-      %{transactions: transactions, account: account}
-    else
-      {:error, reason} ->
-        raise "Validation error: #{reason}"
-    end
-  end
+          # Ensure user can only access their own accounts
+          if account.user_bank_login.user_id != user_id do
+            {:error, %{type: :forbidden, message: "Unauthorized access to account"}}
+          else
+            # Handle pagination, filtering, and sorting
+            with {:ok, pagination_params} <- Paginated.validate_pagination_params(Paginated.extract_pagination_params(params)),
+                 {:ok, filter_params} <- Filterable.validate_filter_params(Filterable.extract_filter_params(params)),
+                 {:ok, sort_params} <- Sortable.validate_sort_params(Sortable.extract_sort_params(params), ["posted_at", "amount", "description"]) do
 
-  action :balances do
-    account = Context.get_user_bank_account!(params["id"])
-    # Ensure user can only access their own accounts
-    if account.user_bank_login.user_id != user_id do
-      raise "Unauthorized access to account"
-    end
-    %{account: account}
-  end
-
-  action :payments do
-    account = Context.get_user_bank_account!(params["id"])
-    # Ensure user can only access their own accounts
-    if account.user_bank_login.user_id != user_id do
-      raise "Unauthorized access to account"
-    end
-
-    payments = Context.list_payments_for_user_bank_account(account.id)
-    %{payments: payments, account: account}
-  end
-
-  async_action :sync do
-    # Verify the login belongs to the user
-    login = Context.get_user_bank_login!(params["login_id"])
-    if login.user_id != user_id do
-      raise "Unauthorized access to bank login"
-    end
-
-    # Queue the sync job
-    Oban.insert(%Oban.Job{
-      queue: :banking,
-      worker: "LedgerBankApi.Workers.BankSyncWorker",
-      args: %{"login_id" => params["login_id"]}
-    })
-
-    format_job_response("bank_sync", params["login_id"])
-  end
-
-  # Behaviour implementations
-  @impl Paginated
-  def extract_pagination_params(params), do: Paginated.extract_pagination_params(params)
-  @impl Paginated
-  def validate_pagination_params(params), do: Paginated.validate_pagination_params(params)
-  @impl Paginated
-  def handle_paginated_data(data, pagination, opts), do: {data, pagination, opts}
-
-  @impl Filterable
-  def extract_filter_params(params), do: Filterable.extract_filter_params(params)
-  @impl Filterable
-  def validate_filter_params(params), do: Filterable.validate_filter_params(params)
-  @impl Filterable
-  def handle_filtered_data(data, filters, opts), do: {data, filters, opts}
-
-  @impl Sortable
-  def extract_sort_params(params), do: Sortable.extract_sort_params(params)
-  @impl Sortable
-  def validate_sort_params(params, allowed_fields), do: Sortable.validate_sort_params(params, allowed_fields)
-  @impl Sortable
-  def handle_sorted_data(data, sorting, opts), do: {data, sorting, opts}
-
-  @impl ErrorHandler
-  def handle_error(error, context, _opts) do
-    case error do
-      %{error: error_details} ->
-        status_code = ErrorHandler.error_types()[error_details.type] || 500
-        {status_code, error}
-      _ ->
-        error_response = ErrorHandler.handle_common_error(error, context)
-        status_code = ErrorHandler.error_types()[error_response.error.type] || 500
-        {status_code, error_response}
+              transactions = Context.list_transactions_with_filters(pagination_params, filter_params, sort_params, account_id, "account_id")
+              %{transactions: transactions, account: account}
+            else
+              {:error, reason} ->
+                {:error, %{type: :validation_error, message: reason}}
+            end
+          end
+      end
+    end, context) do
+      {:ok, response} ->
+        conn
+        |> put_status(200)
+        |> render("transactions.json", transactions: response.data.transactions, account: response.data.account)
+      {:error, error_response} ->
+        handle_error_response(conn, error_response, context)
     end
   end
 
-  @impl ErrorHandler
-  def format_error(error, opts), do: ErrorHandler.handle_common_error(error, opts)
-  @impl ErrorHandler
-  def log_error(error, opts), do: ErrorHandler.log_error(error, opts)
+  def balances(conn, %{"id" => account_id}) do
+    user_id = conn.assigns.current_user_id
+    context = %{action: :balances, user_id: user_id}
 
-  # Private helper functions
+    case ErrorHandler.with_error_handling(fn ->
+      # Validate UUID format first
+      case Ecto.UUID.cast(account_id) do
+        :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
+        {:ok, _uuid} ->
+          account = Context.get_user_bank_account_with_preloads!(account_id, [user_bank_login: [bank_branch: :bank]])
 
-  defp filter_accounts_by_user(accounts, user_id) do
-    Enum.filter(accounts, fn account ->
-      account.user_bank_login.user_id == user_id
-    end)
+          # Ensure user can only access their own accounts
+          if account.user_bank_login.user_id != user_id do
+            {:error, %{type: :forbidden, message: "Unauthorized access to account"}}
+          else
+            %{account: account}
+          end
+      end
+    end, context) do
+      {:ok, response} ->
+        conn
+        |> put_status(200)
+        |> render("balances.json", account: response.data.account)
+      {:error, error_response} ->
+        handle_error_response(conn, error_response, context)
+    end
   end
+
+  def payments(conn, %{"id" => account_id}) do
+    user_id = conn.assigns.current_user_id
+    context = %{action: :payments, user_id: user_id}
+
+    case ErrorHandler.with_error_handling(fn ->
+      # Validate UUID format first
+      case Ecto.UUID.cast(account_id) do
+        :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
+        {:ok, _uuid} ->
+          account = Context.get_user_bank_account_with_preloads!(account_id, [user_bank_login: [bank_branch: :bank]])
+
+          # Ensure user can only access their own accounts
+          if account.user_bank_login.user_id != user_id do
+            {:error, %{type: :forbidden, message: "Unauthorized access to account"}}
+          else
+            payments = Context.list_payments_for_user_bank_account(account_id)
+
+            %{payments: payments, account: account}
+          end
+      end
+    end, context) do
+      {:ok, response} ->
+        conn
+        |> put_status(200)
+        |> render("payments.json", payments: response.data.payments, account: response.data.account)
+      {:error, error_response} ->
+        handle_error_response(conn, error_response, context)
+    end
+  end
+
+    def sync(conn, %{"login_id" => login_id}) do
+    user_id = conn.assigns.current_user_id
+    context = %{action: :sync, user_id: user_id}
+
+        case ErrorHandler.with_error_handling(fn ->
+      # Validate UUID format first
+      case Ecto.UUID.cast(login_id) do
+        :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
+        {:ok, _uuid} ->
+          # Verify the login belongs to the user
+          login = Context.get_user_bank_login_with_preloads!(login_id, [:user])
+
+          if login.user_id != user_id do
+            {:error, %{type: :forbidden, message: "Unauthorized access to bank login"}}
+          else
+            # Queue the sync job
+            job = BankSyncWorker.new(%{"login_id" => login_id}, queue: :banking)
+
+            case Oban.insert(job) do
+              {:ok, _inserted_job} -> job_response("bank_sync", login_id)
+              {:error, reason} -> {:error, reason}
+            end
+          end
+      end
+    end, context) do
+      {:ok, response} ->
+        conn
+        |> put_status(202)
+        |> json(response.data)
+             {:error, error_response} ->
+         handle_error_response(conn, error_response, context)
+     end
+   end
+
+  # Error handling helper
+  defp handle_error_response(conn, error_response, context) do
+    response = ErrorHandler.handle_common_error(error_response, context)
+    status_code = get_error_status_code(response)
+    conn |> put_status(status_code) |> json(response)
+  end
+
+  defp get_error_status_code(%{error: %{type: type}}) do
+    case type do
+      :validation_error -> 400
+      :not_found -> 404
+      :unauthorized -> 401
+      :forbidden -> 403
+      :conflict -> 409
+      :unprocessable_entity -> 422
+      _ -> 500
+    end
+  end
+  defp get_error_status_code(_), do: 500
 end

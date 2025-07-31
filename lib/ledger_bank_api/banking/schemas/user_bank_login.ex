@@ -22,10 +22,6 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankLogin do
     timestamps(type: :utc_datetime)
   end
 
-  @doc """
-  Builds a changeset for user bank login creation and updates.
-  """
-
   @fields [
     :user_id, :bank_branch_id, :username, :encrypted_password, :status, :last_sync_at, :sync_frequency
   ]
@@ -33,6 +29,9 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankLogin do
     :user_id, :bank_branch_id, :username, :encrypted_password
   ]
 
+  @doc """
+  Builds a changeset for user bank login creation and updates.
+  """
   def changeset(user_bank_login, attrs) do
     user_bank_login
     |> base_changeset(attrs)

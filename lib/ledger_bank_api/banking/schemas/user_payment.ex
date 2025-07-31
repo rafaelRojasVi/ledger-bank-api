@@ -6,6 +6,8 @@ defmodule LedgerBankApi.Banking.Schemas.UserPayment do
   import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
 
+  @derive {Jason.Encoder, only: [:id, :amount, :direction, :description, :payment_type, :status, :posted_at, :external_transaction_id, :user_bank_account_id, :inserted_at, :updated_at]}
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "user_payments" do

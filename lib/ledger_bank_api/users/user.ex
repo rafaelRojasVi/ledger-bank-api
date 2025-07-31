@@ -35,7 +35,11 @@ defmodule LedgerBankApi.Users.User do
     |> validate_formats([email: ~r/@/])
     |> unique_constraints([:email])
     |> validate_inclusions([status: ["ACTIVE", "SUSPENDED"], role: ["user", "admin", "support"]])
-    |> validate_lengths([password: [min: 8]])
+    |> validate_lengths([
+      email: [max: 255],
+      full_name: [max: 255],
+      password: [min: 8, max: 255]
+    ])
     |> validate_password()
     |> maybe_hash_password()
   end

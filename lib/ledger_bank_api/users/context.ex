@@ -74,7 +74,7 @@ defmodule LedgerBankApi.Users.Context do
   Creates a user, allowing role to be set (defaults to "user" if not provided).
   """
   def create_user(attrs \\ %{}) do
-    attrs = Map.put_new(attrs, :role, "user")
+    attrs = Map.put_new(attrs, "role", "user")
     %User{} |> User.changeset(attrs) |> Repo.insert()
   end
 
@@ -174,4 +174,25 @@ defmodule LedgerBankApi.Users.Context do
     Argon2.verify_pass(password, hash)
   end
   defp verify_password(_, _), do: false
+
+  # Additional functions for crud_operations macro compatibility
+
+  @doc """
+  Get user with preloads.
+  """
+  def get_with_preloads!(id, preloads) do
+    User
+    |> Repo.get!(id)
+    |> Repo.preload(preloads)
+  end
+
+  @doc """
+  List users with filters.
+  """
+  def list_with_filters(_pagination, _filters, _sorting, _user_id, _user_filter) do
+    # For now, just return all users since this is admin-only
+    # In a real implementation, you might want to apply filters
+    User
+    |> Repo.all()
+  end
 end

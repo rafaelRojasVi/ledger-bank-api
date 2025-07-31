@@ -29,12 +29,13 @@ defmodule LedgerBankApi.Auth.JWT do
 
   @doc """
   Generates an access token for a user.
-  Includes user_id and role in claims.
+  Includes user_id, role, and email in claims.
   """
-  def generate_access_token(%{id: user_id, role: role}) do
+  def generate_access_token(%{id: user_id, role: role, email: email}) do
     claims = %{
       "sub" => user_id,
       "role" => role,
+      "email" => email,
       "type" => "access",
       "exp" => DateTime.utc_now() |> DateTime.add(@access_token_expiry, :second) |> DateTime.to_unix(),
       "aud" => @audience,
@@ -45,13 +46,14 @@ defmodule LedgerBankApi.Auth.JWT do
 
   @doc """
   Generates a refresh token for a user.
-  Includes user_id, role, and a unique jti.
+  Includes user_id, role, email, and a unique jti.
   """
-  def generate_refresh_token(%{id: user_id, role: role}) do
+  def generate_refresh_token(%{id: user_id, role: role, email: email}) do
     jti = Ecto.UUID.generate()
     claims = %{
       "sub" => user_id,
       "role" => role,
+      "email" => email,
       "type" => "refresh",
       "jti" => jti,
       "exp" => DateTime.utc_now() |> DateTime.add(@refresh_token_expiry, :second) |> DateTime.to_unix(),
@@ -113,9 +115,10 @@ defmodule LedgerBankApi.Auth.JWT do
          true <- claims["type"] == "refresh",
          false <- token_expired?(refresh_token),
          user_id when is_binary(user_id) <- claims["sub"],
-         role when is_binary(role) <- claims["role"] do
-      {:ok, new_access_token} = generate_access_token(%{id: user_id, role: role})
-      {:ok, new_refresh_token} = generate_refresh_token(%{id: user_id, role: role})
+         role when is_binary(role) <- claims["role"],
+         email when is_binary(email) <- claims["email"] do
+      {:ok, new_access_token} = generate_access_token(%{id: user_id, role: role, email: email})
+      {:ok, new_refresh_token} = generate_refresh_token(%{id: user_id, role: role, email: email})
       {:ok, new_access_token, new_refresh_token}
     else
       _ -> {:error, :invalid_refresh_token}

@@ -19,7 +19,7 @@ config :ledger_bank_api, LedgerBankApi.Repo,
 config :ledger_bank_api, LedgerBankApiWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "H3se2fhV4VAb/y2jrP0O5Tv9gwz+yjePKZvOM/IfXGNkuYrWOmK7JzudVoJ27TXV",
-  server: false
+  server: true
 
 # In test we don't send emails
 config :ledger_bank_api, LedgerBankApi.Mailer, adapter: Swoosh.Adapters.Test
@@ -38,6 +38,9 @@ config :ledger_bank_api, :bank_client, LedgerBankApi.External.BankClientMock
 
 # JWT secret key for testing
 config :ledger_bank_api, :jwt_secret_key, "super-secret-key"
+
+# Joken configuration for testing
+config :joken, default_signer: "HS256"
 
 # Configure Oban for testing
 config :ledger_bank_api, Oban, testing: :inline

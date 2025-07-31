@@ -1,256 +1,175 @@
 defmodule LedgerBankApiWeb.ControllersTest do
   @moduledoc """
-  Comprehensive test suite for all web controllers.
-  This module runs all controller tests in sequence to ensure the entire web layer works correctly.
+  Comprehensive tests for all controllers.
+  Tests common patterns, error handling, and controller behavior across the application.
   """
 
-  use ExUnit.Case, async: false
+  use LedgerBankApiWeb.ConnCase
+  import LedgerBankApi.ErrorAssertions
 
-  @moduledoc """
-  Test runner for all web controllers.
+  describe "Controller response format" do
+    test "all controllers return consistent response format", %{conn: conn} do
+      {_user, _access_token, conn} = setup_authenticated_user(conn)
 
-  This test suite ensures that:
-  1. All controllers are properly configured
-  2. Authentication and authorization work correctly
-  3. CRUD operations function as expected
-  4. Error handling is consistent
-  5. Business logic is properly integrated
+      # Test different controller endpoints that are known to work
+      endpoints = [
+        {get(conn, ~p"/api/me"), 200},
+        {get(conn, ~p"/api/accounts"), 200}
+      ]
 
-  Run with: mix test test/ledger_bank_api_web/controllers/controllers_test.exs
-  """
+      Enum.each(endpoints, fn {conn, expected_status} ->
+        response = json_response(conn, expected_status)
 
-  # Import all controller test modules
-  alias LedgerBankApiWeb.AuthControllerV2Test
-  alias LedgerBankApiWeb.UsersControllerV2Test
-  alias LedgerBankApiWeb.BankingControllerV2Test
-  alias LedgerBankApiWeb.PaymentsControllerV2Test
-  alias LedgerBankApiWeb.UserBankLoginsControllerV2Test
-  alias LedgerBankApiWeb.HealthControllerV2Test
-
-  describe "Web Layer Integration Tests" do
-    test "all controller modules are properly defined" do
-      # Verify all controller modules exist and are properly configured
-      assert Code.ensure_loaded?(AuthControllerV2Test)
-      assert Code.ensure_loaded?(UsersControllerV2Test)
-      assert Code.ensure_loaded?(BankingControllerV2Test)
-      assert Code.ensure_loaded?(PaymentsControllerV2Test)
-      assert Code.ensure_loaded?(UserBankLoginsControllerV2Test)
-      assert Code.ensure_loaded?(HealthControllerV2Test)
-    end
-
-    test "router configuration is correct" do
-      # Verify that all expected routes are defined in the router
-      routes = LedgerBankApiWeb.Router.__routes__()
-
-      # Check for auth routes
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/auth/register" && route.method == :post
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/auth/login" && route.method == :post
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/auth/refresh" && route.method == :post
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/logout" && route.method == :post
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/me" && route.method == :get
-      end)
-
-      # Check for user management routes
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/users" && route.method == :get
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/users/:id" && route.method == :get
-      end)
-
-      # Check for banking routes
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/accounts" && route.method == :get
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/accounts/:id" && route.method == :get
-      end)
-
-      # Check for payment routes
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/payments" && route.method == :get
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/payments" && route.method == :post
-      end)
-
-      # Check for bank login routes
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/bank-logins" && route.method == :get
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/api/bank-logins" && route.method == :post
-      end)
-
-      # Check for health routes
-      assert Enum.any?(routes, fn route ->
-        route.path == "/health" && route.method == :get
-      end)
-      assert Enum.any?(routes, fn route ->
-        route.path == "/health/detailed" && route.method == :get
+        # All responses should have consistent structure
+        assert Map.has_key?(response, "data")
+        assert is_list(response["data"]) or is_map(response["data"])
       end)
     end
 
-    test "JSON view modules are properly configured" do
-      # Verify all JSON view modules exist
-      assert Code.ensure_loaded?(LedgerBankApiWeb.JSON.AuthJSONV2)
-      assert Code.ensure_loaded?(LedgerBankApiWeb.JSON.UsersJSONV2)
-      assert Code.ensure_loaded?(LedgerBankApiWeb.JSON.BankingJSONV2)
-      assert Code.ensure_loaded?(LedgerBankApiWeb.JSON.PaymentsJSONV2)
-      assert Code.ensure_loaded?(LedgerBankApiWeb.JSON.UserBankLoginsJSONV2)
-      assert Code.ensure_loaded?(LedgerBankApiWeb.JSON.BaseJSON)
+    test "error responses follow consistent format", %{conn: conn} do
+      # Test unauthorized access
+      conn = get(conn, ~p"/api/me")
+      response = json_response(conn, 401)
+      assert_unauthorized_error(response)
     end
 
-    test "authentication plug is properly configured" do
-      # Verify authentication plug exists and is configured
-      assert Code.ensure_loaded?(LedgerBankApiWeb.Plugs.Authenticate)
+    test "forbidden access returns correct error", %{conn: conn} do
+      # Create a new connection for this test to avoid reuse issues
+      {_user1, _access_token, conn2} = setup_authenticated_user(conn)
+      {:ok, user2} = create_test_user()
 
-      # Check that the plug is applied to protected routes
-      # This would require checking the router configuration
-    end
-
-    test "error handling is consistent across controllers" do
-      # Verify error handler plug exists
-      assert Code.ensure_loaded?(LedgerBankApiWeb.Plugs.ErrorHandler)
-
-      # Verify error handler behaviour exists
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Behaviours.ErrorHandler)
-    end
-
-    test "base controller provides common functionality" do
-      # Verify base controller exists and provides common CRUD operations
-      assert Code.ensure_loaded?(LedgerBankApiWeb.BaseController)
-
-      # Check that base controller provides expected macros
-      assert function_exported?(LedgerBankApiWeb.BaseController, :crud_operations, 4)
-      assert function_exported?(LedgerBankApiWeb.BaseController, :action, 2)
+      # Try to access another user's data
+      conn2 = get(conn2, ~p"/api/users/#{user2.id}")
+      response = json_response(conn2, 403)
+      assert_forbidden_error(response)
     end
   end
 
-  describe "Controller Dependencies" do
-    test "all required business logic modules are available" do
-      # Verify all context modules exist
-      assert Code.ensure_loaded?(LedgerBankApi.Users.Context)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Context)
+  describe "Authentication and authorization" do
+    test "protected endpoints require authentication", %{conn: conn} do
+      protected_endpoints = [
+        ~p"/api/me",
+        ~p"/api/accounts",
+        ~p"/api/payments",
+        ~p"/api/user-bank-logins"
+      ]
 
-      # Verify all schema modules exist
-      assert Code.ensure_loaded?(LedgerBankApi.Users.User)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Schemas.UserBankAccount)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Schemas.UserPayment)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Schemas.UserBankLogin)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Schemas.Transaction)
+      Enum.each(protected_endpoints, fn endpoint ->
+        conn = get(conn, endpoint)
+        response = json_response(conn, 401)
+        assert_unauthorized_error(response)
+      end)
     end
 
-    test "authentication modules are properly configured" do
-      # Verify JWT module exists
-      assert Code.ensure_loaded?(LedgerBankApi.Auth.JWT)
+    test "admin endpoints require admin role", %{conn: conn} do
+      {_user, _access_token, conn} = setup_authenticated_user(conn)
 
-      # Verify authorization helpers exist
-      assert Code.ensure_loaded?(LedgerBankApi.Helpers.AuthorizationHelpers)
-    end
-
-    test "behaviour modules are properly defined" do
-      # Verify all behaviour modules exist
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Behaviours.Paginated)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Behaviours.Filterable)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Behaviours.Sortable)
-      assert Code.ensure_loaded?(LedgerBankApi.Banking.Behaviours.ErrorHandler)
+      # Regular user should not access admin endpoints
+      conn = get(conn, ~p"/api/users")
+      response = json_response(conn, 403)
+      assert_forbidden_error(response)
     end
   end
 
-  describe "API Response Format Consistency" do
-    test "all controllers return consistent response formats" do
-      # This test would verify that all controllers return responses in the expected format
-      # For now, we'll just verify the base JSON module provides the expected functions
+  describe "Error handling" do
+    test "handles validation errors consistently", %{conn: conn} do
+      # Test invalid user creation
+      invalid_user_attrs = %{
+        "email" => "invalid-email",
+        "full_name" => "",
+        "password" => "123"
+      }
 
-      assert function_exported?(LedgerBankApiWeb.JSON.BaseJSON, :list_response, 2)
-      assert function_exported?(LedgerBankApiWeb.JSON.BaseJSON, :show_response, 2)
-      assert function_exported?(LedgerBankApiWeb.JSON.BaseJSON, :format_user, 1)
-      assert function_exported?(LedgerBankApiWeb.JSON.BaseJSON, :format_account, 1)
-      assert function_exported?(LedgerBankApiWeb.JSON.BaseJSON, :format_payment, 1)
-      assert function_exported?(LedgerBankApiWeb.JSON.BaseJSON, :format_transaction, 1)
+      conn = post(conn, ~p"/api/auth/register", user: invalid_user_attrs)
+      response = json_response(conn, 400)
+      assert_validation_error(response)
     end
 
-    test "error responses follow consistent format" do
-      # Verify error handler provides consistent error response format
-      assert function_exported?(LedgerBankApi.Banking.Behaviours.ErrorHandler, :create_error_response, 3)
-      assert function_exported?(LedgerBankApi.Banking.Behaviours.ErrorHandler, :handle_common_error, 2)
-    end
-  end
+    test "handles not found errors consistently", %{conn: conn} do
+      {_user, _access_token, conn} = setup_authenticated_user(conn)
+      fake_id = Ecto.UUID.generate()
 
-  describe "Security and Authorization" do
-    test "authentication is required for protected endpoints" do
-      # This test would verify that all protected endpoints require authentication
-      # For now, we'll verify the authentication plug exists
+      # Test accessing non-existent resources
+      endpoints = [
+        ~p"/api/users/#{fake_id}",
+        ~p"/api/accounts/#{fake_id}",
+        ~p"/api/payments/#{fake_id}"
+      ]
 
-      assert Code.ensure_loaded?(LedgerBankApiWeb.Plugs.Authenticate)
-    end
-
-    test "authorization helpers are available" do
-      # Verify authorization helpers provide expected functionality
-      assert function_exported?(LedgerBankApi.Helpers.AuthorizationHelpers, :require_role!, 2)
-    end
-  end
-
-  describe "Database Integration" do
-    test "database connection is available for tests" do
-      # Verify that the database is accessible
-      assert {:ok, _} = LedgerBankApi.Repo.config()
-    end
-
-    test "migrations can be run" do
-      # Verify that migrations are available
-      migrations_path = Path.join([:code.priv_dir(:ledger_bank_api), "repo", "migrations"])
-      assert File.exists?(migrations_path)
+      Enum.each(endpoints, fn endpoint ->
+        conn = get(conn, endpoint)
+        response = json_response(conn, 404)
+        assert_not_found_error(response)
+      end)
     end
   end
 
-  describe "Background Job Integration" do
-    test "Oban is properly configured" do
-      # Verify Oban is configured for background jobs
-      assert Application.get_env(:ledger_bank_api, Oban) != nil
-    end
+  describe "Rate limiting" do
+    test "endpoints respect rate limits", %{conn: conn} do
+      # Test rate limiting by making many requests
+      requests = for _ <- 1..10 do
+        get(conn, ~p"/api/health")
+      end
 
-    test "worker modules exist" do
-      # Verify background job workers exist
-      assert Code.ensure_loaded?(LedgerBankApi.Workers.BankSyncWorker)
-      assert Code.ensure_loaded?(LedgerBankApi.Workers.PaymentWorker)
-    end
-  end
+      # Most should succeed, but some might be rate limited
+      responses = Enum.map(requests, fn conn ->
+        case conn.status do
+          200 -> :ok
+          429 -> :rate_limited
+          _ -> :other
+        end
+      end)
 
-  describe "Configuration Validation" do
-    test "application configuration is valid" do
-      # Verify key configuration values are set
-      assert Application.get_env(:ledger_bank_api, :jwt_secret_key) != nil
-      assert Application.get_env(:ledger_bank_api, :jwt) != nil
-    end
-
-    test "endpoint configuration is valid" do
-      # Verify endpoint is properly configured
-      assert Application.get_env(:ledger_bank_api, LedgerBankApiWeb.Endpoint) != nil
+      # At least some should succeed
+      assert Enum.any?(responses, &(&1 == :ok))
     end
   end
 
-  describe "Test Environment Setup" do
-    test "test environment is properly configured" do
-      # Verify test environment settings
-      assert Mix.env() == :test
-      assert Application.get_env(:ledger_bank_api, :sql_sandbox) == true
-    end
+  describe "Content negotiation" do
+    test "controllers return JSON by default", %{conn: conn} do
+      endpoints = [
+        ~p"/api/health"
+      ]
 
-    test "test helpers are available" do
-      # Verify test helper modules exist
-      assert Code.ensure_loaded?(LedgerBankApiWeb.AuthHelpers)
-      assert Code.ensure_loaded?(LedgerBankApiWeb.ConnCase)
+      Enum.each(endpoints, fn endpoint ->
+        conn = get(conn, endpoint)
+        assert get_resp_header(conn, "content-type") == ["application/json; charset=utf-8"]
+      end)
+    end
+  end
+
+  describe "Request validation" do
+    test "controllers validate required parameters", %{conn: conn} do
+      # Test missing required parameters for auth endpoint
+      conn = post(conn, ~p"/api/auth/login", %{})
+      response = json_response(conn, 400)
+      assert_validation_error(response)
+    end
+  end
+
+  describe "Controller performance" do
+    test "controllers respond within reasonable time", %{conn: conn} do
+      {_user, _access_token, conn} = setup_authenticated_user(conn)
+
+      # Test response times for common endpoints
+      endpoints = [
+        ~p"/api/me",
+        ~p"/api/accounts",
+        ~p"/api/health"
+      ]
+
+      Enum.each(endpoints, fn endpoint ->
+        start_time = System.monotonic_time(:millisecond)
+
+        conn = get(conn, endpoint)
+        json_response(conn, 200)
+
+        end_time = System.monotonic_time(:millisecond)
+        duration = end_time - start_time
+
+        # Should complete within 500ms
+        assert duration < 500
+      end)
     end
   end
 end

@@ -6,6 +6,8 @@ defmodule LedgerBankApi.Banking.Schemas.Transaction do
   import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
 
+  @derive Jason.Encoder
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "transactions" do

@@ -5,6 +5,7 @@ defmodule LedgerBankApi.Banking.Schemas.UserPayment do
   use Ecto.Schema
   import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
+  import LedgerBankApi.Helpers.ValidationHelpers
 
   @derive {Jason.Encoder, only: [:id, :amount, :direction, :description, :payment_type, :status, :posted_at, :external_transaction_id, :user_bank_account_id, :inserted_at, :updated_at]}
 
@@ -40,23 +41,13 @@ defmodule LedgerBankApi.Banking.Schemas.UserPayment do
     |> validate_amount_positive()
     |> validate_payment_type()
     |> validate_status()
+    |> validate_description_length()
+    |> validate_posted_at_not_future()
     |> foreign_key_constraint(:user_bank_account_id)
   end
 
   defp validate_direction(changeset) do
     validate_inclusion(changeset, :direction, ["CREDIT", "DEBIT"])
-  end
-
-  defp validate_amount_positive(changeset) do
-    case get_field(changeset, :amount) do
-      nil -> changeset
-      amount ->
-        if Decimal.lt?(amount, Decimal.new(0)) do
-          add_error(changeset, :amount, "must be positive")
-        else
-          changeset
-        end
-    end
   end
 
   defp validate_payment_type(changeset) do
@@ -69,5 +60,27 @@ defmodule LedgerBankApi.Banking.Schemas.UserPayment do
     changeset
     |> validate_inclusion(:status, ["PENDING", "COMPLETED", "FAILED", "CANCELLED"],
       message: "must be PENDING, COMPLETED, FAILED, or CANCELLED")
+  end
+
+  defp validate_description_length(changeset) do
+    description = get_change(changeset, :description)
+    if is_nil(description) or description == "" do
+      changeset
+    else
+      validate_length(changeset, :description, max: 500)
+    end
+  end
+
+  defp validate_posted_at_not_future(changeset) do
+    posted_at = get_change(changeset, :posted_at)
+    if is_nil(posted_at) do
+      changeset
+    else
+      if DateTime.compare(posted_at, DateTime.utc_now()) == :gt do
+        add_error(changeset, :posted_at, "cannot be in the future")
+      else
+        changeset
+      end
+    end
   end
 end

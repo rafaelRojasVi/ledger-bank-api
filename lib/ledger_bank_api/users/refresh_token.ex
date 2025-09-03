@@ -12,6 +12,7 @@ defmodule LedgerBankApi.Users.RefreshToken do
   import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
 
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "refresh_tokens" do

@@ -49,21 +49,13 @@ defmodule LedgerBankApi.Banking.Behaviours.Sortable do
     end
   end
 
-  @doc """
-  Generic helper for struct creation/validation from params, validation function, and struct module.
-  """
-  def create_struct(params, validate_fun, struct_mod) do
-    case validate_fun.(params) do
-      {:ok, validated_params} -> {:ok, struct(struct_mod, validated_params)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  alias LedgerBankApi.Banking.Behaviours.SharedBehaviours
 
   @doc """
   Creates a sort struct for easy handling.
   """
   def create_sort_struct(params, allowed_fields) do
-    create_struct(extract_sort_params(params), &(&1 |> validate_sort_params(allowed_fields)), LedgerBankApi.Banking.Behaviours.SortParams)
+    SharedBehaviours.create_struct(extract_sort_params(params), &(&1 |> validate_sort_params(allowed_fields)), LedgerBankApi.Banking.Behaviours.SortParams)
   end
 end
 

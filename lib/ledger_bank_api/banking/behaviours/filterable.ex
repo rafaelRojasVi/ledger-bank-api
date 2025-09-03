@@ -140,21 +140,13 @@ defmodule LedgerBankApi.Banking.Behaviours.Filterable do
     end
   end
 
-  @doc """
-  Generic helper for struct creation/validation from params, validation function, and struct module.
-  """
-  def create_struct(params, validate_fun, struct_mod) do
-    case validate_fun.(params) do
-      {:ok, validated_params} -> {:ok, struct(struct_mod, validated_params)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  alias LedgerBankApi.Banking.Behaviours.SharedBehaviours
 
   @doc """
   Creates a filter struct for easy handling.
   """
   def create_filter_struct(params) do
-    create_struct(extract_filter_params(params), &validate_filter_params/1, LedgerBankApi.Banking.Behaviours.FilterParams)
+    SharedBehaviours.create_struct(extract_filter_params(params), &validate_filter_params/1, LedgerBankApi.Banking.Behaviours.FilterParams)
   end
 end
 

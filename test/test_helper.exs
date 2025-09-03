@@ -1,3 +1,11 @@
 {:ok, _} = Application.ensure_all_started(:ledger_bank_api)
-Mimic.copy(Oban)
-ExUnit.start()
+
+# Configure Ecto sandbox for testing
+Ecto.Adapters.SQL.Sandbox.mode(LedgerBankApi.Repo, :manual)
+
+# Start ExUnit with proper configuration
+ExUnit.start(
+  formatters: [ExUnit.CLIFormatter],
+  capture_log: true,
+  trace: false
+)

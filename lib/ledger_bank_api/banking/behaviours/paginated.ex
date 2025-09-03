@@ -13,43 +13,43 @@ defmodule LedgerBankApi.Banking.Behaviours.Paginated do
   """
   def extract_pagination_params(params) do
     page = Map.get(params, "page", "1") |> String.to_integer()
-    per_page = Map.get(params, "page_size", "20") |> String.to_integer()
+    page_size = Map.get(params, "page_size", "20") |> String.to_integer()
 
-    %{page: page, per_page: per_page}
+    %{page: page, page_size: page_size}
   end
 
   @doc """
   Validates pagination parameters and returns normalized values.
   """
-  def validate_pagination_params(%{page: page, per_page: per_page}) do
+  def validate_pagination_params(%{page: page, page_size: page_size}) do
     cond do
       page < 1 ->
         {:error, "Page must be greater than 0"}
-      per_page < 1 ->
+      page_size < 1 ->
         {:error, "Page size must be greater than 0"}
-      per_page > 100 ->
+      page_size > 100 ->
         {:error, "Page size cannot exceed 100"}
       true ->
-        {:ok, %{page: page, per_page: per_page}}
+        {:ok, %{page: page, page_size: page_size}}
     end
   end
 
   @doc """
-  Calculates offset from page and per_page.
+  Calculates offset from page and page_size.
   """
-  def calculate_offset(page, per_page) do
-    (page - 1) * per_page
+  def calculate_offset(page, page_size) do
+    (page - 1) * page_size
   end
 
   @doc """
   Builds pagination metadata for response.
   """
-  def build_pagination_metadata(page, per_page, total_count) do
-    total_pages = ceil(total_count / per_page)
+  def build_pagination_metadata(page, page_size, total_count) do
+    total_pages = ceil(total_count / page_size)
 
     %{
       page: page,
-      per_page: per_page,
+      page_size: page_size,
       total_count: total_count,
       total_pages: total_pages,
       has_next: page < total_pages,
@@ -57,21 +57,13 @@ defmodule LedgerBankApi.Banking.Behaviours.Paginated do
     }
   end
 
-  @doc """
-  Generic helper for struct creation/validation from params, validation function, and struct module.
-  """
-  def create_struct(params, validate_fun, struct_mod) do
-    case validate_fun.(params) do
-      {:ok, validated_params} -> {:ok, struct(struct_mod, validated_params)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  alias LedgerBankApi.Banking.Behaviours.SharedBehaviours
 
   @doc """
   Creates a pagination struct for easy handling.
   """
   def create_pagination_struct(params) do
-    create_struct(extract_pagination_params(params), &validate_pagination_params/1, LedgerBankApi.Banking.Behaviours.PaginationParams)
+    SharedBehaviours.create_struct(extract_pagination_params(params), &validate_pagination_params/1, LedgerBankApi.Banking.Behaviours.PaginationParams)
   end
 end
 

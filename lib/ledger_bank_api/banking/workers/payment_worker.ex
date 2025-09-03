@@ -8,7 +8,7 @@ defmodule LedgerBankApi.Workers.PaymentWorker do
 
   @impl Oban.Worker
   @doc """
-  Performs the payment processing for the given payment_id, with error handling.
+  Performs the payment processing for a given payment_id, with error handling.
   """
   def perform(%Oban.Job{args: %{"payment_id" => payment_id}}) do
     context = %{worker: __MODULE__, payment_id: payment_id}

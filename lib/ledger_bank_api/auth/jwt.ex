@@ -32,12 +32,14 @@ defmodule LedgerBankApi.Auth.JWT do
   Includes user_id, role, and email in claims.
   """
   def generate_access_token(%{id: user_id, role: role, email: email}) do
+    now = DateTime.utc_now()
     claims = %{
       "sub" => user_id,
       "role" => role,
       "email" => email,
       "type" => "access",
-      "exp" => DateTime.utc_now() |> DateTime.add(@access_token_expiry, :second) |> DateTime.to_unix(),
+      "iat" => DateTime.to_unix(now),
+      "exp" => DateTime.add(now, @access_token_expiry, :second) |> DateTime.to_unix(),
       "aud" => @audience,
       "iss" => @issuer
     }
@@ -49,6 +51,7 @@ defmodule LedgerBankApi.Auth.JWT do
   Includes user_id, role, email, and a unique jti.
   """
   def generate_refresh_token(%{id: user_id, role: role, email: email}) do
+    now = DateTime.utc_now()
     jti = Ecto.UUID.generate()
     claims = %{
       "sub" => user_id,
@@ -56,7 +59,8 @@ defmodule LedgerBankApi.Auth.JWT do
       "email" => email,
       "type" => "refresh",
       "jti" => jti,
-      "exp" => DateTime.utc_now() |> DateTime.add(@refresh_token_expiry, :second) |> DateTime.to_unix(),
+      "iat" => DateTime.to_unix(now),
+      "exp" => DateTime.add(now, @refresh_token_expiry, :second) |> DateTime.to_unix(),
       "aud" => @audience,
       "iss" => @issuer
     }
@@ -71,14 +75,48 @@ defmodule LedgerBankApi.Auth.JWT do
   @doc """
   Verifies a JWT and returns {:ok, claims} or {:error, reason}.
   """
+  def verify_token(nil), do: {:error, :invalid_token}
+  def verify_token(""), do: {:error, :invalid_token}
+  def verify_token(token) when not is_binary(token), do: {:error, :invalid_token}
+
   def verify_token(token) do
     case verify_and_validate(token, signer()) do
       {:ok, claims} ->
-        case Enum.all?(@required_claims, &Map.has_key?(claims, &1)) do
-          true -> {:ok, claims}
-          false -> {:error, :missing_claims}
+        case validate_claims(claims) do
+          :ok -> {:ok, claims}
+          {:error, reason} -> {:error, reason}
         end
-      error -> error
+      {:error, reason} -> {:error, reason}
+      _error -> {:error, :invalid_token}
+    end
+  end
+
+  defp validate_claims(claims) do
+    with :ok <- validate_required_claims(claims),
+         :ok <- validate_iat_not_future(claims) do
+      :ok
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp validate_required_claims(claims) do
+    case Enum.all?(@required_claims, &Map.has_key?(claims, &1)) do
+      true -> :ok
+      false -> {:error, :missing_claims}
+    end
+  end
+
+  defp validate_iat_not_future(claims) do
+    case claims["iat"] do
+      iat when is_integer(iat) ->
+        now = DateTime.utc_now() |> DateTime.to_unix()
+        if iat > now do
+          {:error, :future_iat}
+        else
+          :ok
+        end
+      _ -> :ok
     end
   end
 
@@ -87,6 +125,7 @@ defmodule LedgerBankApi.Auth.JWT do
   """
   def get_user_id(token) do
     with {:ok, claims} <- verify_token(token),
+         false <- token_expired?(claims),
          user_id when is_binary(user_id) <- claims["sub"] do
       {:ok, user_id}
     else
@@ -97,11 +136,18 @@ defmodule LedgerBankApi.Auth.JWT do
   @doc """
   Checks if a token is expired.
   """
-  def token_expired?(token) do
-    with {:ok, claims} <- verify_token(token),
-         exp when is_integer(exp) <- claims["exp"] do
-      DateTime.utc_now() |> DateTime.to_unix() > exp
+  def token_expired?(token) when is_binary(token) do
+    with {:ok, claims} <- verify_token(token) do
+      token_expired?(claims)
     else
+      _ -> true
+    end
+  end
+
+  def token_expired?(claims) when is_map(claims) do
+    case claims["exp"] do
+      exp when is_integer(exp) ->
+        DateTime.utc_now() |> DateTime.to_unix() > exp
       _ -> true
     end
   end
@@ -113,7 +159,7 @@ defmodule LedgerBankApi.Auth.JWT do
   def refresh_access_token(refresh_token) do
     with {:ok, claims} <- verify_token(refresh_token),
          true <- claims["type"] == "refresh",
-         false <- token_expired?(refresh_token),
+         false <- token_expired?(claims),
          user_id when is_binary(user_id) <- claims["sub"],
          role when is_binary(role) <- claims["role"],
          email when is_binary(email) <- claims["email"] do

@@ -17,9 +17,13 @@ defmodule LedgerBankApi.Users.Context do
 
   @doc """
   Gets a user by email.
+  Returns {:ok, user} or {:error, :not_found}.
   """
   def get_user_by_email(email) do
-    Repo.get_by(User, email: email)
+    case Repo.get_by(User, email: email) do
+      nil -> {:error, :not_found}
+      user -> {:ok, user}
+    end
   end
 
   @doc """
@@ -31,29 +35,26 @@ defmodule LedgerBankApi.Users.Context do
 
   @doc """
   Returns list of active users.
+  Returns {:ok, list} or {:error, reason}.
   """
   def list_active_users do
-    User
-    |> where(status: "ACTIVE")
-    |> Repo.all()
+    {:ok, User |> where(status: "ACTIVE") |> Repo.all()}
   end
 
   @doc """
   Returns list of suspended users.
+  Returns {:ok, list} or {:error, reason}.
   """
   def list_suspended_users do
-    User
-    |> where(status: "SUSPENDED")
-    |> Repo.all()
+    {:ok, User |> where(status: "SUSPENDED") |> Repo.all()}
   end
 
   @doc """
   Returns list of users by role.
+  Returns {:ok, list} or {:error, reason}.
   """
   def list_users_by_role(role) do
-    User
-    |> where([u], u.role == ^role)
-    |> Repo.all()
+    {:ok, User |> where([u], u.role == ^role) |> Repo.all()}
   end
 
   @doc """
@@ -72,10 +73,27 @@ defmodule LedgerBankApi.Users.Context do
 
   @doc """
   Creates a user, allowing role to be set (defaults to "user" if not provided).
+  Returns {:ok, user} or {:error, reason}.
   """
   def create_user(attrs \\ %{}) do
     attrs = Map.put_new(attrs, "role", "user")
     %User{} |> User.changeset(attrs) |> Repo.insert()
+  end
+
+  @doc """
+  Updates a user's profile information (without password).
+  Returns {:ok, user} or {:error, reason}.
+  """
+  def update_user_profile(user, attrs) do
+    user |> User.update_changeset(attrs) |> Repo.update()
+  end
+
+  @doc """
+  Changes a user's password.
+  Returns {:ok, user} or {:error, reason}.
+  """
+  def change_user_password(user, attrs) do
+    user |> User.password_changeset(attrs) |> Repo.update()
   end
 
   @doc """
@@ -87,7 +105,7 @@ defmodule LedgerBankApi.Users.Context do
   """
   def login_user(email, password) do
     case get_user_by_email(email) do
-      %User{status: "ACTIVE"} = user ->
+      {:ok, %User{status: "ACTIVE"} = user} ->
         if verify_password(password, user) do
           {:ok, access_token} = JWT.generate_access_token(user)
           {:ok, refresh_token} = JWT.generate_refresh_token(user)
@@ -96,7 +114,9 @@ defmodule LedgerBankApi.Users.Context do
         else
           {:error, :invalid_credentials}
         end
-      _ ->
+      {:ok, _user} ->
+        {:error, :invalid_credentials}
+      {:error, :not_found} ->
         {:error, :invalid_credentials}
     end
   end
@@ -114,7 +134,7 @@ defmodule LedgerBankApi.Users.Context do
          jti when is_binary(jti) <- claims["jti"],
          %User{} = user <- Repo.get(User, user_id),
          true <- user.status == "ACTIVE",
-         %RefreshToken{} = db_token <- get_refresh_token_by_jti(jti),
+         {:ok, %RefreshToken{} = db_token} <- get_refresh_token_by_jti(jti),
          false <- RefreshToken.revoked?(db_token),
          false <- RefreshToken.expired?(db_token),
          {:ok, new_access_token, new_refresh_token} <- JWT.refresh_access_token(refresh_token),
@@ -147,9 +167,13 @@ defmodule LedgerBankApi.Users.Context do
 
   @doc """
   Gets a refresh token by jti.
+  Returns {:ok, token} or {:error, :not_found}.
   """
   def get_refresh_token_by_jti(jti) do
-    Repo.get_by(RefreshToken, jti: jti)
+    case Repo.get_by(RefreshToken, jti: jti) do
+      nil -> {:error, :not_found}
+      token -> {:ok, token}
+    end
   end
 
   @doc """
@@ -177,22 +201,15 @@ defmodule LedgerBankApi.Users.Context do
 
   # Additional functions for crud_operations macro compatibility
 
-  @doc """
-  Get user with preloads.
-  """
-  def get_with_preloads!(id, preloads) do
-    User
-    |> Repo.get!(id)
-    |> Repo.preload(preloads)
-  end
+
 
   @doc """
   List users with filters.
+  Returns {:ok, list} or {:error, reason}.
   """
   def list_with_filters(_pagination, _filters, _sorting, _user_id, _user_filter) do
     # For now, just return all users since this is admin-only
     # In a real implementation, you might want to apply filters
-    User
-    |> Repo.all()
+    {:ok, User |> Repo.all()}
   end
 end

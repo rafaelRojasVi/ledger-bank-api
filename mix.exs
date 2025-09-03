@@ -16,12 +16,10 @@ defmodule LedgerBankApi.MixProject do
   def cli do
     [
       preferred_envs: [
-        "test:paginated": :test,
-        "test:filterable": :test,
-        "test:sortable": :test,
-        "test:error-handler": :test,
-        "test:behaviours": :test,
-        "test:controllers": :test,
+        "test:auth": :test,
+        "test:banking": :test,
+        "test:users": :test,
+        "test:cache": :test,
         "test:integration": :test,
         "test:unit": :test
       ]
@@ -58,10 +56,11 @@ defmodule LedgerBankApi.MixProject do
       {:joken, "~> 2.6"},
       {:oban, "~> 2.18"},
       {:mimic, "~> 1.7", only: :test},
+      {:mox, "~> 1.1", only: :test},
+      {:bypass, "~> 2.1", only: :test},
       {:req, "~> 0.5.10"},
       {:argon2_elixir, "~> 3.0"},
-      {:stream_data, "~> 0.6", only: :test},
-      {:ex_machina, "~> 2.7", only: :test}
+      {:stream_data, "~> 0.6", only: :test}
     ]
   end
 
@@ -72,13 +71,11 @@ defmodule LedgerBankApi.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       # Test aliases for easier test running
-      "test:paginated": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/paginated/"],
-      "test:filterable": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/filterable/"],
-      "test:sortable": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/sortable/"],
-      "test:error-handler": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/error_handler/"],
-      "test:behaviours": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/"],
-      "test:controllers": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api_web/controllers/"],
-      "test:integration": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/behaviours/integration_test.exs"],
+      "test:auth": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/auth/"],
+      "test:banking": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/banking/"],
+      "test:users": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/users/"],
+      "test:cache": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/cache_test.exs"],
+      "test:integration": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/integration/"],
       "test:unit": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/"]
     ]
   end

@@ -22,7 +22,26 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
       conflict: 409,
       unprocessable_entity: 422,
       internal_server_error: 500,
-      service_unavailable: 503
+      service_unavailable: 503,
+      insufficient_funds: 422,
+      account_inactive: 422,
+      account_closed: 422,
+      daily_limit_exceeded: 422,
+      monthly_limit_exceeded: 422,
+      amount_exceeds_limit: 422,
+      negative_amount: 400,
+      invalid_amount_format: 400,
+      invalid_amount: 400,
+      invalid_direction: 400,
+      already_processed: 409,
+      account_not_found: 404,
+      invalid_account_status: 422,
+      transaction_error: 422,
+      negative_balance: 422,
+      invalid_balance_format: 400,
+      missing_fields: 400,
+      restricted_fields: 400,
+      has_pending_payments: 422
     }
   end
 
@@ -44,7 +63,8 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
       error: %{
         type: type,
         message: message,
-        code: get_error_code(type)
+        code: get_error_code(type),
+        details: details
       }
     }
   end
@@ -53,13 +73,6 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   Handles common error patterns and returns appropriate responses.
   """
   def handle_common_error(error, context \\ %{}) do
-    # Force debug output even in test mode
-    IO.puts("=== DEBUG: handle_common_error called ===")
-    IO.puts("Error: #{inspect(error)}")
-    IO.puts("Error type: #{if(is_map(error), do: Map.get(error, :__struct__), else: :not_struct)}")
-    IO.puts("Context: #{inspect(context)}")
-    IO.puts("==========================================")
-
     # Debug logging to see what error we're getting
     Logger.debug("handle_common_error called with", %{
       error: inspect(error),
@@ -175,12 +188,6 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   Handles string errors.
   """
   def handle_string_error(message, context) do
-    # Force debug output even in test mode
-    IO.puts("=== DEBUG: handle_string_error called ===")
-    IO.puts("Message: #{message}")
-    IO.puts("Context: #{inspect(context)}")
-    IO.puts("==========================================")
-
     # Debug logging
     Logger.debug("handle_string_error called with", %{
       message: message,
@@ -258,6 +265,45 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
         create_error_response(:unauthorized, "Unauthorized access", %{context: context})
       :invalid_refresh_token ->
         create_error_response(:unauthorized, "Unauthorized access", %{context: context})
+      # Business-specific error handling
+      :insufficient_funds ->
+        create_error_response(:insufficient_funds, "Insufficient funds for this transaction", %{context: context})
+      :account_inactive ->
+        create_error_response(:account_inactive, "Account is inactive", %{context: context})
+      :account_closed ->
+        create_error_response(:account_closed, "Account is closed", %{context: context})
+      :daily_limit_exceeded ->
+        create_error_response(:daily_limit_exceeded, "Daily payment limit exceeded", %{context: context})
+      :monthly_limit_exceeded ->
+        create_error_response(:monthly_limit_exceeded, "Monthly payment limit exceeded", %{context: context})
+      :amount_exceeds_limit ->
+        create_error_response(:amount_exceeds_limit, "Payment amount exceeds single transaction limit", %{context: context})
+      :negative_amount ->
+        create_error_response(:negative_amount, "Payment amount cannot be negative", %{context: context})
+      :invalid_amount_format ->
+        create_error_response(:invalid_amount_format, "Invalid amount format", %{context: context})
+      :invalid_amount ->
+        create_error_response(:invalid_amount, "Invalid amount", %{context: context})
+      :invalid_direction ->
+        create_error_response(:invalid_direction, "Invalid payment direction", %{context: context})
+      :already_processed ->
+        create_error_response(:already_processed, "Payment has already been processed", %{context: context})
+      :account_not_found ->
+        create_error_response(:account_not_found, "Account not found", %{context: context})
+      :invalid_account_status ->
+        create_error_response(:invalid_account_status, "Invalid account status", %{context: context})
+      :transaction_error ->
+        create_error_response(:transaction_error, "Transaction processing error", %{context: context})
+      :negative_balance ->
+        create_error_response(:negative_balance, "Account balance cannot be negative", %{context: context})
+      :invalid_balance_format ->
+        create_error_response(:invalid_balance_format, "Invalid balance format", %{context: context})
+      :missing_fields ->
+        create_error_response(:missing_fields, "Required fields are missing", %{context: context})
+      :restricted_fields ->
+        create_error_response(:restricted_fields, "Cannot update restricted fields", %{context: context})
+      :has_pending_payments ->
+        create_error_response(:has_pending_payments, "Cannot delete account with pending payments", %{context: context})
       _ ->
         create_error_response(:internal_server_error, "Unknown error: #{atom}", %{context: context})
     end
@@ -267,12 +313,6 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   Handles unknown errors.
   """
   def handle_unknown_error(error, context) do
-    # Force debug output even in test mode
-    IO.puts("=== DEBUG: handle_unknown_error called ===")
-    IO.puts("Error: #{inspect(error)}")
-    IO.puts("Context: #{inspect(context)}")
-    IO.puts("==========================================")
-
     create_error_response(
       :internal_server_error,
       "An unexpected error occurred",
@@ -292,6 +332,7 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
         stacktrace: Process.info(self(), :current_stacktrace)
       })
     end
+    :ok
   end
 
   @doc """
@@ -312,7 +353,15 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   def with_error_handling(fun, context \\ %{}) do
     try do
       case fun.() do
-        {:ok, result} -> {:ok, create_success_response(result)}
+        {:ok, result} ->
+          # Check if result is already a properly formatted response
+          if is_map(result) and Map.has_key?(result, :data) and Map.has_key?(result, :pagination) do
+            # This is already a properly formatted response from QueryHelpers, return as is
+            {:ok, result}
+          else
+            # Wrap in success response
+            {:ok, create_success_response(result)}
+          end
         {:error, %Ecto.Changeset{} = changeset} -> {:error, handle_changeset_error(changeset, context)}
         {:error, %Ecto.ConstraintError{} = constraint_error} -> {:error, handle_constraint_error(constraint_error, context)}
         {:error, %{type: type, message: message} = error} when is_atom(type) and is_binary(message) ->
@@ -336,7 +385,9 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
         case error do
           %Ecto.ConstraintError{} -> {:error, handle_constraint_error(error, context)}
           %Ecto.NoResultsError{} -> {:error, handle_not_found_error("Resource not found", context)}
-          _ -> {:error, handle_common_error(error, context)}
+          %RuntimeError{message: _message} -> {:error, handle_unknown_error(error, context)}
+          error when is_binary(error) -> {:error, handle_unknown_error(error, context)}
+          _ -> {:error, handle_unknown_error(error, context)}
         end
     end
   end

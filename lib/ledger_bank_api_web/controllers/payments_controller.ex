@@ -25,15 +25,7 @@ defmodule LedgerBankApiWeb.PaymentsController do
     default_sort_field: "inserted_at"
   )
 
-  def index(conn, params) do
-    user_id = conn.assigns.current_user_id
-    # Fetch payments using the context (mimic macro logic, but explicit for debugging)
-    payments = LedgerBankApi.Banking.UserPayments.list_with_filters(%{}, %{}, %{}, user_id, nil)
-    IO.inspect(payments, label: "DEBUG: payments from context")
-    rendered = Enum.map(payments, &LedgerBankApiWeb.JSON.PaymentJSON.format/1)
-    IO.inspect(rendered, label: "DEBUG: rendered payments")
-    json(conn, %{data: rendered})
-  end
+
 
   # Custom payment actions
   def process(conn, %{"id" => payment_id}) do

@@ -1,81 +1,105 @@
 defmodule LedgerBankApi.Helpers.AuthorizationHelpersTest do
-  use ExUnit.Case, async: true
+  use LedgerBankApi.DataCase, async: true
   import LedgerBankApi.Helpers.AuthorizationHelpers
-  alias LedgerBankApi.Users.User
+  import LedgerBankApi.BankingFixtures
+  import LedgerBankApi.UsersFixtures
+  alias LedgerBankApi.UsersFixtures
+  alias LedgerBankApi.BankingFixtures
 
-  test "require_role! allows correct role" do
-    user = %User{role: "admin"}
-    assert :ok == (try do
-      require_role!(user, "admin")
-      :ok
-    rescue
-      _ -> :error
-    end)
+  test "require_ownership! allows owner" do
+    user = UsersFixtures.user_fixture()
+    login = BankingFixtures.login_fixture(user)
+    account = BankingFixtures.account_fixture(login)
+
+    # Should not raise for owner
+    require_ownership!(user, account)
   end
 
-  test "require_role! raises for wrong role" do
-    user = %User{role: "user"}
-    assert_raise RuntimeError, fn ->
-      require_role!(user, "admin")
+  test "require_ownership! raises for non-owner" do
+    owner = UsersFixtures.user_fixture()
+    other_user = UsersFixtures.user_fixture()
+    login = BankingFixtures.login_fixture(owner)
+    account = BankingFixtures.account_fixture(login)
+
+    assert_raise RuntimeError, "Access forbidden", fn ->
+      require_ownership!(other_user, account)
     end
   end
 
-  test "require_role! allows user role for user actions" do
-    user = %User{role: "user"}
-    assert :ok == (try do
-      require_role!(user, "user")
-      :ok
-    rescue
-      _ -> :error
-    end)
-  end
+  test "require_ownership! with custom error message" do
+    owner = UsersFixtures.user_fixture()
+    other_user = UsersFixtures.user_fixture()
+    login = BankingFixtures.login_fixture(owner)
+    account = BankingFixtures.account_fixture(login)
 
-  test "require_role! allows support role for support actions" do
-    user = %User{role: "support"}
-    assert :ok == (try do
-      require_role!(user, "support")
-      :ok
-    rescue
-      _ -> :error
-    end)
-  end
-
-  test "require_role! blocks privilege escalation (user as admin)" do
-    user = %User{role: "user"}
-    assert_raise RuntimeError, ~r/Insufficient permissions/, fn ->
-      require_role!(user, "admin")
+    assert_raise RuntimeError, "Custom access denied message", fn ->
+      require_ownership!(other_user, account, "Custom access denied message")
     end
   end
 
-  test "require_role! blocks privilege escalation (support as admin)" do
-    user = %User{role: "support"}
-    assert_raise RuntimeError, ~r/Insufficient permissions/, fn ->
-      require_role!(user, "admin")
+  test "require_ownership! with nested ownership" do
+    user = UsersFixtures.user_fixture()
+    login = BankingFixtures.login_fixture(user)
+    account = BankingFixtures.account_fixture(login)
+    payment = BankingFixtures.payment_fixture(account)
+
+    # Test ownership through nested relationship
+    require_ownership!(user, payment, "user_bank_account.user_bank_login.user_id")
+  end
+
+  test "require_ownership! with invalid ownership path" do
+    user = UsersFixtures.user_fixture()
+    login = BankingFixtures.login_fixture(user)
+    account = BankingFixtures.account_fixture(login)
+
+    assert_raise RuntimeError, "Invalid ownership path", fn ->
+      require_ownership!(user, account, "invalid.path")
     end
   end
 
-  test "require_role! raises for missing user struct" do
-    assert_raise RuntimeError, ~r/Insufficient permissions/, fn ->
-      require_role!(nil, "admin")
+  test "require_role! allows user with required role" do
+    admin_user = UsersFixtures.admin_user_fixture()
+
+    # Should not raise for admin
+    require_role!(admin_user, "admin")
+  end
+
+  test "require_role! raises for user without required role" do
+    regular_user = UsersFixtures.user_fixture()
+
+    assert_raise RuntimeError, "Insufficient permissions", fn ->
+      require_role!(regular_user, "admin")
     end
   end
 
-  test "require_role! blocks when role is missing in user struct" do
-    user = %User{}
-    assert_raise RuntimeError, ~r/Insufficient permissions/, fn ->
-      require_role!(user, "admin")
+  test "require_role! with custom error message" do
+    regular_user = UsersFixtures.user_fixture()
+
+    assert_raise RuntimeError, "Admin access required", fn ->
+      require_role!(regular_user, "admin", "Admin access required")
     end
   end
 
-  test "require_role! allows admin for any role" do
-    user = %User{role: "admin"}
-    for role <- ["admin", "user", "support"] do
-      assert :ok == (try do
-        require_role!(user, role)
-        :ok
-      rescue
-        _ -> :error
-      end)
+  test "require_any_role! allows user with any required role" do
+    admin_user = UsersFixtures.admin_user_fixture()
+
+    # Should not raise for admin
+    require_any_role!(admin_user, ["admin", "moderator"])
+  end
+
+  test "require_any_role! raises for user without any required role" do
+    regular_user = UsersFixtures.user_fixture()
+
+    assert_raise RuntimeError, "Insufficient permissions", fn ->
+      require_any_role!(regular_user, ["admin", "moderator"])
+    end
+  end
+
+  test "require_any_role! with empty roles list" do
+    user = UsersFixtures.user_fixture()
+
+    assert_raise RuntimeError, "No roles specified", fn ->
+      require_any_role!(user, [])
     end
   end
 end

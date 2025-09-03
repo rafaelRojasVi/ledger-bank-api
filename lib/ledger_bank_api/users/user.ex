@@ -9,6 +9,7 @@ defmodule LedgerBankApi.Users.User do
   import Ecto.Changeset
   import LedgerBankApi.CrudHelpers
 
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "users" do
@@ -19,6 +20,8 @@ defmodule LedgerBankApi.Users.User do
     field :password_hash, :string
     # Virtual field for password (not stored in DB)
     field :password, :string, virtual: true
+    # Virtual field for password confirmation
+    field :password_confirmation, :string, virtual: true
 
     timestamps(type: :utc_datetime)
   end
@@ -30,18 +33,44 @@ defmodule LedgerBankApi.Users.User do
   """
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :full_name, :status, :role, :password])
+    |> cast(attrs, [:email, :full_name, :status, :role, :password, :password_confirmation])
     |> require_fields([:email, :full_name, :role])
-    |> validate_formats([email: ~r/@/])
-    |> unique_constraints([:email])
-    |> validate_inclusions([status: ["ACTIVE", "SUSPENDED"], role: ["user", "admin", "support"]])
-    |> validate_lengths([
-      email: [max: 255],
-      full_name: [max: 255],
-      password: [min: 8, max: 255]
-    ])
+    |> validate_email()
+    |> validate_role_permissions(user, attrs)
     |> validate_password()
+    |> validate_password_confirmation()
     |> maybe_hash_password()
+  end
+
+  @doc """
+  Builds a changeset for user updates (without password).
+  """
+  def update_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:email, :full_name, :status, :role])
+    |> require_fields([:email, :full_name, :role])
+    |> validate_email()
+    |> validate_role_permissions(user, attrs)
+    |> validate_status_transitions(user, attrs)
+  end
+
+  @doc """
+  Builds a changeset for password changes only.
+  """
+  def password_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:password, :password_confirmation])
+    |> require_fields([:password, :password_confirmation])
+    |> validate_password()
+    |> validate_password_confirmation()
+    |> maybe_hash_password()
+  end
+
+  defp validate_email(changeset) do
+    changeset
+    |> validate_format(:email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "must be a valid email address")
+    |> validate_length(:email, max: 255)
+    |> unique_constraints([:email])
   end
 
   defp validate_password(changeset) do
@@ -50,9 +79,73 @@ defmodule LedgerBankApi.Users.User do
       changeset
     else
       changeset
-      |> validate_length(:password, min: 8)
+      |> validate_length(:password, min: 8, max: 255)
       |> validate_format(:password, ~r/[a-zA-Z]/, message: "must contain at least one letter")
       |> validate_format(:password, ~r/\d/, message: "must contain at least one number")
+      |> validate_format(:password, ~r/[!@#$%^&*(),.?":{}|<>]/, message: "must contain at least one special character")
+    end
+  end
+
+  defp validate_password_confirmation(changeset) do
+    password = get_change(changeset, :password)
+    password_confirmation = get_change(changeset, :password_confirmation)
+
+    if is_nil(password) or is_nil(password_confirmation) do
+      changeset
+    else
+      if password == password_confirmation do
+        changeset
+      else
+        add_error(changeset, :password_confirmation, "does not match password")
+      end
+    end
+  end
+
+  defp validate_role_permissions(changeset, user, attrs) do
+    current_role = user.role
+    new_role = attrs["role"] || attrs[:role]
+
+    # Only allow role changes if user is admin or if it's a new user
+    cond do
+      # New user - allow any role
+      is_nil(user.id) ->
+        validate_inclusions(changeset, [role: ["user", "admin", "support"]])
+
+      # Existing user - only admin can change roles
+      current_role == "admin" ->
+        validate_inclusions(changeset, [role: ["user", "admin", "support"]])
+
+      # Non-admin user - role cannot be changed
+      new_role != current_role ->
+        add_error(changeset, :role, "cannot be changed by non-admin users")
+
+      # No role change
+      true ->
+        changeset
+    end
+  end
+
+  defp validate_status_transitions(changeset, user, attrs) do
+    current_status = user.status
+    new_status = attrs["status"] || attrs[:status]
+
+    # Only allow status changes if user is admin or if it's a new user
+    cond do
+      # New user - allow any status
+      is_nil(user.id) ->
+        validate_inclusions(changeset, [status: ["ACTIVE", "SUSPENDED"]])
+
+      # Existing user - only admin can change status
+      user.role == "admin" ->
+        validate_inclusions(changeset, [status: ["ACTIVE", "SUSPENDED"]])
+
+      # Non-admin user - status cannot be changed
+      new_status != current_status ->
+        add_error(changeset, :status, "cannot be changed by non-admin users")
+
+      # No status change
+      true ->
+        changeset
     end
   end
 

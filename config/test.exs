@@ -11,12 +11,17 @@ config :ledger_bank_api, LedgerBankApi.Repo,
   hostname: System.get_env("DB_HOST", "localhost"),
   database: "ledger_bank_api_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2,
+  pool_size: System.get_env("MIX_TEST_PARTITION") |> then(fn partition ->
+    case partition do
+      nil -> 10
+      partition -> String.to_integer(partition) * 2 + 10
+    end
+  end),
   port: String.to_integer(System.get_env("DB_PORT", "5432"))
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :ledger_bank_api, LedgerBankApiWeb.Endpoint,
+config :ledger_bank_api_web, LedgerBankApiWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "H3se2fhV4VAb/y2jrP0O5Tv9gwz+yjePKZvOM/IfXGNkuYrWOmK7JzudVoJ27TXV",
   server: true
@@ -34,13 +39,24 @@ config :logger, level: :error
 config :phoenix, :plug_init_mode, :runtime
 
 # Use mock for bank client in tests
-config :ledger_bank_api, :bank_client, LedgerBankApi.External.BankClientMock
+config :ledger_bank_api, :bank_client, LedgerBankApi.Banking.BankApiClientMock
 
-# JWT secret key for testing
-config :ledger_bank_api, :jwt_secret_key, "super-secret-key"
+# JWT configuration for testing
+config :ledger_bank_api, :jwt,
+  issuer: "ledger:test",
+  audience: "ledger:test",
+  secret_key: "super-secret-key-for-tests-only-change-me"
 
 # Joken configuration for testing
 config :joken, default_signer: "HS256"
 
-# Configure Oban for testing
-config :ledger_bank_api, Oban, testing: :inline
+# Configure Oban for testing - use manual mode for better control
+config :ledger_bank_api, Oban,
+  testing: :manual,
+  queues: false,
+  plugins: false
+
+# Cache configuration for testing
+config :ledger_bank_api, :cache,
+  ttl: 300,
+  cleanup_interval: 60

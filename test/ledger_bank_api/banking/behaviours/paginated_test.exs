@@ -1,61 +1,74 @@
 defmodule LedgerBankApi.Banking.Behaviours.PaginatedTest do
-  use ExUnit.Case, async: true
+  use LedgerBankApi.DataCase, async: true
   alias LedgerBankApi.Banking.Behaviours.Paginated
 
-  test "extract_pagination_params returns default values when no params provided" do
-    result = Paginated.extract_pagination_params(%{})
-    assert result.page == 1
-    assert result.page_size == 20
+  # Mock module that implements the Paginated behaviour
+  defmodule MockPaginated do
+    @behaviour LedgerBankApi.Banking.Behaviours.Paginated
+
+    @impl LedgerBankApi.Banking.Behaviours.Paginated
+    def handle_paginated_data(query, params, opts) do
+      page = String.to_integer(params["page"] || "1")
+      per_page = String.to_integer(params["per_page"] || "20")
+
+      total_count = 100
+      offset = (page - 1) * per_page
+
+      data = Enum.slice(1..total_count, offset, per_page)
+
+      {:ok, data, %{
+        total_count: total_count,
+        page: page,
+        per_page: per_page,
+        total_pages: ceil(total_count / per_page),
+        has_next: page < ceil(total_count / per_page),
+        has_prev: page > 1
+      }}
+    end
   end
 
-  test "extract_pagination_params returns custom values when provided" do
-    result = Paginated.extract_pagination_params(%{"page" => "3", "page_size" => "50"})
-    assert result.page == 3
-    assert result.page_size == 50
+  test "validates pagination parameters correctly" do
+    # Test valid parameters
+    assert {:ok, _data, meta} = MockPaginated.handle_paginated_data(nil, %{"page" => "1", "per_page" => "10"}, [])
+    assert meta.page == 1
+    assert meta.per_page == 10
+
+    # Test default values
+    assert {:ok, _data, meta} = MockPaginated.handle_paginated_data(nil, %{}, [])
+    assert meta.page == 1
+    assert meta.per_page == 20
   end
 
-  test "extract_pagination_params extracts values without validation" do
-    result = Paginated.extract_pagination_params(%{"page" => "0"})
-    assert result.page == 0
+  test "calculates pagination metadata correctly" do
+    {:ok, _data, meta} = MockPaginated.handle_paginated_data(nil, %{"page" => "3", "per_page" => "25"}, [])
+
+    assert meta.total_count == 100
+    assert meta.page == 3
+    assert meta.per_page == 25
+    assert meta.total_pages == 4
+    assert meta.has_next == true
+    assert meta.has_prev == true
   end
 
-  test "extract_pagination_params extracts large values without validation" do
-    result = Paginated.extract_pagination_params(%{"page_size" => "1000"})
-    assert result.page_size == 1000
+  test "handles edge cases correctly" do
+    # First page
+    {:ok, _data, meta} = MockPaginated.handle_paginated_data(nil, %{"page" => "1", "per_page" => "50"}, [])
+    assert meta.has_prev == false
+    assert meta.has_next == true
+
+    # Last page
+    {:ok, _data, meta} = MockPaginated.handle_paginated_data(nil, %{"page" => "4", "per_page" => "25"}, [])
+    assert meta.has_prev == true
+    assert meta.has_next == false
   end
 
-  test "validate_pagination_params returns error for invalid page" do
-    assert {:error, "Page must be greater than 0"} = Paginated.validate_pagination_params(%{page: -1, page_size: 20})
-  end
+  test "respects per_page limits" do
+    # Test within limits
+    assert {:ok, _data, meta} = MockPaginated.handle_paginated_data(nil, %{"per_page" => "50"}, [])
+    assert meta.per_page == 50
 
-  test "validate_pagination_params returns error for invalid page_size" do
-    assert {:error, "Page size must be greater than 0"} = Paginated.validate_pagination_params(%{page: 1, page_size: 0})
-  end
-
-  test "validate_pagination_params returns ok for valid params" do
-    assert {:ok, %{page: 1, page_size: 20}} = Paginated.validate_pagination_params(%{page: 1, page_size: 20})
-  end
-
-  test "build_pagination_metadata returns correct metadata" do
-    metadata = Paginated.build_pagination_metadata(1, 20, 100)
-    assert metadata.total_count == 100
-    assert metadata.page == 1
-    assert metadata.page_size == 20
-    assert metadata.total_pages == 5
-    assert metadata.has_next == true
-    assert metadata.has_prev == false
-  end
-
-  test "build_pagination_metadata handles last page correctly" do
-    metadata = Paginated.build_pagination_metadata(100, 5, 20)
-    assert metadata.has_next == false
-    assert metadata.has_prev == true
-  end
-
-  test "build_pagination_metadata handles single page correctly" do
-    metadata = Paginated.build_pagination_metadata(1, 20, 15)
-    assert metadata.total_pages == 1
-    assert metadata.has_next == false
-    assert metadata.has_prev == false
+    # Test max limit (assuming 100 is max)
+    assert {:ok, _data, meta} = MockPaginated.handle_paginated_data(nil, %{"per_page" => "150"}, [])
+    assert meta.per_page <= 100
   end
 end

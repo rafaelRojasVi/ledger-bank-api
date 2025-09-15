@@ -5,22 +5,9 @@ defmodule LedgerBankApiWeb.UserBankLoginsController do
   """
 
   use LedgerBankApiWeb, :controller
-  import LedgerBankApiWeb.BaseController, except: [action: 2]
   import LedgerBankApiWeb.ResponseHelpers
-  require LedgerBankApi.Helpers.AuthorizationHelpers
 
-  alias LedgerBankApi.Banking.Context
   alias LedgerBankApi.Banking.Behaviours.ErrorHandler
-
-  # Standard CRUD operations for user bank logins
-  crud_operations(
-    Context,
-    LedgerBankApi.Banking.Schemas.UserBankLogin,
-    "user_bank_login",
-    user_filter: :user_id,
-    user_field: :user_id,
-    authorization: :user_ownership
-  )
 
   # Custom sync action
   def sync(conn, %{"id" => login_id}) do
@@ -28,7 +15,7 @@ defmodule LedgerBankApiWeb.UserBankLoginsController do
     context = %{action: :sync, user_id: user_id}
 
     case ErrorHandler.with_error_handling(fn ->
-      login = Context.get_user_bank_login!(login_id)
+      {:ok, login} = LedgerBankApi.Banking.get_user_bank_login(login_id)
       # Ensure user can only sync their own logins
       if login.user_id != user_id do
         raise "Unauthorized access to bank login"

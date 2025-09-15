@@ -1,7 +1,36 @@
 defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   @moduledoc """
-  Behaviour and utility functions for consistent error handling across the application.
-  Provides standardized error responses, logging, and error formatting for controllers, workers, and contexts.
+  Centralized error handling for the LedgerBankApi application.
+
+  Provides consistent error responses with proper HTTP status codes and business-specific details.
+
+  ## Usage
+
+      # Business errors (recommended)
+      ErrorHandler.business_error(:insufficient_funds, %{account_id: "acc_123"})
+
+      # Common error handling
+      ErrorHandler.handle_common_error(:not_found, %{action: :get_user})
+
+  ## Core Error Types
+
+  - `:validation_error` → 400 (Bad Request)
+  - `:not_found` → 404 (Not Found)
+  - `:unauthorized` → 401 (Unauthorized)
+  - `:forbidden` → 403 (Forbidden)
+  - `:conflict` → 409 (Conflict)
+  - `:unprocessable_entity` → 422 (Unprocessable Entity)
+  - `:service_unavailable` → 503 (Service Unavailable)
+  - `:internal_server_error` → 500 (Internal Server Error)
+
+  ## Business Error Reasons
+
+  **Payment (422):** `:insufficient_funds`, `:account_inactive`, `:daily_limit_exceeded`, `:amount_exceeds_limit`, `:negative_amount`
+  **Validation (400):** `:invalid_amount_format`, `:missing_fields`
+  **Not Found (404):** `:account_not_found`, `:user_not_found`
+  **Conflict (409):** `:email_already_exists`
+  **Authentication (401):** `:invalid_token`, `:token_expired`, `:invalid_password`, `:invalid_credentials`
+  **Service (503):** `:timeout`
   """
 
   require Logger
@@ -15,6 +44,7 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
   """
   def error_types do
     %{
+      # Core HTTP error types
       validation_error: 400,
       not_found: 404,
       unauthorized: 401,
@@ -23,25 +53,22 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
       unprocessable_entity: 422,
       internal_server_error: 500,
       service_unavailable: 503,
+      timeout: 503,
+      # Business-specific errors (mapped to appropriate HTTP codes)
       insufficient_funds: 422,
       account_inactive: 422,
-      account_closed: 422,
       daily_limit_exceeded: 422,
-      monthly_limit_exceeded: 422,
       amount_exceeds_limit: 422,
-      negative_amount: 400,
+      negative_amount: 422,
       invalid_amount_format: 400,
-      invalid_amount: 400,
-      invalid_direction: 400,
-      already_processed: 409,
-      account_not_found: 404,
-      invalid_account_status: 422,
-      transaction_error: 422,
-      negative_balance: 422,
-      invalid_balance_format: 400,
       missing_fields: 400,
-      restricted_fields: 400,
-      has_pending_payments: 422
+      account_not_found: 404,
+      user_not_found: 404,
+      email_already_exists: 409,
+      invalid_token: 401,
+      token_expired: 401,
+      invalid_password: 401,
+      invalid_credentials: 401
     }
   end
 
@@ -67,6 +94,120 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
         details: details
       }
     }
+  end
+
+  @doc """
+  Creates a standardized error response using the hybrid approach.
+
+  This is the recommended approach for new code:
+  - Use core error types (validation_error, not_found, etc.) for HTTP status mapping
+  - Put business-specific reasons in the details.reason field
+
+  ## Examples
+
+      # Business rule violation
+      create_hybrid_error_response(:unprocessable_entity, "Payment failed", :insufficient_funds, %{account_id: "acc_123"})
+
+      # Validation error with specific field
+      create_hybrid_error_response(:validation_error, "Invalid input", :invalid_amount_format, %{field: "amount"})
+
+      # Service error with specific reason
+      create_hybrid_error_response(:service_unavailable, "External service error", :integration_timeout, %{service: "payment_provider"})
+  """
+  def create_hybrid_error_response(type, message, reason, additional_details \\ %{}) do
+    # Extract context from additional_details if it exists
+    context = Map.get(additional_details, :context, %{})
+
+    # Remove context from additional_details to avoid duplication
+    details_without_context = Map.delete(additional_details, :context)
+
+    # Merge all details together - put additional_details directly in details
+    details = Map.merge(details_without_context, %{
+      reason: reason,
+      context: context
+    })
+
+    create_error_response(type, message, details)
+  end
+
+  @doc """
+  Handles business logic errors using the hybrid approach.
+
+  This function maps business-specific error reasons to appropriate HTTP status codes
+  while preserving the specific business reason in the details.
+  """
+  def handle_business_error(reason, context \\ %{}) do
+    case reason do
+      # Payment business errors -> 422 (Unprocessable Entity)
+      :insufficient_funds ->
+        create_hybrid_error_response(:unprocessable_entity, "Insufficient funds for this transaction", reason, %{context: context})
+      :account_inactive ->
+        create_hybrid_error_response(:unprocessable_entity, "Account is inactive", reason, %{context: context})
+      :daily_limit_exceeded ->
+        create_hybrid_error_response(:unprocessable_entity, "Daily payment limit exceeded", reason, %{context: context})
+      :amount_exceeds_limit ->
+        create_hybrid_error_response(:unprocessable_entity, "Payment amount exceeds single transaction limit", reason, %{context: context})
+      :negative_amount ->
+        create_hybrid_error_response(:unprocessable_entity, "Payment amount cannot be negative", reason, %{context: context})
+
+      # Validation errors -> 400 (Bad Request)
+      :invalid_amount_format ->
+        create_hybrid_error_response(:validation_error, "Invalid amount format", reason, %{context: context})
+      :missing_fields ->
+        create_hybrid_error_response(:validation_error, "Required fields are missing", reason, %{context: context})
+
+      # Not found errors -> 404 (Not Found)
+      :not_found ->
+        create_hybrid_error_response(:not_found, "Resource not found", reason, %{context: context})
+      :account_not_found ->
+        create_hybrid_error_response(:not_found, "Account not found", reason, %{context: context})
+      :user_not_found ->
+        create_hybrid_error_response(:not_found, "User not found", reason, %{context: context})
+
+      # Conflict errors -> 409 (Conflict)
+      :email_already_exists ->
+        create_hybrid_error_response(:conflict, "Email already exists", reason, %{context: context})
+
+      # Authentication errors -> 401 (Unauthorized)
+      :invalid_token ->
+        create_hybrid_error_response(:unauthorized, "Invalid token", reason, %{context: context})
+      :token_expired ->
+        create_hybrid_error_response(:unauthorized, "Token has expired", reason, %{context: context})
+      :invalid_password ->
+        create_hybrid_error_response(:unauthorized, "Invalid password", reason, %{context: context})
+      :invalid_credentials ->
+        create_hybrid_error_response(:unauthorized, "Unauthorized access", reason, %{context: context})
+
+      # Service errors -> 503 (Service Unavailable)
+      :timeout ->
+        create_hybrid_error_response(:service_unavailable, "Request timeout", reason, %{context: context})
+
+      # Fallback for unknown business errors
+      _ ->
+        create_hybrid_error_response(:internal_server_error, "Unknown business error: #{reason}", reason, %{context: context})
+    end
+  end
+
+  @doc """
+  Convenience function for creating business error responses using the hybrid approach.
+
+  This is the recommended way to create business error responses in new code.
+
+  ## Examples
+
+      # Payment business logic
+      ErrorHandler.business_error(:insufficient_funds, %{account_id: "acc_123", available: 50.00, requested: 100.00})
+
+      # Validation business logic
+      ErrorHandler.business_error(:invalid_amount_format, %{field: "amount", value: "abc"})
+
+      # Service business logic
+      ErrorHandler.business_error(:integration_timeout, %{service: "payment_provider", timeout_ms: 30000})
+  """
+  def business_error(reason, additional_details \\ %{}) do
+    # For business_error, we treat additional_details as context to maintain consistency
+    # This avoids code duplication while providing the same functionality
+    handle_business_error(reason, additional_details)
   end
 
   @doc """
@@ -103,11 +244,19 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
         handle_map_error(reason, context)
 
       {:error, reason} when is_atom(reason) ->
-        handle_atom_error(reason, context)
+        handle_business_error(reason, context)
 
       # Handle bare atoms (when error tuples are unwrapped)
       reason when is_atom(reason) ->
-        handle_atom_error(reason, context)
+        handle_business_error(reason, context)
+
+      # Handle bare maps (when error tuples are unwrapped)
+      reason when is_map(reason) ->
+        handle_map_error(reason, context)
+
+      # Handle bare strings (when error tuples are unwrapped)
+      reason when is_binary(reason) ->
+        handle_string_error(reason, context)
 
       # Handle already formatted error responses
       %{error: %{code: _code, message: _message, type: _type}} = error_response ->
@@ -139,7 +288,7 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
     if has_unique_error do
       create_error_response(
         :conflict,
-        "Constraint violation: users_email_index",
+        "Constraint violation: unique constraint",
         %{errors: errors, context: context}
       )
     else
@@ -194,26 +343,63 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
       context: context
     })
 
-    type =
-      if String.starts_with?(message, "Validation error") or
-           String.contains?(message, "Page must be") or
-           String.contains?(message, "Page size") or
-           String.contains?(message, "Invalid amount") or
-           String.contains?(message, "Invalid date") do
+    # Convert to lowercase for case-insensitive matching
+    lower_message = String.downcase(message)
+
+    type = cond do
+      # Validation errors
+      String.starts_with?(lower_message, "validation error") or
+      String.contains?(lower_message, "page must be") or
+      String.contains?(lower_message, "page size") or
+      String.contains?(lower_message, "invalid amount") or
+      String.contains?(lower_message, "invalid date") or
+      String.contains?(lower_message, "invalid email") or
+      String.contains?(lower_message, "invalid format") or
+      String.contains?(lower_message, "required field") or
+      String.contains?(lower_message, "missing required") ->
         :validation_error
-      else
-        if String.contains?(message, "Invalid UUID format") do
-          :not_found
-        else
-          if String.contains?(message, "Unauthorized access") or
-             String.contains?(message, "Access forbidden") or
-             String.contains?(message, "Insufficient permissions") do
-            :forbidden
-          else
-            :unprocessable_entity
-          end
-        end
-      end
+
+      # Not found errors
+      String.contains?(lower_message, "invalid uuid format") or
+      String.contains?(lower_message, "not found") or
+      String.contains?(lower_message, "does not exist") ->
+        :not_found
+
+      # Authorization/Forbidden errors
+      String.contains?(lower_message, "unauthorized access") or
+      String.contains?(lower_message, "access forbidden") or
+      String.contains?(lower_message, "insufficient permissions") or
+      String.contains?(lower_message, "permission denied") or
+      String.contains?(lower_message, "forbidden") ->
+        :forbidden
+
+      # Authentication errors
+      String.contains?(lower_message, "invalid token") or
+      String.contains?(lower_message, "token expired") or
+      String.contains?(lower_message, "authentication failed") or
+      String.contains?(lower_message, "invalid credentials") ->
+        :unauthorized
+
+      # Conflict errors
+      String.contains?(lower_message, "already exists") or
+      String.contains?(lower_message, "duplicate") or
+      String.contains?(lower_message, "conflict") ->
+        :conflict
+
+      # Service errors
+      String.contains?(lower_message, "timeout") or
+      String.contains?(lower_message, "service unavailable") or
+      String.contains?(lower_message, "temporarily unavailable") or
+      String.contains?(lower_message, "external service") or
+      String.contains?(lower_message, "service is down") or
+      String.contains?(lower_message, "service down") or
+      String.contains?(lower_message, "connection timeout") or
+      String.contains?(lower_message, "network error") ->
+        :service_unavailable
+
+      true ->
+        :unprocessable_entity
+    end
 
     # Debug logging for the determined type
     Logger.debug("handle_string_error determined type", %{
@@ -248,66 +434,6 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
     )
   end
 
-  @doc """
-  Handles atom errors.
-  """
-  def handle_atom_error(atom, context) do
-    case atom do
-      :not_found ->
-        create_error_response(:not_found, "Resource not found", %{context: context})
-      :unauthorized ->
-        create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-      :forbidden ->
-        create_error_response(:forbidden, "Access forbidden", %{context: context})
-      :timeout ->
-        create_error_response(:service_unavailable, "Request timeout", %{context: context})
-      :invalid_credentials ->
-        create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-      :invalid_refresh_token ->
-        create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-      # Business-specific error handling
-      :insufficient_funds ->
-        create_error_response(:insufficient_funds, "Insufficient funds for this transaction", %{context: context})
-      :account_inactive ->
-        create_error_response(:account_inactive, "Account is inactive", %{context: context})
-      :account_closed ->
-        create_error_response(:account_closed, "Account is closed", %{context: context})
-      :daily_limit_exceeded ->
-        create_error_response(:daily_limit_exceeded, "Daily payment limit exceeded", %{context: context})
-      :monthly_limit_exceeded ->
-        create_error_response(:monthly_limit_exceeded, "Monthly payment limit exceeded", %{context: context})
-      :amount_exceeds_limit ->
-        create_error_response(:amount_exceeds_limit, "Payment amount exceeds single transaction limit", %{context: context})
-      :negative_amount ->
-        create_error_response(:negative_amount, "Payment amount cannot be negative", %{context: context})
-      :invalid_amount_format ->
-        create_error_response(:invalid_amount_format, "Invalid amount format", %{context: context})
-      :invalid_amount ->
-        create_error_response(:invalid_amount, "Invalid amount", %{context: context})
-      :invalid_direction ->
-        create_error_response(:invalid_direction, "Invalid payment direction", %{context: context})
-      :already_processed ->
-        create_error_response(:already_processed, "Payment has already been processed", %{context: context})
-      :account_not_found ->
-        create_error_response(:account_not_found, "Account not found", %{context: context})
-      :invalid_account_status ->
-        create_error_response(:invalid_account_status, "Invalid account status", %{context: context})
-      :transaction_error ->
-        create_error_response(:transaction_error, "Transaction processing error", %{context: context})
-      :negative_balance ->
-        create_error_response(:negative_balance, "Account balance cannot be negative", %{context: context})
-      :invalid_balance_format ->
-        create_error_response(:invalid_balance_format, "Invalid balance format", %{context: context})
-      :missing_fields ->
-        create_error_response(:missing_fields, "Required fields are missing", %{context: context})
-      :restricted_fields ->
-        create_error_response(:restricted_fields, "Cannot update restricted fields", %{context: context})
-      :has_pending_payments ->
-        create_error_response(:has_pending_payments, "Cannot delete account with pending payments", %{context: context})
-      _ ->
-        create_error_response(:internal_server_error, "Unknown error: #{atom}", %{context: context})
-    end
-  end
 
   @doc """
   Handles unknown errors.
@@ -354,13 +480,14 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
     try do
       case fun.() do
         {:ok, result} ->
-          # Check if result is already a properly formatted response
+          # Check if result is already a properly formatted paginated response
           if is_map(result) and Map.has_key?(result, :data) and Map.has_key?(result, :pagination) do
-            # This is already a properly formatted response from QueryHelpers, return as is
+            # This is already a properly formatted paginated response, return as is
             {:ok, result}
           else
-            # Wrap in success response
-            {:ok, create_success_response(result)}
+            # For non-paginated responses, return the result directly without wrapping
+            # The controller layer will handle the final response formatting
+            {:ok, result}
           end
         {:error, %Ecto.Changeset{} = changeset} -> {:error, handle_changeset_error(changeset, context)}
         {:error, %Ecto.ConstraintError{} = constraint_error} -> {:error, handle_constraint_error(constraint_error, context)}
@@ -370,7 +497,7 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
         # Handle already formatted error responses
         %{error: %{code: _code, message: _message, type: _type}} = error_response ->
           {:error, error_response}
-        result -> {:ok, create_success_response(result)}
+        result -> {:ok, result}
       end
     rescue
       error ->
@@ -392,7 +519,10 @@ defmodule LedgerBankApi.Banking.Behaviours.ErrorHandler do
     end
   end
 
-  defp get_error_code(type) do
+  @doc """
+  Gets the HTTP status code for an error type.
+  """
+  def get_error_code(type) do
     error_types()[type] || 500
   end
 end

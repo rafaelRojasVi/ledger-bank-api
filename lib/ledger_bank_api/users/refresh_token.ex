@@ -10,8 +10,8 @@ defmodule LedgerBankApi.Users.RefreshToken do
   """
   use Ecto.Schema
   import Ecto.Changeset
-  import LedgerBankApi.CrudHelpers
 
+  @derive {Jason.Encoder, only: [:id, :jti, :expires_at, :revoked_at, :user_id, :inserted_at, :updated_at]}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -21,7 +21,7 @@ defmodule LedgerBankApi.Users.RefreshToken do
     field :revoked_at, :utc_datetime
     belongs_to :user, LedgerBankApi.Users.User, type: :binary_id
 
-    timestamps()
+    timestamps(type: :utc_datetime)
   end
 
   @doc """
@@ -30,16 +30,16 @@ defmodule LedgerBankApi.Users.RefreshToken do
   def changeset(struct, attrs) do
     struct
     |> cast(attrs, [:user_id, :jti, :expires_at, :revoked_at])
-    |> require_fields([:user_id, :jti, :expires_at])
-    |> unique_constraints([:jti])
-    |> foreign_key_constraints([:user_id])
+    |> validate_required([:user_id, :jti, :expires_at])
+    |> unique_constraint(:jti, name: :refresh_tokens_jti_index)
+    |> foreign_key_constraint(:user_id)
   end
 
   @doc """
   Returns true if the token is revoked.
   """
   def revoked?(%__MODULE__{revoked_at: nil}), do: false
-  def revoked?(_), do: true
+  def revoked?(%__MODULE__{revoked_at: _}), do: true
 
   @doc """
   Returns true if the token is expired.

@@ -4,7 +4,12 @@ defmodule LedgerBankApi.Banking.Schemas.Bank do
   """
   use Ecto.Schema
   import Ecto.Changeset
-  import LedgerBankApi.CrudHelpers
+  import LedgerBankApi.Database.ValidationMacros
+
+  @derive {Jason.Encoder, only: [:id, :name, :country, :logo_url, :api_endpoint, :status, :integration_module, :code, :inserted_at, :updated_at]}
+
+  # Use common validation functions
+  use_common_validations()
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -25,42 +30,82 @@ defmodule LedgerBankApi.Banking.Schemas.Bank do
   @fields [:name, :country, :logo_url, :api_endpoint, :status, :integration_module, :code]
   @required_fields [:name, :country, :code]
 
-  default_changeset(:base_changeset, @fields, @required_fields)
+  def base_changeset(bank, attrs) do
+    bank
+    |> cast(attrs, @fields)
+    |> validate_required(@required_fields)
+  end
 
   def changeset(bank, attrs) do
     bank
     |> base_changeset(attrs)
-    |> unique_constraints([:name, :code])
+    |> unique_constraint(:name, name: :banks_name_index)
+    |> unique_constraint(:code, name: :banks_code_index)
     |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])
     |> validate_format(:code, ~r/^[A-Z0-9_]+$/)
     |> validate_length(:code, min: 3, max: 32)
     |> validate_country_code()
     |> validate_name_length()
-    |> validate_url_format()
+    |> validate_logo_url_format()
+    |> validate_api_endpoint_format()
+    |> validate_integration_module()
+    |> validate_name_uniqueness()
   end
 
-  defp validate_country_code(changeset) do
-    validate_format(changeset, :country, ~r/^[A-Z]{2}$/, message: "must be a valid 2-letter country code (e.g., US, UK)")
+  @doc """
+  Builds a changeset for bank updates (without changing critical fields).
+  """
+  def update_changeset(bank, attrs) do
+    bank
+    |> cast(attrs, [:name, :logo_url, :api_endpoint, :status, :integration_module])
+    |> validate_required([:name])
+    |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])
+    |> validate_name_length()
+    |> validate_logo_url_format()
+    |> validate_api_endpoint_format()
+    |> validate_integration_module()
+    |> validate_name_uniqueness()
   end
 
-  defp validate_name_length(changeset) do
-    validate_length(changeset, :name, min: 2, max: 100)
-  end
 
-  defp validate_url_format(changeset) do
-    logo_url = get_change(changeset, :logo_url)
-    api_endpoint = get_change(changeset, :api_endpoint)
-
-    changeset
-    |> validate_url_field(:logo_url, logo_url)
-    |> validate_url_field(:api_endpoint, api_endpoint)
-  end
-
-  defp validate_url_field(changeset, field, value) do
-    if is_nil(value) or value == "" do
+  defp validate_integration_module(changeset) do
+    integration_module = get_change(changeset, :integration_module)
+    if is_nil(integration_module) or integration_module == "" do
       changeset
     else
-      validate_format(changeset, field, ~r/^https?:\/\/.+/, message: "must be a valid URL starting with http:// or https://")
+      # Validate that the module string is a valid Elixir module name
+      if String.match?(integration_module, ~r/^[A-Z][a-zA-Z0-9_]*(\.[A-Z][a-zA-Z0-9_]*)*$/) do
+        changeset
+      else
+        add_error(changeset, :integration_module, "must be a valid Elixir module name (e.g., MyApp.Module)")
+      end
     end
   end
+
+  defp validate_name_uniqueness(changeset) do
+    name = get_change(changeset, :name)
+    if is_nil(name) do
+      changeset
+    else
+      # Check for common bank name patterns and validate
+      if String.match?(name, ~r/^[a-zA-Z0-9\s\-&.,()]+$/) do
+        changeset
+      else
+        add_error(changeset, :name, "contains invalid characters. Only letters, numbers, spaces, and common punctuation are allowed")
+      end
+    end
+  end
+
+  @doc """
+  Returns true if the bank is active.
+  """
+  def is_active?(%__MODULE__{status: "ACTIVE"}), do: true
+  def is_active?(_), do: false
+
+  @doc """
+  Returns true if the bank has an integration module configured.
+  """
+  def has_integration?(%__MODULE__{integration_module: nil}), do: false
+  def has_integration?(%__MODULE__{integration_module: ""}), do: false
+  def has_integration?(_), do: true
 end

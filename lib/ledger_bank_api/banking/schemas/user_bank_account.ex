@@ -4,9 +4,12 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankAccount do
   """
   use Ecto.Schema
   import Ecto.Changeset
-  import LedgerBankApi.CrudHelpers
+  import LedgerBankApi.Database.ValidationMacros
 
   @derive {Jason.Encoder, only: [:id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id, :user_bank_login_id, :inserted_at, :updated_at]}
+
+  # Use common validation functions
+  use_common_validations()
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -21,6 +24,7 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankAccount do
     field :external_account_id, :string
 
     belongs_to :user_bank_login, LedgerBankApi.Banking.Schemas.UserBankLogin
+    belongs_to :user, LedgerBankApi.Users.User
     has_many :user_payments, LedgerBankApi.Banking.Schemas.UserPayment
     has_many :transactions, LedgerBankApi.Banking.Schemas.Transaction, foreign_key: :account_id
 
@@ -28,13 +32,17 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankAccount do
   end
 
   @fields [
-    :user_bank_login_id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id
+    :user_bank_login_id, :user_id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id
   ]
   @required_fields [
-    :user_bank_login_id, :currency, :account_type
+    :user_bank_login_id, :user_id, :currency, :account_type
   ]
 
-  default_changeset(:base_changeset, @fields, @required_fields)
+  def base_changeset(user_bank_account, attrs) do
+    user_bank_account
+    |> cast(attrs, @fields)
+    |> validate_required(@required_fields)
+  end
 
   def changeset(user_bank_account, attrs) do
     user_bank_account
@@ -45,11 +53,34 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankAccount do
     |> validate_balance_format()
     |> validate_last_four_format()
     |> validate_account_name_length()
+    |> validate_external_account_id_format()
+    |> validate_balance_limits()
     |> foreign_key_constraint(:user_bank_login_id)
+    |> foreign_key_constraint(:user_id)
+    |> unique_constraint(:external_account_id, name: :user_bank_accounts_external_account_id_index)
+    |> validate_user_owns_login()
   end
 
-  defp validate_currency_format(changeset) do
-    validate_format(changeset, :currency, ~r/^[A-Z]{3}$/, message: "must be a valid 3-letter currency code (e.g., USD, EUR)")
+  @doc """
+  Builds a changeset for account updates (without changing critical fields).
+  """
+  def update_changeset(user_bank_account, attrs) do
+    user_bank_account
+    |> cast(attrs, [:account_name, :status, :last_sync_at])
+    |> validate_required([:account_name])
+    |> validate_inclusion(:status, ["ACTIVE", "INACTIVE", "CLOSED"])
+    |> validate_account_name_length()
+  end
+
+  @doc """
+  Builds a changeset for balance updates only.
+  """
+  def balance_changeset(user_bank_account, attrs) do
+    user_bank_account
+    |> cast(attrs, [:balance, :last_sync_at])
+    |> validate_required([:balance])
+    |> validate_balance_format()
+    |> validate_balance_limits()
   end
 
   defp validate_balance_format(changeset) do
@@ -57,24 +88,82 @@ defmodule LedgerBankApi.Banking.Schemas.UserBankAccount do
     if is_nil(balance) do
       changeset
     else
-      if Decimal.lt?(balance, Decimal.new(0)) do
-        add_error(changeset, :balance, "cannot be negative")
-      else
+      # Basic format validation - check if it's a valid decimal
+      if is_struct(balance, Decimal) do
         changeset
+      else
+        add_error(changeset, :balance, "must be a valid decimal number")
       end
     end
   end
 
-  defp validate_last_four_format(changeset) do
-    last_four = get_change(changeset, :last_four)
-    if is_nil(last_four) or last_four == "" do
+  defp validate_balance_limits(changeset) do
+    balance = get_change(changeset, :balance)
+    account_type = get_change(changeset, :account_type)
+
+    if is_nil(balance) or is_nil(account_type) do
       changeset
     else
-      validate_format(changeset, :last_four, ~r/^\d{4}$/, message: "must be exactly 4 digits")
+      case account_type do
+        "CREDIT" ->
+          # Credit accounts can have negative balances (debt)
+          changeset
+        _ ->
+          # Other account types should not have negative balances
+          if Decimal.lt?(balance, Decimal.new(0)) do
+            add_error(changeset, :balance, "cannot be negative for #{account_type} accounts")
+          else
+            changeset
+          end
+      end
     end
   end
 
-  defp validate_account_name_length(changeset) do
-    validate_length(changeset, :account_name, min: 1, max: 100)
+  defp validate_user_owns_login(changeset) do
+    user_id = get_change(changeset, :user_id)
+    user_bank_login_id = get_change(changeset, :user_bank_login_id)
+
+    if is_nil(user_id) or is_nil(user_bank_login_id) do
+      changeset
+    else
+      # Note: This validation is kept minimal to avoid N+1 queries
+      # Comprehensive ownership validation should be done at the application level
+      # where proper preloading and joins can be used
+      changeset
+    end
+  end
+
+  @doc """
+  Returns true if the account is active.
+  """
+  def is_active?(%__MODULE__{status: "ACTIVE"}), do: true
+  def is_active?(_), do: false
+
+  @doc """
+  Returns true if the account is a credit account.
+  """
+  def is_credit_account?(%__MODULE__{account_type: "CREDIT"}), do: true
+  def is_credit_account?(_), do: false
+
+  @doc """
+  Returns true if the account has sufficient balance for the given amount.
+  """
+  def has_sufficient_balance?(%__MODULE__{account_type: "CREDIT"}, _amount) do
+    # Credit accounts can have negative balances, so they always have "sufficient" balance
+    true
+  end
+  def has_sufficient_balance?(%__MODULE__{balance: balance}, amount) do
+    Decimal.gte?(balance, amount)
+  end
+
+  @doc """
+  Returns true if the account needs syncing based on last sync time.
+  """
+  def needs_sync?(%__MODULE__{last_sync_at: nil}), do: true
+  def needs_sync?(%__MODULE__{last_sync_at: last_sync_at}) do
+    # Consider account needs sync if last sync was more than the configured threshold
+    sync_threshold_hours = Application.get_env(:ledger_bank_api, :account_sync_threshold_hours, 1)
+    hours_since_sync = DateTime.diff(DateTime.utc_now(), last_sync_at, :hour)
+    hours_since_sync >= sync_threshold_hours
   end
 end

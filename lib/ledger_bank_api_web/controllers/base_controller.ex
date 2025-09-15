@@ -7,7 +7,6 @@ defmodule LedgerBankApiWeb.BaseController do
   use LedgerBankApiWeb, :controller
 
   alias LedgerBankApi.Banking.Behaviours.ErrorHandler
-  alias LedgerBankApi.Helpers.AuthorizationHelpers
 
   @doc """
   Macro to define standard CRUD operations for a resource with advanced features.
@@ -191,7 +190,7 @@ defmodule LedgerBankApiWeb.BaseController do
       end
       defp maybe_authorize_access(resource, user_id, :admin_only) do
         current_user = get_current_user(user_id)
-        AuthorizationHelpers.require_role!(current_user, "admin")
+        if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
       end
       defp maybe_authorize_access(resource, user_id, :admin_or_owner) do
         current_user = get_current_user(user_id)
@@ -206,7 +205,7 @@ defmodule LedgerBankApiWeb.BaseController do
             current_user_role: current_user.role,
             resource: inspect(resource)
           })
-          AuthorizationHelpers.require_role!(current_user, "admin")
+          if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
         end
       end
 
@@ -219,12 +218,12 @@ defmodule LedgerBankApiWeb.BaseController do
       end
       defp maybe_authorize_list_access(user_id, :admin_only) do
         current_user = get_current_user(user_id)
-        AuthorizationHelpers.require_role!(current_user, "admin")
+        if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
       end
       defp maybe_authorize_list_access(user_id, :admin_or_owner) do
         # For list operations, admin_or_owner means only admins can list all resources
         current_user = get_current_user(user_id)
-        AuthorizationHelpers.require_role!(current_user, "admin")
+        if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
       end
 
       defp get_current_user(user_id) do

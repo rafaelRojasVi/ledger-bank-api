@@ -5,20 +5,8 @@ defmodule LedgerBankApiWeb.UsersController do
   """
 
   use LedgerBankApiWeb, :controller
-  import LedgerBankApiWeb.BaseController, except: [action: 2]
-  require LedgerBankApi.Helpers.AuthorizationHelpers
 
-  alias LedgerBankApi.Users.Context
   alias LedgerBankApi.Banking.Behaviours.ErrorHandler
-  alias LedgerBankApi.Helpers.AuthorizationHelpers
-
-  # Standard CRUD operations for users (admin only)
-  crud_operations(
-    Context,
-    LedgerBankApi.Users.User,
-    "user",
-    authorization: :admin_or_owner
-  )
 
   # Custom admin actions
   def suspend(conn, %{"id" => user_id}) do
@@ -26,12 +14,12 @@ defmodule LedgerBankApiWeb.UsersController do
     context = %{action: :suspend, user_id: current_user_id, target_user_id: user_id}
 
     # Require admin role
-    current_user = LedgerBankApi.Users.Context.get!(current_user_id)
-    AuthorizationHelpers.require_role!(current_user, "admin")
+    {:ok, current_user} = LedgerBankApi.Users.get_user(current_user_id)
+    if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
 
     case ErrorHandler.with_error_handling(fn ->
-      user = Context.get!(user_id)
-      Context.suspend_user(user)
+      {:ok, user} = LedgerBankApi.Users.get_user(user_id)
+      LedgerBankApi.Users.update_user(user, %{status: "SUSPENDED"})
     end, context) do
       {:ok, response} ->
         conn
@@ -48,12 +36,12 @@ defmodule LedgerBankApiWeb.UsersController do
     context = %{action: :activate, user_id: current_user_id, target_user_id: user_id}
 
     # Require admin role
-    current_user = LedgerBankApi.Users.Context.get!(current_user_id)
-    AuthorizationHelpers.require_role!(current_user, "admin")
+    {:ok, current_user} = LedgerBankApi.Users.get_user(current_user_id)
+    if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
 
     case ErrorHandler.with_error_handling(fn ->
-      user = Context.get!(user_id)
-      Context.activate_user(user)
+      {:ok, user} = LedgerBankApi.Users.get_user(user_id)
+      LedgerBankApi.Users.update_user(user, %{status: "ACTIVE"})
     end, context) do
       {:ok, response} ->
         conn
@@ -70,11 +58,11 @@ defmodule LedgerBankApiWeb.UsersController do
     context = %{action: :list_by_role, user_id: current_user_id, role: role}
 
     # Require admin role
-    current_user = LedgerBankApi.Users.Context.get!(current_user_id)
-    AuthorizationHelpers.require_role!(current_user, "admin")
+    {:ok, current_user} = LedgerBankApi.Users.get_user(current_user_id)
+    if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
 
     case ErrorHandler.with_error_handling(fn ->
-      Context.list_users_by_role(role)
+      LedgerBankApi.Users.list_users_by_role(role)
     end, context) do
       {:ok, response} ->
         conn

@@ -1,7 +1,11 @@
 defmodule LedgerBankApi.Banking.BankApiClient do
   @callback fetch_accounts(map()) :: {:ok, list()} | {:error, any()}
   @callback fetch_transactions(any(), map()) :: {:ok, list()} | {:error, any()}
+  @callback fetch_transactions(map()) :: {:ok, list()} | {:error, any()}
   @callback fetch_balance(any(), map()) :: {:ok, map()} | {:error, any()}
+  @callback create_payment(map()) :: {:ok, map()} | {:error, any()}
+  @callback get_payment_status(map()) :: {:ok, map()} | {:error, any()}
+  @callback refresh_token(map()) :: {:ok, map()} | {:error, any()}
 
   @doc """
   Generic mapping helper for bank integrations.

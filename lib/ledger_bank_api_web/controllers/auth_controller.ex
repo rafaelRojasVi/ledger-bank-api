@@ -7,9 +7,23 @@ defmodule LedgerBankApiWeb.AuthController do
   use LedgerBankApiWeb, :controller
   require LedgerBankApiWeb.BaseController
 
-  alias LedgerBankApi.Users.Context
   alias LedgerBankApiWeb.AuthJSON
   alias LedgerBankApi.Banking.Behaviours.ErrorHandler
+
+  # Helper functions for token extraction
+  defp extract_jti_from_token(token) do
+    case Joken.peek_claims(token) do
+      {:ok, %{"jti" => jti}} -> jti
+      _ -> nil
+    end
+  end
+
+  defp extract_exp_from_token(token) do
+    case Joken.peek_claims(token) do
+      {:ok, %{"exp" => exp}} -> DateTime.from_unix!(exp)
+      _ -> nil
+    end
+  end
 
   @doc """
   Register a new user.
@@ -18,13 +32,17 @@ defmodule LedgerBankApiWeb.AuthController do
     context = %{action: :register, email: user_params["email"]}
 
     case ErrorHandler.with_error_handling(fn ->
-      Context.create_user(user_params)
+      LedgerBankApi.Users.create_user(user_params)
     end, context) do
       {:ok, response} ->
         user = response.data
-        {:ok, access_token} = LedgerBankApi.Auth.JWT.generate_access_token(user)
-        {:ok, refresh_token} = LedgerBankApi.Auth.JWT.generate_refresh_token(user)
-        {:ok, _db_token} = Context.store_refresh_token(user, refresh_token)
+        {:ok, access_token} = LedgerBankApi.Auth.generate_access_token(user)
+        {:ok, refresh_token} = LedgerBankApi.Auth.generate_refresh_token(user)
+        {:ok, _db_token} = LedgerBankApi.Users.create_refresh_token(%{
+          jti: extract_jti_from_token(refresh_token),
+          user_id: user.id,
+          expires_at: extract_exp_from_token(refresh_token)
+        })
 
         conn
         |> put_status(201)
@@ -52,13 +70,20 @@ defmodule LedgerBankApiWeb.AuthController do
   def login(conn, %{"email" => email, "password" => password}) do
     context = %{action: :login, email: email}
 
-    case Context.login_user(email, password) do
-      {:ok, user, access_token, refresh_token} ->
+    case LedgerBankApi.Auth.authenticate_user(email, password) do
+      {:ok, user} ->
+        {:ok, access_token} = LedgerBankApi.Auth.generate_access_token(user)
+        {:ok, refresh_token} = LedgerBankApi.Auth.generate_refresh_token(user)
+
         conn
         |> put_status(200)
         |> json(AuthJSON.auth_response(user, access_token, refresh_token, "Login successful"))
 
-      {:error, :invalid_credentials} ->
+      {:error, :invalid_password} ->
+        error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
+        conn |> put_status(401) |> json(error_response)
+
+      {:error, :user_not_found} ->
         error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
         conn |> put_status(401) |> json(error_response)
     end
@@ -80,13 +105,28 @@ defmodule LedgerBankApiWeb.AuthController do
   def refresh(conn, %{"refresh_token" => refresh_token}) do
     context = %{action: :refresh_token}
 
-    case Context.refresh_tokens(refresh_token) do
-      {:ok, user, new_access_token, new_refresh_token} ->
-        conn
-        |> put_status(200)
-        |> json(AuthJSON.auth_response(user, new_access_token, new_refresh_token, "Tokens refreshed successfully"))
+    case LedgerBankApi.Auth.refresh_access_token(refresh_token) do
+      {:ok, new_access_token} ->
+        # Get user from the refresh token to generate new refresh token
+        case LedgerBankApi.Auth.verify_refresh_token(refresh_token) do
+          {:ok, claims} ->
+            user_id = claims["sub"]
+            case LedgerBankApi.Users.get_user(user_id) do
+              {:ok, user} ->
+                {:ok, new_refresh_token} = LedgerBankApi.Auth.generate_refresh_token(user)
+                conn
+                |> put_status(200)
+                |> json(AuthJSON.auth_response(user, new_access_token, new_refresh_token, "Tokens refreshed successfully"))
+              {:error, _} ->
+                error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
+                conn |> put_status(401) |> json(error_response)
+            end
+          {:error, _} ->
+            error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
+            conn |> put_status(401) |> json(error_response)
+        end
 
-      {:error, :invalid_refresh_token} ->
+      {:error, _reason} ->
         error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
         conn |> put_status(401) |> json(error_response)
     end
@@ -110,7 +150,7 @@ defmodule LedgerBankApiWeb.AuthController do
     context = %{action: :logout, user_id: user_id}
 
     case ErrorHandler.with_error_handling(fn ->
-      Context.revoke_all_refresh_tokens_for_user(user_id)
+      LedgerBankApi.Users.revoke_all_refresh_tokens(user_id)
     end, context) do
       {:ok, _response} ->
         conn
@@ -131,7 +171,7 @@ defmodule LedgerBankApiWeb.AuthController do
     context = %{action: :get_profile, user_id: user_id}
 
     case ErrorHandler.with_error_handling(fn ->
-      Context.get!(user_id)
+      LedgerBankApi.Users.get_user(user_id)
     end, context) do
       {:ok, response} ->
         conn

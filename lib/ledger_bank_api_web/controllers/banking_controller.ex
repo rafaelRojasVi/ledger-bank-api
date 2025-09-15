@@ -7,43 +7,21 @@ defmodule LedgerBankApiWeb.BankingController do
   use LedgerBankApiWeb, :controller
 
   import LedgerBankApiWeb.ResponseHelpers
-  require LedgerBankApi.Helpers.AuthorizationHelpers
 
-  alias LedgerBankApi.Banking.Context
-  alias LedgerBankApi.Banking.Behaviours.{Paginated, Filterable, Sortable, ErrorHandler}
+  alias LedgerBankApi.Banking.Behaviours.ErrorHandler
   alias LedgerBankApi.Workers.BankSyncWorker
 
 
 
   # Custom CRUD operations for user bank accounts with indirect user relationship
-  def index(conn, params) do
+  def index(conn, _params) do
     user_id = conn.assigns.current_user_id
     context = %{action: :list_user_bank_accounts, user_id: user_id}
 
-        case ErrorHandler.with_error_handling(fn ->
-      # Handle pagination, filtering, and sorting
-      with {:ok, pagination_params} <- Paginated.validate_pagination_params(Paginated.extract_pagination_params(params)),
-           {:ok, filter_params} <- Filterable.validate_filter_params(Filterable.extract_filter_params(params)) do
-
-        # Extract and validate sort params with correct default for user bank accounts
-        sort_params = %{
-          sort_by: Map.get(params, "sort_by", "created_at"),
-          sort_order: Map.get(params, "sort_order", "desc")
-        }
-
-        with {:ok, validated_sort_params} <- Sortable.validate_sort_params(sort_params, ["balance", "account_name", "created_at", "updated_at"]) do
-          accounts = Context.list_user_bank_accounts_with_filters(pagination_params, filter_params, validated_sort_params, user_id, :user_id)
-
-          # Preload associations needed for JSON rendering
-          LedgerBankApi.Repo.preload(accounts, [user_bank_login: [bank_branch: :bank]])
-        else
-          {:error, reason} ->
-            {:error, %{type: :validation_error, message: reason}}
-        end
-      else
-        {:error, reason} ->
-          {:error, %{type: :validation_error, message: reason}}
-      end
+    case ErrorHandler.with_error_handling(fn ->
+      accounts = LedgerBankApi.Banking.list_user_bank_accounts_for_user(user_id)
+      # Preload associations needed for JSON rendering
+      LedgerBankApi.Repo.preload(accounts, [user_bank_login: [bank_branch: :bank]])
     end, context) do
       {:ok, response} ->
         render(conn, :index, %{user_bank_account: response.data})
@@ -62,7 +40,7 @@ defmodule LedgerBankApiWeb.BankingController do
         :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
         {:ok, _uuid} ->
           # Get account first, then check authorization
-          account = Context.get_user_bank_account_with_preloads!(id, [user_bank_login: [bank_branch: :bank]])
+          {:ok, account} = LedgerBankApi.Banking.get_user_bank_account(id)
 
           # Ensure user can only access their own accounts
           if account.user_bank_login.user_id != user_id do
@@ -80,7 +58,7 @@ defmodule LedgerBankApiWeb.BankingController do
   end
 
   # Custom banking actions
-  def transactions(conn, %{"id" => account_id} = params) do
+  def transactions(conn, %{"id" => account_id} = _params) do
     user_id = conn.assigns.current_user_id
     context = %{action: :transactions, user_id: user_id}
 
@@ -89,23 +67,14 @@ defmodule LedgerBankApiWeb.BankingController do
       case Ecto.UUID.cast(account_id) do
         :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
         {:ok, _uuid} ->
-          account = Context.get_user_bank_account_with_preloads!(account_id, [user_bank_login: [bank_branch: :bank]])
+          {:ok, account} = LedgerBankApi.Banking.get_user_bank_account(account_id)
 
           # Ensure user can only access their own accounts
           if account.user_bank_login.user_id != user_id do
             {:error, %{type: :forbidden, message: "Unauthorized access to account"}}
           else
-            # Handle pagination, filtering, and sorting
-            with {:ok, pagination_params} <- Paginated.validate_pagination_params(Paginated.extract_pagination_params(params)),
-                 {:ok, filter_params} <- Filterable.validate_filter_params(Filterable.extract_filter_params(params)),
-                 {:ok, sort_params} <- Sortable.validate_sort_params(Sortable.extract_sort_params(params), ["posted_at", "amount", "description"]) do
-
-              transactions = Context.list_transactions_with_filters(pagination_params, filter_params, sort_params, account_id, "account_id")
-              %{transactions: transactions, account: account}
-            else
-              {:error, reason} ->
-                {:error, %{type: :validation_error, message: reason}}
-            end
+            transactions = LedgerBankApi.Banking.list_transactions_for_account(account_id)
+            %{transactions: transactions, account: account}
           end
       end
     end, context) do
@@ -127,7 +96,7 @@ defmodule LedgerBankApiWeb.BankingController do
       case Ecto.UUID.cast(account_id) do
         :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
         {:ok, _uuid} ->
-          account = Context.get_user_bank_account_with_preloads!(account_id, [user_bank_login: [bank_branch: :bank]])
+          {:ok, account} = LedgerBankApi.Banking.get_user_bank_account(account_id)
 
           # Ensure user can only access their own accounts
           if account.user_bank_login.user_id != user_id do
@@ -155,13 +124,13 @@ defmodule LedgerBankApiWeb.BankingController do
       case Ecto.UUID.cast(account_id) do
         :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
         {:ok, _uuid} ->
-          account = Context.get_user_bank_account_with_preloads!(account_id, [user_bank_login: [bank_branch: :bank]])
+          {:ok, account} = LedgerBankApi.Banking.get_user_bank_account(account_id)
 
           # Ensure user can only access their own accounts
           if account.user_bank_login.user_id != user_id do
             {:error, %{type: :forbidden, message: "Unauthorized access to account"}}
           else
-            payments = Context.list_payments_for_user_bank_account(account_id)
+            payments = LedgerBankApi.Banking.list_user_payments_for_account(account_id)
 
             %{payments: payments, account: account}
           end
@@ -186,7 +155,7 @@ defmodule LedgerBankApiWeb.BankingController do
         :error -> {:error, %{type: :not_found, message: "Invalid UUID format"}}
         {:ok, _uuid} ->
           # Verify the login belongs to the user
-          login = Context.get_user_bank_login_with_preloads!(login_id, [:user])
+          {:ok, login} = LedgerBankApi.Banking.get_user_bank_login(login_id)
 
           if login.user_id != user_id do
             {:error, %{type: :forbidden, message: "Unauthorized access to bank login"}}

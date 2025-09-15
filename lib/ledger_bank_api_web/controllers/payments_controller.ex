@@ -5,25 +5,9 @@ defmodule LedgerBankApiWeb.PaymentsController do
   """
 
   use LedgerBankApiWeb, :controller
-  import LedgerBankApiWeb.BaseController, except: [action: 2]
   import LedgerBankApiWeb.ResponseHelpers
-  require LedgerBankApi.Helpers.AuthorizationHelpers
 
-  alias LedgerBankApi.Banking.Context
   alias LedgerBankApi.Banking.Behaviours.ErrorHandler
-
-
-
-  # Standard CRUD operations for payments with user filtering
-  crud_operations(
-    Context,
-    LedgerBankApi.Banking.Schemas.UserPayment,
-    "payment",
-    user_filter: :user_id,
-    authorization: :user_ownership,
-    allowed_sort_fields: ["id", "amount", "direction", "description", "payment_type", "status", "posted_at", "external_transaction_id", "inserted_at", "updated_at"],
-    default_sort_field: "inserted_at"
-  )
 
 
 
@@ -33,10 +17,10 @@ defmodule LedgerBankApiWeb.PaymentsController do
     context = %{action: :process, user_id: user_id}
 
     case ErrorHandler.with_error_handling(fn ->
-      payment = Context.get_user_payment!(payment_id)
+      {:ok, payment} = LedgerBankApi.Banking.get_user_payment(payment_id)
       # Ensure user can only process payments from their accounts
       # Preload the user_bank_login association to access user_id
-      account = Context.get_user_bank_account_with_preloads!(payment.user_bank_account_id, [:user_bank_login])
+      {:ok, account} = LedgerBankApi.Banking.get_user_bank_account(payment.user_bank_account_id)
       if account.user_bank_login.user_id != user_id do
         raise "Unauthorized access to payment"
       end
@@ -67,12 +51,12 @@ defmodule LedgerBankApiWeb.PaymentsController do
     case ErrorHandler.with_error_handling(fn ->
       # Verify the account belongs to the user
       # Preload the user_bank_login association to access user_id
-      account = Context.get_user_bank_account_with_preloads!(account_id, [:user_bank_login])
+      {:ok, account} = LedgerBankApi.Banking.get_user_bank_account(account_id)
       if account.user_bank_login.user_id != user_id do
         raise "Unauthorized access to account"
       end
 
-      Context.list_payments_for_user_bank_account(account_id)
+      LedgerBankApi.Banking.list_user_payments_for_account(account_id)
     end, context) do
       {:ok, response} ->
         conn

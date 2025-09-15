@@ -39,11 +39,12 @@ config :phoenix, :plug_init_mode, :runtime
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
-# JWT Configuration
-config :ledger_bank_api, :jwt_secret_key, "dev-secret-key-change-in-development"
+# JWT Configuration for development
+# Generate a strong secret: openssl rand -base64 48
+config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET", "dev-secret-please-change-this-to-a-strong-64-char-secret-in-development")
 
 # Joken default signer for development
-config :joken, default_signer: "dev-secret-key-change-in-development"
+config :joken, default_signer: System.get_env("JWT_SECRET", "dev-secret-please-change-this-to-a-strong-64-char-secret-in-development")
 
 # Configure Oban for development
 config :ledger_bank_api, Oban,

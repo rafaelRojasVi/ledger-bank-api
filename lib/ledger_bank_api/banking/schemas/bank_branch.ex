@@ -4,7 +4,12 @@ defmodule LedgerBankApi.Banking.Schemas.BankBranch do
   """
   use Ecto.Schema
   import Ecto.Changeset
-  import LedgerBankApi.CrudHelpers
+  import LedgerBankApi.Database.ValidationMacros
+
+  @derive {Jason.Encoder, only: [:id, :name, :iban, :country, :routing_number, :swift_code, :bank_id, :inserted_at, :updated_at]}
+
+  # Use common validation functions
+  use_common_validations()
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -24,12 +29,17 @@ defmodule LedgerBankApi.Banking.Schemas.BankBranch do
   @fields [:name, :iban, :country, :routing_number, :swift_code, :bank_id]
   @required_fields [:name, :country, :bank_id]
 
-  default_changeset(:base_changeset, @fields, @required_fields)
+  def base_changeset(bank_branch, attrs) do
+    bank_branch
+    |> cast(attrs, @fields)
+    |> validate_required(@required_fields)
+  end
 
   def changeset(bank_branch, attrs) do
     bank_branch
     |> base_changeset(attrs)
-    |> unique_constraint(:iban)
+    |> unique_constraint(:iban, name: :bank_branches_iban_index)
+    |> unique_constraint(:swift_code, name: :bank_branches_swift_code_index)
     |> foreign_key_constraint(:bank_id)
     |> validate_country_code()
     |> validate_name_length()
@@ -38,41 +48,4 @@ defmodule LedgerBankApi.Banking.Schemas.BankBranch do
     |> validate_routing_number_format()
   end
 
-  defp validate_country_code(changeset) do
-    validate_format(changeset, :country, ~r/^[A-Z]{2}$/, message: "must be a valid 2-letter country code (e.g., US, UK)")
-  end
-
-  defp validate_name_length(changeset) do
-    validate_length(changeset, :name, min: 2, max: 100)
-  end
-
-  defp validate_iban_format(changeset) do
-    iban = get_change(changeset, :iban)
-    if is_nil(iban) or iban == "" do
-      changeset
-    else
-      validate_format(changeset, :iban, ~r/^[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}([A-Z0-9]?){0,16}$/,
-        message: "must be a valid IBAN format")
-    end
-  end
-
-  defp validate_swift_format(changeset) do
-    swift_code = get_change(changeset, :swift_code)
-    if is_nil(swift_code) or swift_code == "" do
-      changeset
-    else
-      validate_format(changeset, :swift_code, ~r/^[A-Z]{6}[A-Z2-9][A-NP-Z0-9]([A-Z0-9]{3})?$/,
-        message: "must be a valid SWIFT/BIC code format")
-    end
-  end
-
-  defp validate_routing_number_format(changeset) do
-    routing_number = get_change(changeset, :routing_number)
-    if is_nil(routing_number) or routing_number == "" do
-      changeset
-    else
-      validate_format(changeset, :routing_number, ~r/^\d{9}$/,
-        message: "must be exactly 9 digits")
-    end
-  end
 end

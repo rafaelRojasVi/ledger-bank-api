@@ -7,8 +7,8 @@ defmodule LedgerBankApi.Users.User do
   """
   use Ecto.Schema
   import Ecto.Changeset
-  import LedgerBankApi.CrudHelpers
 
+  @derive {Jason.Encoder, only: [:id, :email, :full_name, :status, :role, :inserted_at, :updated_at]}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -18,6 +18,10 @@ defmodule LedgerBankApi.Users.User do
     field :status, :string, default: "ACTIVE"
     field :role, :string, default: "user"
     field :password_hash, :string
+    field :active, :boolean, default: true
+    field :verified, :boolean, default: false
+    field :suspended, :boolean, default: false
+    field :deleted, :boolean, default: false
     # Virtual field for password (not stored in DB)
     field :password, :string, virtual: true
     # Virtual field for password confirmation
@@ -33,9 +37,10 @@ defmodule LedgerBankApi.Users.User do
   """
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :full_name, :status, :role, :password, :password_confirmation])
-    |> require_fields([:email, :full_name, :role])
+    |> cast(attrs, [:email, :full_name, :status, :role, :password, :password_confirmation, :active, :verified, :suspended, :deleted])
+    |> validate_required([:email, :full_name, :role])
     |> validate_email()
+    |> validate_status()
     |> validate_role_permissions(user, attrs)
     |> validate_password()
     |> validate_password_confirmation()
@@ -47,9 +52,10 @@ defmodule LedgerBankApi.Users.User do
   """
   def update_changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :full_name, :status, :role])
-    |> require_fields([:email, :full_name, :role])
+    |> cast(attrs, [:email, :full_name, :status, :role, :active, :verified, :suspended, :deleted])
+    |> validate_required([:email, :full_name, :role])
     |> validate_email()
+    |> validate_status()
     |> validate_role_permissions(user, attrs)
     |> validate_status_transitions(user, attrs)
   end
@@ -60,7 +66,7 @@ defmodule LedgerBankApi.Users.User do
   def password_changeset(user, attrs) do
     user
     |> cast(attrs, [:password, :password_confirmation])
-    |> require_fields([:password, :password_confirmation])
+    |> validate_required([:password, :password_confirmation])
     |> validate_password()
     |> validate_password_confirmation()
     |> maybe_hash_password()
@@ -70,7 +76,11 @@ defmodule LedgerBankApi.Users.User do
     changeset
     |> validate_format(:email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "must be a valid email address")
     |> validate_length(:email, max: 255)
-    |> unique_constraints([:email])
+    |> unique_constraint(:email, name: :users_email_index)
+  end
+
+  defp validate_status(changeset) do
+    validate_inclusion(changeset, :status, ["ACTIVE", "SUSPENDED"])
   end
 
   defp validate_password(changeset) do
@@ -109,11 +119,11 @@ defmodule LedgerBankApi.Users.User do
     cond do
       # New user - allow any role
       is_nil(user.id) ->
-        validate_inclusions(changeset, [role: ["user", "admin", "support"]])
+        validate_inclusion(changeset, :role, ["user", "admin", "support"])
 
       # Existing user - only admin can change roles
       current_role == "admin" ->
-        validate_inclusions(changeset, [role: ["user", "admin", "support"]])
+        validate_inclusion(changeset, :role, ["user", "admin", "support"])
 
       # Non-admin user - role cannot be changed
       new_role != current_role ->
@@ -133,11 +143,11 @@ defmodule LedgerBankApi.Users.User do
     cond do
       # New user - allow any status
       is_nil(user.id) ->
-        validate_inclusions(changeset, [status: ["ACTIVE", "SUSPENDED"]])
+        validate_inclusion(changeset, :status, ["ACTIVE", "SUSPENDED"])
 
       # Existing user - only admin can change status
       user.role == "admin" ->
-        validate_inclusions(changeset, [status: ["ACTIVE", "SUSPENDED"]])
+        validate_inclusion(changeset, :status, ["ACTIVE", "SUSPENDED"])
 
       # Non-admin user - status cannot be changed
       new_status != current_status ->

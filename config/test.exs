@@ -19,12 +19,7 @@ config :ledger_bank_api, LedgerBankApi.Repo,
   end),
   port: String.to_integer(System.get_env("DB_PORT", "5432"))
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
-config :ledger_bank_api_web, LedgerBankApiWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "H3se2fhV4VAb/y2jrP0O5Tv9gwz+yjePKZvOM/IfXGNkuYrWOmK7JzudVoJ27TXV",
-  server: true
+# We don't run a server during test since this is a banking API without web interface
 
 # In test we don't send emails
 config :ledger_bank_api, LedgerBankApi.Mailer, adapter: Swoosh.Adapters.Test
@@ -45,10 +40,13 @@ config :ledger_bank_api, :bank_client, LedgerBankApi.Banking.BankApiClientMock
 config :ledger_bank_api, :jwt,
   issuer: "ledger:test",
   audience: "ledger:test",
-  secret_key: "super-secret-key-for-tests-only-change-me"
+  secret_key: System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+
+# JWT secret for testing
+config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
 
 # Joken configuration for testing
-config :joken, default_signer: "HS256"
+config :joken, default_signer: System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
 
 # Configure Oban for testing - use manual mode for better control
 config :ledger_bank_api, Oban,

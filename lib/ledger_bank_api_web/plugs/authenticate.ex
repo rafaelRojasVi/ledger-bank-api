@@ -7,8 +7,6 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
   import Plug.Conn
   import Phoenix.Controller
 
-  alias LedgerBankApi.Auth.JWT
-  alias LedgerBankApi.Users.Context
 
   def init(opts), do: opts
 
@@ -56,11 +54,11 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
   end
 
   defp authenticate_token(token) do
-    with {:ok, claims} <- JWT.verify_token(token),
+    with {:ok, claims} <- LedgerBankApi.Auth.verify_access_token(token),
          true <- claims["type"] == "access",
-         false <- JWT.token_expired?(token),
+         false <- LedgerBankApi.Auth.is_token_expired?(token),
          user_id when is_binary(user_id) <- claims["sub"],
-         %LedgerBankApi.Users.User{} = user <- Context.get!(user_id),
+         {:ok, %LedgerBankApi.Users.User{} = user} <- LedgerBankApi.Users.get_user(user_id),
          true <- user.status == "ACTIVE" do
       {:ok, user}
     else

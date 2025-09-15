@@ -32,15 +32,15 @@ config :ledger_bank_api, :external_api,
 
 # JWT configuration
 config :ledger_bank_api, :jwt,
-  secret_key: System.get_env("JWT_SECRET_KEY", "your-secret-key-change-in-production"),
+  secret_key: System.get_env("JWT_SECRET"),
   algorithm: "HS256",
   issuer: "ledger_bank_api",
   audience: "banking_api",
   access_token_expiry: 3600, # 1 hour
   refresh_token_expiry: 7 * 24 * 3600 # 7 days
 
-# JWT secret key for Joken
-config :ledger_bank_api, :jwt_secret_key, System.get_env("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+# JWT secret for Joken (unified naming)
+config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET")
 
 # Configures the endpoint
 config :ledger_bank_api, LedgerBankApiWeb.Endpoint,

@@ -20,7 +20,13 @@ defmodule LedgerBankApi.Application do
     ]
 
     # Initialize cache table
-    :ets.new(:ledger_cache, [:set, :public, :named_table])
+    case :ets.new(:ledger_cache, [:set, :public, :named_table]) do
+      :ledger_cache -> :ok
+      {:error, reason} ->
+        require Logger
+        Logger.error("Failed to create cache table: #{inspect(reason)}")
+        raise "Cache table creation failed: #{inspect(reason)}"
+    end
 
     http_child =
       if Application.get_env(:ledger_bank_api, LedgerBankApiWeb.Endpoint)[:server] do

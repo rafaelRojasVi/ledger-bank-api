@@ -2,7 +2,7 @@ defmodule LedgerBankApi.Users.ContextTest do
   use LedgerBankApi.DataCase
   alias LedgerBankApi.Users.{Context, User}
   alias LedgerBankApi.UsersFixtures
-  alias LedgerBankApi.Auth.JWT
+  alias LedgerBankApi.Auth
 
   test "authenticates user with valid credentials" do
     user = UsersFixtures.user_with_password_fixture("ValidPass123!")
@@ -72,8 +72,8 @@ defmodule LedgerBankApi.Users.ContextTest do
       Context.login_user(user.email, "ValidPass123!")
 
     # Verify tokens are valid
-    assert {:ok, access_claims} = JWT.verify_token(access_token)
-    assert {:ok, refresh_claims} = JWT.verify_token(refresh_token)
+    assert {:ok, access_claims} = Auth.verify_token(access_token)
+    assert {:ok, refresh_claims} = Auth.verify_token(refresh_token)
 
     assert access_claims["sub"] == user.id
     assert access_claims["type"] == "access"
@@ -83,14 +83,14 @@ defmodule LedgerBankApi.Users.ContextTest do
 
   test "refreshes access token with valid refresh token" do
     user = UsersFixtures.user_fixture()
-    {:ok, refresh_token} = JWT.generate_refresh_token(user)
+    {:ok, refresh_token} = Auth.generate_refresh_token(user)
 
     assert {:ok, %{access_token: new_access_token, refresh_token: new_refresh_token}} =
       Context.refresh_tokens(refresh_token)
 
     # Verify new tokens
-    assert {:ok, access_claims} = JWT.verify_token(new_access_token)
-    assert {:ok, refresh_claims} = JWT.verify_token(new_refresh_token)
+    assert {:ok, access_claims} = Auth.verify_token(new_access_token)
+    assert {:ok, refresh_claims} = Auth.verify_token(new_refresh_token)
 
     assert access_claims["sub"] == user.id
     assert access_claims["type"] == "access"
@@ -114,13 +114,13 @@ defmodule LedgerBankApi.Users.ContextTest do
       "exp" => DateTime.utc_now() |> DateTime.add(-10, :second) |> DateTime.to_unix()
     }
 
-    {:ok, expired_token} = JWT.sign_token(expired_claims)
+    {:ok, expired_token} = Auth.sign_token(expired_claims)
     assert {:error, :token_expired} = Context.refresh_tokens(expired_token)
   end
 
   test "fails to refresh with access token instead of refresh token" do
     user = UsersFixtures.user_fixture()
-    {:ok, access_token} = JWT.generate_access_token(user)
+    {:ok, access_token} = Auth.generate_access_token(user)
 
     assert {:error, :invalid_token_type} = Context.refresh_tokens(access_token)
   end

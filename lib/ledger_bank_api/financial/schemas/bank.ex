@@ -1,0 +1,152 @@
+defmodule LedgerBankApi.Financial.Schemas.Bank do
+  @moduledoc """
+  Ecto schema for banks. Represents a financial institution.
+  """
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  @derive {Jason.Encoder, only: [:id, :name, :country, :logo_url, :api_endpoint, :status, :integration_module, :code, :inserted_at, :updated_at]}
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+  schema "banks" do
+    field :name, :string
+    field :country, :string
+    field :logo_url, :string
+    field :api_endpoint, :string
+    field :status, :string, default: "ACTIVE"
+    field :integration_module, :string
+    field :code, :string
+
+    has_many :bank_branches, LedgerBankApi.Financial.Schemas.BankBranch
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @fields [:name, :country, :logo_url, :api_endpoint, :status, :integration_module, :code]
+  @required_fields [:name, :country, :code]
+
+  def base_changeset(bank, attrs) do
+    bank
+    |> cast(attrs, @fields)
+    |> validate_required(@required_fields)
+  end
+
+  def changeset(bank, attrs) do
+    bank
+    |> base_changeset(attrs)
+    |> unique_constraint(:name, name: :banks_name_index)
+    |> unique_constraint(:code, name: :banks_code_index)
+    |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])
+    |> validate_format(:code, ~r/^[A-Z0-9_]+$/)
+    |> validate_length(:code, min: 3, max: 32)
+    |> validate_country_code()
+    |> validate_name_length()
+    |> validate_logo_url_format()
+    |> validate_api_endpoint_format()
+    |> validate_integration_module()
+    |> validate_name_uniqueness()
+  end
+
+  @doc """
+  Builds a changeset for bank updates (without changing critical fields).
+  """
+  def update_changeset(bank, attrs) do
+    bank
+    |> cast(attrs, [:name, :logo_url, :api_endpoint, :status, :integration_module])
+    |> validate_required([:name])
+    |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])
+    |> validate_name_length()
+    |> validate_logo_url_format()
+    |> validate_api_endpoint_format()
+    |> validate_integration_module()
+    |> validate_name_uniqueness()
+  end
+
+
+  defp validate_integration_module(changeset) do
+    integration_module = get_change(changeset, :integration_module)
+    if is_nil(integration_module) or integration_module == "" do
+      changeset
+    else
+      # Validate that the module string is a valid Elixir module name
+      if String.match?(integration_module, ~r/^[A-Z][a-zA-Z0-9_]*(\.[A-Z][a-zA-Z0-9_]*)*$/) do
+        changeset
+      else
+        add_error(changeset, :integration_module, "must be a valid Elixir module name (e.g., MyApp.Module)")
+      end
+    end
+  end
+
+  defp validate_name_uniqueness(changeset) do
+    name = get_change(changeset, :name)
+    if is_nil(name) do
+      changeset
+    else
+      # Check for common bank name patterns and validate
+      if String.match?(name, ~r/^[a-zA-Z0-9\s\-&.,()]+$/) do
+        changeset
+      else
+        add_error(changeset, :name, "contains invalid characters. Only letters, numbers, spaces, and common punctuation are allowed")
+      end
+    end
+  end
+
+  defp validate_country_code(changeset) do
+    country = get_change(changeset, :country)
+    if is_nil(country) do
+      changeset
+    else
+      # Basic country code validation (2-3 letter codes)
+      if String.match?(country, ~r/^[A-Z]{2,3}$/) do
+        changeset
+      else
+        add_error(changeset, :country, "must be a valid country code (2-3 uppercase letters)")
+      end
+    end
+  end
+
+  defp validate_name_length(changeset) do
+    changeset
+    |> validate_length(:name, min: 2, max: 100)
+  end
+
+  defp validate_logo_url_format(changeset) do
+    logo_url = get_change(changeset, :logo_url)
+    if is_nil(logo_url) or logo_url == "" do
+      changeset
+    else
+      if String.match?(logo_url, ~r/^https?:\/\/.+\..+/) do
+        changeset
+      else
+        add_error(changeset, :logo_url, "must be a valid URL")
+      end
+    end
+  end
+
+  defp validate_api_endpoint_format(changeset) do
+    api_endpoint = get_change(changeset, :api_endpoint)
+    if is_nil(api_endpoint) or api_endpoint == "" do
+      changeset
+    else
+      if String.match?(api_endpoint, ~r/^https?:\/\/.+\..+/) do
+        changeset
+      else
+        add_error(changeset, :api_endpoint, "must be a valid URL")
+      end
+    end
+  end
+
+  @doc """
+  Returns true if the bank is active.
+  """
+  def is_active?(%__MODULE__{status: "ACTIVE"}), do: true
+  def is_active?(_), do: false
+
+  @doc """
+  Returns true if the bank has an integration module configured.
+  """
+  def has_integration?(%__MODULE__{integration_module: nil}), do: false
+  def has_integration?(%__MODULE__{integration_module: ""}), do: false
+  def has_integration?(_), do: true
+end

@@ -94,6 +94,22 @@ config :ledger_bank_api, :cache,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Configure OpenAPI/Swagger
+config :ledger_bank_api, :phoenix_swagger,
+  swagger_files: %{
+    "priv/static/swagger.json" => [
+      router: LedgerBankApiWeb.Router,
+      endpoint: LedgerBankApiWeb.Endpoint
+    ]
+  }
+
+# Configure OpenApiSpex
+config :ledger_bank_api, :open_api_spex,
+  title: "LedgerBankApi",
+  version: "1.0.0",
+  description: "A modern Elixir/Phoenix API for banking and financial data management",
+  server_url: "http://localhost:4000"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

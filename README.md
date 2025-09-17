@@ -2,43 +2,44 @@
 
 > **Note:** For the latest updates and detailed changes, see [CHANGELOG.md](./CHANGELOG.md).
 
-A modern Elixir/Phoenix API for banking and financial data management with clean architecture, reusable behaviours, and comprehensive testing. This API provides access to account information, transactions, and payment processing with built-in pagination, filtering, sorting, and error handling.
+A modern Elixir/Phoenix API for banking and financial data management with clean architecture, comprehensive error handling, and OAuth2 integration. This API provides secure access to account information, transactions, and payment processing with built-in pagination, filtering, sorting, and robust error handling.
 
 ## 🚀 Features
 
-- **JWT Authentication**: Secure authentication system with support for access and refresh tokens, and user roles included in JWT claims
-- **Centralized Error Handling**: Unified error handling for payment processing and bank synchronization workers
-- **Account Management**: Create and manage user bank accounts
-- **Transaction Tracking**: Record and query financial transactions with pagination
-- **Payment Processing**: Background job processing for payments using Oban
+- **JWT Authentication**: Secure authentication system with access and refresh tokens, user roles, and comprehensive token management
+- **OAuth2 Integration**: Bank API integration with OAuth2 token management and refresh capabilities
+- **Centralized Error Handling**: Unified error handling with canonical Error structs, error categories, and retry policies
+- **Account Management**: Create and manage user bank accounts with balance tracking
+- **Transaction Tracking**: Record and query financial transactions with pagination and filtering
+- **Payment Processing**: Background job processing for payments using Oban workers
+- **Bank Synchronization**: Automated bank data synchronization with external APIs
 - **RESTful API**: Clean, REST-compliant endpoints with consistent error handling
-- **PostgreSQL Database**: Robust data persistence with Ecto
+- **PostgreSQL Database**: Robust data persistence with Ecto and comprehensive migrations
 - **Docker Support**: Containerized deployment with Docker Compose
-- **Reusable Behaviours**: Consistent patterns for pagination, filtering, and sorting
-- **CRUD Helpers**: Refactored helpers for better struct creation and validation
-- **New Macros**: For unique constraints, required fields, and validations
-- **Comprehensive Testing**: Organized test suite with focused test categories
 - **Background Jobs**: Oban for reliable background job processing
+- **Comprehensive Testing**: Organized test suite with focused test categories
+- **Migration Management**: Clean migration system with full database recreation capabilities
 
 ## 🏗️ Architecture
 
 The application follows a clean architecture pattern with:
 
-- **Contexts**: Banking context for business logic
-- **Web Layer**: Phoenix controllers and JSON views
-- **Data Layer**: Ecto schemas and PostgreSQL
-- **Background Jobs**: Oban workers for payment processing
-- **Behaviours**: Reusable patterns for common API functionality
+- **Core Layer**: Error handling, error catalog, and core business logic
+- **Accounts Context**: User management, authentication, and authorization
+- **Financial Context**: Banking operations, payments, and transactions
+- **Web Layer**: Phoenix controllers, adapters, and error handling
+- **Data Layer**: Ecto schemas, migrations, and PostgreSQL
+- **Background Jobs**: Oban workers for payment processing and bank synchronization
 
 ### Core Modules
 
-- `LedgerBankApi.Banking` - Main business logic for accounts and transactions
-- `LedgerBankApi.Users` - User management
-- `LedgerBankApi.Behaviours` - Reusable patterns (Paginated, Filterable, Sortable, ErrorHandler)
-- `LedgerBankApi.Workers` - Background job processing
-- `LedgerBankApiWeb` - Phoenix web layer with controllers
+- `LedgerBankApi.Core` - Error handling, error catalog, and core business logic
+- `LedgerBankApi.Accounts` - User management, authentication, and authorization
+- `LedgerBankApi.Financial` - Banking operations, payments, and transactions
+- `LedgerBankApiWeb` - Phoenix web layer with controllers and adapters
+- `LedgerBankApi.Repo` - Database repository and migrations
 
-## 📋 Prerequisites
+## �� Prerequisites
 
 - Elixir 1.18+
 - Erlang/OTP
@@ -65,6 +66,13 @@ cp env.example .env
 
 ### 3. Database Setup
 
+#### Option A: Automated Setup (Recommended)
+```bash
+# Use the automated setup script
+./test_setup.sh
+```
+
+#### Option B: Manual Setup
 ```bash
 # Start PostgreSQL in Docker
 docker-compose up -d db
@@ -81,6 +89,9 @@ export DB_NAME=ledger_bank_api_dev
 
 # Run migrations
 mix ecto.migrate
+
+# Seed the database
+mix run priv/repo/seeds.exs
 ```
 
 ### 4. Start Development Server
@@ -93,8 +104,9 @@ iex -S mix phx.server
 ### 5. Access the API
 
 - **API**: http://localhost:4000
+- **Health Check**: http://localhost:4000/api/health
+- **User Stats**: http://localhost:4000/api/users/stats
 - **LiveDashboard**: http://localhost:4000/dev/dashboard
-- **Mailbox Preview**: http://localhost:4000/dev/mailbox
 
 ## 🗄️ Database Schema
 
@@ -104,36 +116,94 @@ iex -S mix phx.server
 - `id` (UUID) - Primary key
 - `email` (string) - User email (unique)
 - `full_name` (string) - User's full name
-- `status` (string) - User status (ACTIVE/SUSPENDED)
+- `status` (string) - User status (ACTIVE/SUSPENDED/DELETED)
+- `role` (string) - User role (user/admin/support)
+- `password_hash` (string) - Hashed password
+- `active` (boolean) - Account active status
+- `verified` (boolean) - Email verification status
+- `suspended` (boolean) - Suspension status
+- `deleted` (boolean) - Soft delete status
+- `created_at` / `updated_at` - Timestamps
+
+#### Banks
+- `id` (UUID) - Primary key
+- `name` (string) - Bank name
+- `country` (string) - Country code
+- `code` (string) - Bank code (unique)
+- `logo_url` (string) - Bank logo URL
+- `api_endpoint` (string) - Bank API endpoint
+- `status` (string) - Bank status (ACTIVE/INACTIVE)
+- `integration_module` (string) - Integration module name
+- `created_at` / `updated_at` - Timestamps
+
+#### Bank Branches
+- `id` (UUID) - Primary key
+- `bank_id` (UUID) - Foreign key to banks
+- `name` (string) - Branch name
+- `iban` (string) - IBAN code
+- `country` (string) - Country code
+- `routing_number` (string) - Routing number
+- `swift_code` (string) - SWIFT code
+- `created_at` / `updated_at` - Timestamps
+
+#### User Bank Logins
+- `id` (UUID) - Primary key
+- `user_id` (UUID) - Foreign key to users
+- `bank_branch_id` (UUID) - Foreign key to bank branches
+- `username` (string) - Bank username
+- `status` (string) - Login status (ACTIVE/INACTIVE/ERROR)
+- `last_sync_at` (datetime) - Last synchronization time
+- `sync_frequency` (integer) - Sync frequency in seconds
+- `access_token` (string) - OAuth2 access token
+- `refresh_token` (string) - OAuth2 refresh token
+- `token_expires_at` (datetime) - Token expiration time
+- `scope` (string) - OAuth2 scopes
+- `provider_user_id` (string) - Provider user ID
 - `created_at` / `updated_at` - Timestamps
 
 #### User Bank Accounts
 - `id` (UUID) - Primary key
+- `user_bank_login_id` (UUID) - Foreign key to user bank logins
 - `user_id` (UUID) - Foreign key to users
-- `bank_id` (UUID) - Foreign key to banks
-- `account_number` (string) - Account number
-- `account_type` (string) - Account type
-- `balance` (decimal) - Current balance
 - `currency` (string) - Account currency
+- `account_type` (string) - Account type (CHECKING/SAVINGS/CREDIT/INVESTMENT)
+- `balance` (decimal) - Current balance
+- `last_four` (string) - Last four digits of account
+- `account_name` (string) - Account name
+- `status` (string) - Account status (ACTIVE/INACTIVE/CLOSED)
+- `last_sync_at` (datetime) - Last synchronization time
+- `external_account_id` (string) - External account ID
 - `created_at` / `updated_at` - Timestamps
 
 #### Transactions
 - `id` (UUID) - Primary key
-- `user_bank_account_id` (UUID) - Foreign key to user bank accounts
+- `account_id` (UUID) - Foreign key to user bank accounts
+- `user_id` (UUID) - Foreign key to users
 - `description` (string) - Transaction description
 - `amount` (decimal) - Transaction amount
-- `currency` (string) - Transaction currency
+- `direction` (string) - Transaction direction (CREDIT/DEBIT)
 - `posted_at` (datetime) - When transaction was posted
 - `created_at` / `updated_at` - Timestamps
 
 #### User Payments
 - `id` (UUID) - Primary key
+- `user_bank_account_id` (UUID) - Foreign key to user bank accounts
 - `user_id` (UUID) - Foreign key to users
 - `amount` (decimal) - Payment amount
+- `direction` (string) - Payment direction (CREDIT/DEBIT)
 - `description` (string) - Payment description
 - `payment_type` (string) - Payment type (TRANSFER/PAYMENT/DEPOSIT/WITHDRAWAL)
 - `status` (string) - Payment status (PENDING/COMPLETED/FAILED/CANCELLED)
 - `posted_at` (datetime) - When payment was posted
+- `external_transaction_id` (string) - External transaction ID
+- `created_at` / `updated_at` - Timestamps
+
+#### Refresh Tokens
+- `id` (UUID) - Primary key
+- `user_id` (UUID) - Foreign key to users
+- `jti` (string) - JWT token identifier
+- `expires_at` (datetime) - Token expiration time
+- `revoked_at` (datetime) - Token revocation time
 - `created_at` / `updated_at` - Timestamps
 
 ## 📚 API Endpoints
@@ -144,151 +214,112 @@ All API endpoints require authentication via JWT Bearer token.
 ### Health Check
 - `GET /api/health` - Basic health check
 
-### Accounts
-- `GET /api/accounts` - List all accounts
-- `GET /api/accounts/:id` - Get account details
+### Users
+- `GET /api/users` - List all users (with pagination, filtering, sorting)
+- `GET /api/users/:id` - Get user details
+- `POST /api/users` - Create a new user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+- `GET /api/users/stats` - Get user statistics
 
-### Transactions
-- `GET /api/accounts/:id/transactions` - Get transactions for an account
-  - Supports pagination: `?page=1&page_size=20`
-  - Supports filtering: `?date_from=2025-01-01T00:00:00Z&date_to=2025-01-31T23:59:59Z`
-  - Supports sorting: `?sort_by=posted_at&sort_order=desc`
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/refresh` - Refresh access token
+- `POST /api/auth/logout` - User logout
 
-## 🎭 Reusable Behaviours
+## 🔄 Migration Management
 
-The application uses behaviours to ensure consistent patterns across all modules:
+The application includes a comprehensive migration system with full database recreation capabilities:
 
-### 1. Paginated
-Handles pagination logic with validation and metadata generation.
+### Migration Recreation Process
 
-### 2. Filterable  
-Handles filtering logic with date range and field filtering.
+When you need to completely rebuild your database schema:
 
-### 3. Sortable
-Handles sorting logic with field validation and query building.
+```bash
+# 1. Drop the database
+mix ecto.drop
 
-### 4. ErrorHandler
-Provides consistent error handling and response formatting.
+# 2. Delete all migration files (keep the directory)
+rm priv/repo/migrations/*.exs
 
-### Usage Examples
+# 3. Create new migrations
+mix ecto.gen.migration create_users
+mix ecto.gen.migration create_banks
+mix ecto.gen.migration create_bank_branches
+mix ecto.gen.migration create_user_bank_logins
+mix ecto.gen.migration create_user_bank_accounts
+mix ecto.gen.migration create_user_payments
+mix ecto.gen.migration create_transactions
+mix ecto.gen.migration create_refresh_tokens
+mix ecto.gen.migration create_oban_jobs
+mix ecto.gen.migration add_data_integrity_constraints
 
-#### Controllers
-```elixir
-defmodule LedgerBankApiWeb.BankingController do
-  @behaviour LedgerBankApi.Behaviours.Paginated
-  @behaviour LedgerBankApi.Behaviours.Filterable
-  @behaviour LedgerBankApi.Behaviours.Sortable
-  @behaviour LedgerBankApi.Behaviours.ErrorHandler
+# 4. Recreate and migrate
+mix ecto.create
+mix ecto.migrate
 
-  @impl LedgerBankApi.Behaviours.Paginated
-  def handle_paginated_data(conn, params, opts) do
-    # Handle paginated request
-  end
-end
+# 5. Seed the database
+mix run priv/repo/seeds.exs
 ```
 
-#### Context Modules
-```elixir
-defmodule LedgerBankApi.Banking do
-  @behaviour LedgerBankApi.Behaviours.Filterable
-  
-  @impl LedgerBankApi.Behaviours.Filterable
-  def handle_filtered_data(query, filters, opts) do
-    # Apply filters to query
-  end
-end
+### Automated Setup
+
+Use the `test_setup.sh` script for automated setup:
+
+```bash
+# This script handles:
+# - Dropping and recreating databases
+# - Running all migrations
+# - Seeding development database
+# - Starting Docker containers
+# - Clearing cache
+./test_setup.sh
 ```
+
+## 🎭 Error Handling System
+
+The application uses a comprehensive error handling system:
+
+### Error Categories
+- `:validation` - Input validation failures (400)
+- `:not_found` - Resource not found (404)
+- `:authentication` - Authentication failures (401)
+- `:authorization` - Authorization failures (403)
+- `:conflict` - Resource conflicts (409)
+- `:business_rule` - Business logic violations (422)
+- `:external_dependency` - External service failures (503)
+- `:system` - Internal system errors (500)
+
+### Error Policy Matrix
+| Category | Retryable | Circuit Breaker | Max Retries | Retry Delay |
+|----------|-----------|-----------------|-------------|-------------|
+| validation | No | No | 0 | 0ms |
+| not_found | No | No | 0 | 0ms |
+| authentication | No | No | 0 | 0ms |
+| authorization | No | No | 0 | 0ms |
+| conflict | No | No | 0 | 0ms |
+| business_rule | No | No | 0 | 0ms |
+| external_dependency | Yes | Yes | 3 | 1000ms |
+| system | Yes | Yes | 2 | 500ms |
 
 ## 🧪 Testing
 
 The project has a comprehensive, well-organized test suite:
 
-### Test Structure
-```
-test/
-├── ledger_bank_api/
-│   ├── behaviours/
-│   │   ├── paginated/
-│   │   │   ├── basic_test.exs      # Basic pagination functionality
-│   │   │   └── advanced_test.exs   # Advanced pagination features
-│   │   ├── filterable/
-│   │   │   └── basic_test.exs      # Filtering functionality
-│   │   ├── sortable/
-│   │   │   └── basic_test.exs      # Sorting functionality
-│   │   ├── error_handler/
-│   │   │   └── basic_test.exs      # Error handling functionality
-│   │   └── integration_test.exs    # Integration tests
-│   └── [other unit tests]
-├── ledger_bank_api_web/
-│   └── controllers/
-│       └── banking_controller_test.exs
-└── support/
-    └── conn_case.ex
-```
-
 ### Running Tests
 
-#### Method 1: Mix Aliases (Recommended)
 ```bash
-# Run specific test groups
-mix test:paginated      # Pagination tests only
-mix test:filterable     # Filtering tests only
-mix test:sortable       # Sorting tests only
-mix test:error-handler  # Error handling tests only
-mix test:behaviours     # All behaviour tests
-mix test:controllers    # Controller tests only
-mix test:integration    # Integration tests only
-mix test:unit          # Unit tests only
-
 # Run all tests
 mix test
+
+# Run specific test categories
+mix test test/ledger_bank_api/accounts/
+mix test test/ledger_bank_api/financial/
+mix test test/ledger_bank_api/core/
+mix test test/ledger_bank_api_web/
 ```
 
-#### Method 2: Test Runner Script
-```bash
-# Use the custom test runner
-elixir test/test_runner.exs pagination
-elixir test/test_runner.exs behaviours
-elixir test/test_runner.exs all
-elixir test/test_runner.exs help
-```
-
-#### Method 3: Direct Mix Commands
-```bash
-# Run specific directories
-mix test test/ledger_bank_api/behaviours/paginated/
-mix test test/ledger_bank_api/behaviours/filterable/
-mix test test/ledger_bank_api/behaviours/sortable/
-mix test test/ledger_bank_api/behaviours/error_handler/
-
-# Run specific files
-mix test test/ledger_bank_api/behaviours/integration_test.exs
-mix test test/ledger_bank_api_web/controllers/banking_controller_test.exs
-```
-
-### Test Categories
-
-1. **Unit Tests** (`test/ledger_bank_api/`)
-   - Test individual functions and modules
-   - Fast and focused
-   - No external dependencies
-
-2. **Behaviour Tests** (`test/ledger_bank_api/behaviours/`)
-   - Test the behaviour contracts and implementations
-   - Ensure consistent interfaces across modules
-   - Organized by functionality
-
-3. **Integration Tests** (`test/ledger_bank_api/behaviours/integration_test.exs`)
-   - Test how behaviours work together
-   - End-to-end scenarios
-   - Real-world usage patterns
-
-4. **Controller Tests** (`test/ledger_bank_api_web/controllers/`)
-   - Test HTTP endpoints
-   - Request/response handling
-   - Error scenarios
-
-## 🔧 Configuration
+## �� Configuration
 
 ### Environment Variables
 
@@ -301,33 +332,15 @@ DB_PASS=postgres
 DB_NAME=ledger_bank_api_dev
 
 # JWT Configuration
-JWT_SECRET_KEY=your-secret-key-here
+JWT_SECRET=your-secret-key-here-must-be-at-least-32-characters
 
 # Phoenix
 SECRET_KEY_BASE=replace-me-with-mix-phx-gen-secret
 
-# External mock service
-BANK_BASE_URL=http://localhost:4001/mock
-```
-
-### Environment-Specific Configurations
-
-#### Development (WSL + Docker)
-```bash
-DB_HOST=localhost
-DB_PORT=5432
-```
-
-#### Docker Container
-```bash
-DB_HOST=db
-DB_PORT=5432
-```
-
-#### CI/CD (GitHub Actions)
-```bash
-DB_HOST=localhost
-DB_PORT=5432
+# External bank API
+MONZO_CLIENT_ID=your-monzo-client-id
+MONZO_CLIENT_SECRET=your-monzo-client-secret
+MONZO_API_URL=https://api.monzo.com
 ```
 
 ## 🐳 Docker Development
@@ -350,35 +363,42 @@ iex -S mix phx.server
 docker-compose up -d
 
 # Access the API
-curl -H "Authorization: Bearer your-token" http://localhost:4000/api/accounts
+curl -H "Authorization: Bearer your-token" http://localhost:4000/api/health
 ```
 
-### Container Debugging
-```bash
-# Access container shell
-docker-compose exec web /bin/bash
-
-# Access remote IEx
-docker-compose exec web /app/ledger_bank_api/bin/ledger_bank_api remote
-
-# View logs
-docker-compose logs -f web
-```
-
-## 🔄 Background Jobs with Oban
+## �� Background Jobs with Oban
 
 The application uses **Oban** for reliable background job processing:
 
-- **Payment Processing**: Processes pending payments
-- **Notifications**: Sends payment completion notifications
-
 ### Job Queues
-
 - `payments` - Payment processing jobs
-- `notifications` - Notification jobs
+- `banking` - Bank synchronization jobs
 - `default` - General background jobs
 
+### Workers
+- `PaymentWorker` - Processes user payments
+- `BankSyncWorker` - Synchronizes bank data
+
 ## 🚨 Troubleshooting
+
+### Database Issues
+
+1. **Reset Database**:
+   ```bash
+   mix ecto.reset
+   ```
+
+2. **Recreate Migrations**:
+   ```bash
+   # Use the automated setup script
+   ./test_setup.sh
+   ```
+
+3. **Check Database Connection**:
+   ```bash
+   # From WSL
+   pg_isready -h localhost -p 5432 -U postgres
+   ```
 
 ### Port Conflicts
 
@@ -403,33 +423,6 @@ If you get port conflicts:
      - "5433:5432"  # Use 5433 on host, 5432 in container
    ```
 
-### Database Connection Issues
-
-1. **Verify Docker PostgreSQL is running**:
-   ```bash
-   docker-compose ps db
-   ```
-
-2. **Check database connectivity**:
-   ```bash
-   # From WSL
-   pg_isready -h localhost -p 5432 -U postgres
-   
-   # From container
-   docker-compose exec web pg_isready -h db -p 5432 -U postgres
-   ```
-
-3. **Reset database**:
-   ```bash
-   mix ecto.reset
-   ```
-
-### WSL-Specific Issues
-
-- **Docker Desktop Integration**: Ensure Docker Desktop is configured to work with WSL2
-- **Port Forwarding**: Docker Desktop automatically handles port forwarding to WSL
-- **File Permissions**: If you encounter permission issues, ensure your WSL user has proper permissions
-
 ## 📊 Development Tools
 
 ### Database Management
@@ -445,6 +438,9 @@ mix ecto.migrate
 
 # Drop database
 mix ecto.drop
+
+# Seed database
+mix run priv/repo/seeds.exs
 ```
 
 ### Interactive Development
@@ -469,23 +465,26 @@ The application includes built-in telemetry for monitoring:
 - Database query performance
 - API endpoint response times
 - Memory usage
+- Error tracking
 
 ## 🔐 Security Notes
 
-- **Development Mode**: Authentication is currently in development mode
+- **JWT Secret**: Must be at least 32 characters long
 - **Environment Variables**: Never commit `.env` files to version control
 - **Database**: Use strong passwords in production
-- **Secrets**: Generate proper secret keys for production
+- **OAuth2**: Secure token storage and refresh mechanisms
+- **Password Requirements**: Minimum 8 characters with letters, numbers, and special characters
 
 ## 🚀 Deployment
 
 ### Production Setup
 
 1. Set proper environment variables
-2. Configure JWT secret key
+2. Configure JWT secret key (minimum 32 characters)
 3. Set up PostgreSQL database
 4. Run migrations: `mix ecto.migrate`
-5. Start the application: `mix phx.server`
+5. Seed database: `mix run priv/repo/seeds.exs`
+6. Start the application: `mix phx.server`
 
 ### Docker Production
 
@@ -497,28 +496,32 @@ docker-compose -f docker-compose.yml up -d
 ## 🚀 Quick Commands Reference
 
 ```bash
-# Complete development setup (Windows PowerShell)
-. scripts/start-dev.ps1
+# Complete development setup
+./test_setup.sh
 iex -S mix phx.server
 
 # Or manual setup
 cp env.example .env
 docker-compose up -d db
-. scripts/dev-db.ps1
 mix ecto.migrate
+mix run priv/repo/seeds.exs
 iex -S mix phx.server
 
 # Common development tasks
 mix test                    # Run tests
 mix ecto.migrate           # Run migrations
 mix ecto.reset             # Reset database
+mix run priv/repo/seeds.exs # Seed database
 docker-compose logs -f     # View logs
 mix phx.routes             # Show routes
 
-# Test specific categories
-mix test:paginated         # Run pagination tests
-mix test:behaviours        # Run all behaviour tests
-mix test:controllers       # Run controller tests
+# Database recreation
+mix ecto.drop
+rm priv/repo/migrations/*.exs
+# Create new migrations...
+mix ecto.create
+mix ecto.migrate
+mix run priv/repo/seeds.exs
 ```
 
 ## 📝 License

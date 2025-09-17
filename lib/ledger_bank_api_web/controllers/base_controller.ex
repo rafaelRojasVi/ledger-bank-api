@@ -1,301 +1,150 @@
-defmodule LedgerBankApiWeb.BaseController do
+defmodule LedgerBankApiWeb.Controllers.BaseController do
   @moduledoc """
-  Enhanced base controller providing advanced CRUD operations, query optimization, and error handling.
-  Eliminates code duplication and provides consistent patterns across all controllers.
+  Base controller providing common functionality for all API controllers.
+
+  Implements the "one-thing" error handling pattern by:
+  1. Providing consistent error handling helpers
+  2. Standardizing response formats
+  3. Adding correlation IDs for request tracking
   """
 
-  use LedgerBankApiWeb, :controller
+  import Phoenix.Controller, only: [json: 2]
+  import Plug.Conn, only: [assign: 3, put_resp_header: 3, get_req_header: 2]
+  alias LedgerBankApiWeb.Adapters.ErrorAdapter
+  alias LedgerBankApi.Core.Error
 
-  alias LedgerBankApi.Banking.Behaviours.ErrorHandler
-
-  @doc """
-  Macro to define standard CRUD operations for a resource with advanced features.
-  """
-  defmacro crud_operations(context_module, schema_module, resource_name, opts \\ []) do
+  defmacro __using__(_opts) do
     quote do
-      @context_module unquote(context_module)
-      @schema_module unquote(schema_module)
-      @resource_name unquote(resource_name)
-      @opts unquote(opts)
+      use LedgerBankApiWeb, :controller
+      import LedgerBankApiWeb.Controllers.BaseController
+      alias LedgerBankApiWeb.Adapters.ErrorAdapter
+      alias LedgerBankApi.Core.Error
 
-      @doc """
-      List all resources with pagination, filtering, and sorting.
-      """
-      def index(conn, params) do
-        user_id = conn.assigns.current_user_id
-        context = %{action: :"list_#{@resource_name}", user_id: user_id}
-
-        case ErrorHandler.with_error_handling(fn ->
-          # Check authorization for listing resources
-          maybe_authorize_list_access(user_id, @opts[:authorization])
-          list_resources_with_filters(params, user_id, @opts)
-        end, context) do
-          {:ok, response} ->
-            json(conn, response.data)
-          {:error, error_response} ->
-            handle_error_response(conn, error_response, context)
-        end
-      end
-
-      @doc """
-      Get a specific resource by ID with preloading.
-      """
-      def show(conn, %{"id" => id}) do
-        user_id = conn.assigns.current_user_id
-        context = %{action: :"get_#{@resource_name}", user_id: user_id, resource_id: id}
-
-        case ErrorHandler.with_error_handling(fn ->
-          resource = get_resource_with_preloads(id, @opts[:preloads])
-          maybe_authorize_access(resource, user_id, @opts[:authorization])
-          resource
-        end, context) do
-          {:ok, response} ->
-            json(conn, response.data)
-          {:error, error_response} ->
-            handle_error_response(conn, error_response, context)
-        end
-      end
-
-      @doc """
-      Create a new resource with validation.
-      """
-      def create(conn, %{@resource_name => params}) do
-        user_id = conn.assigns.current_user_id
-        context = %{action: :"create_#{@resource_name}", user_id: user_id}
-
-        # Add user_id to params if specified
-        params = maybe_add_user_id(params, user_id, @opts[:user_field])
-
-        case ErrorHandler.with_error_handling(fn ->
-          @context_module.create(params)
-        end, context) do
-          {:ok, response} ->
-            conn
-            |> put_status(201)
-            |> json(response.data)
-          {:error, error_response} ->
-            handle_error_response(conn, error_response, context)
-        end
-      end
-
-      @doc """
-      Update a resource with validation.
-      """
-      def update(conn, %{"id" => id} = params) do
-        user_id = conn.assigns.current_user_id
-        context = %{action: :"update_#{@resource_name}", user_id: user_id, resource_id: id}
-
-        case ErrorHandler.with_error_handling(fn ->
-          resource = @context_module.get!(id)
-          maybe_authorize_access(resource, user_id, @opts[:authorization])
-          @context_module.update(resource, params[@resource_name] || %{})
-        end, context) do
-          {:ok, response} ->
-            json(conn, response.data)
-          {:error, error_response} ->
-            handle_error_response(conn, error_response, context)
-        end
-      end
-
-      @doc """
-      Delete a resource with cascade handling.
-      """
-      def delete(conn, %{"id" => id}) do
-        user_id = conn.assigns.current_user_id
-        context = %{action: :"delete_#{@resource_name}", user_id: user_id, resource_id: id}
-
-        case ErrorHandler.with_error_handling(fn ->
-          resource = @context_module.get!(id)
-          maybe_authorize_access(resource, user_id, @opts[:authorization])
-          @context_module.delete(resource)
-        end, context) do
-          {:ok, response} ->
-            json(conn, response.data)
-          {:error, error_response} ->
-            handle_error_response(conn, error_response, context)
-        end
-      end
-
-      # Private helper functions
-
-      defp list_resources_with_filters(params, user_id, opts) do
-        # Apply pagination, filtering, and sorting
-        with {:ok, pagination} <- extract_pagination(params),
-             {:ok, filters} <- extract_filters(params, opts),
-             {:ok, sorting} <- extract_sorting(params, opts) do
-
-          @context_module.list_with_filters(pagination, filters, sorting, user_id, opts[:user_filter])
-        end
-      end
-
-      defp get_resource_with_preloads(id, preloads) do
-        case preloads do
-          nil -> @context_module.get!(id)
-          preloads -> @context_module.get_with_preloads!(id, preloads)
-        end
-      end
-
-      defp extract_pagination(params) do
-        page = String.to_integer(params["page"] || "1")
-        per_page = String.to_integer(params["per_page"] || "20")
-
-        if page > 0 and per_page > 0 and per_page <= 100 do
-          {:ok, %{page: page, per_page: per_page}}
-        else
-          {:error, "Invalid pagination parameters"}
-        end
-      end
-
-      defp extract_filters(params, opts) do
-        allowed_filters = opts[:allowed_filters] || []
-        filters = Map.take(params, allowed_filters)
-        {:ok, filters}
-      end
-
-      defp extract_sorting(params, opts) do
-        allowed_fields = opts[:allowed_sort_fields] || []
-        sort_by = params["sort_by"] || opts[:default_sort_field] || "inserted_at"
-        sort_order = params["sort_order"] || "desc"
-
-        if sort_by in allowed_fields and sort_order in ["asc", "desc"] do
-          {:ok, %{sort_by: sort_by, sort_order: sort_order}}
-        else
-          {:error, "Invalid sorting parameters"}
-        end
-      end
-
-      defp maybe_filter_by_user(data, user_id, nil), do: data
-      defp maybe_filter_by_user(data, user_id, filter_fun) when is_function(filter_fun, 2) do
-        filter_fun.(data, user_id)
-      end
-      defp maybe_filter_by_user(data, user_id, :user_id) do
-        Enum.filter(data, fn item ->
-          item_user_id = if Map.has_key?(item, :user_id), do: item.user_id, else: item.id
-          item_user_id == user_id
-        end)
-      end
-
-      defp maybe_add_user_id(params, user_id, nil), do: params
-      defp maybe_add_user_id(params, user_id, field) when is_atom(field) do
-        Map.put(params, Atom.to_string(field), user_id)
-      end
-
-      defp maybe_authorize_access(resource, user_id, nil), do: :ok
-      defp maybe_authorize_access(resource, user_id, :user_ownership) do
-        # For User schema, the field is 'id', not 'user_id'
-        resource_user_id = if Map.has_key?(resource, :user_id), do: resource.user_id, else: resource.id
-        if resource_user_id != user_id do
-          raise "Unauthorized access to resource"
-        end
-      end
-      defp maybe_authorize_access(resource, user_id, :admin_only) do
-        current_user = get_current_user(user_id)
-        if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
-      end
-      defp maybe_authorize_access(resource, user_id, :admin_or_owner) do
-        current_user = get_current_user(user_id)
-        # For User schema, the field is 'id', not 'user_id'
-        resource_user_id = if Map.has_key?(resource, :user_id), do: resource.user_id, else: resource.id
-        unless resource_user_id == user_id do
-          # Debug logging
-          require Logger
-          Logger.debug("Authorization check failed", %{
-            current_user_id: user_id,
-            resource_user_id: resource_user_id,
-            current_user_role: current_user.role,
-            resource: inspect(resource)
-          })
-          if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
-        end
-      end
-
-      # Authorization for list operations (when no specific resource is involved)
-      defp maybe_authorize_list_access(user_id, nil), do: :ok
-      defp maybe_authorize_list_access(user_id, :user_ownership) do
-        # For list operations, user_ownership means they can only see their own resources
-        # This is handled by the user_filter in the context
-        :ok
-      end
-      defp maybe_authorize_list_access(user_id, :admin_only) do
-        current_user = get_current_user(user_id)
-        if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
-      end
-      defp maybe_authorize_list_access(user_id, :admin_or_owner) do
-        # For list operations, admin_or_owner means only admins can list all resources
-        current_user = get_current_user(user_id)
-        if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
-      end
-
-      defp get_current_user(user_id) do
-        LedgerBankApi.Users.Context.get!(user_id)
-      end
-
-      defp handle_error_response(conn, error_response, context) do
-        response = ErrorHandler.handle_common_error(error_response, context)
-        status_code = get_error_status_code(response)
-        conn |> put_status(status_code) |> json(response)
-      end
-
-      defp get_error_status_code(%{error: %{type: type}}) do
-        case type do
-          :validation_error -> 422
-          :not_found -> 404
-          :unauthorized -> 401
-          :forbidden -> 403
-          :conflict -> 409
-          :unprocessable_entity -> 422
-          _ -> 500
-        end
-      end
-      defp get_error_status_code(_), do: 500
+      # Add correlation ID to all requests
+      plug :add_correlation_id
     end
   end
 
   @doc """
-  Macro to define custom actions with standard error handling.
+  Plug to add correlation ID to all requests for error tracking.
   """
-  defmacro custom_action(name, do: block) do
-    quote do
-      def unquote(name)(conn, params) do
-        user_id = conn.assigns.current_user_id
-        context = %{action: unquote(name), user_id: user_id}
+  def add_correlation_id(conn, _opts) do
+    correlation_id = get_correlation_id(conn)
+    conn = put_resp_header(conn, "x-correlation-id", correlation_id)
+    assign(conn, :correlation_id, correlation_id)
+  end
 
-        case ErrorHandler.with_error_handling(fn ->
-          unquote(block)
-        end, context) do
-          {:ok, response} ->
-            conn
-            |> put_status(200)
-            |> json(response.data)
-          {:error, error_response} ->
-            response = ErrorHandler.handle_common_error(error_response, context)
-            conn |> put_status(400) |> json(response)
-        end
-      end
+  @doc """
+  Handle successful responses with consistent formatting.
+  """
+  def handle_success(conn, data, metadata \\ %{}) do
+    response = %{
+      data: data,
+      success: true,
+      timestamp: DateTime.utc_now(),
+      correlation_id: conn.assigns[:correlation_id],
+      metadata: metadata
+    }
+
+    json(conn, response)
+  end
+
+  @doc """
+  Handle error responses using the web adapter.
+  """
+  def handle_error(conn, %Error{} = error) do
+    # Add correlation ID to error context if not present
+    error_with_correlation = if is_nil(error.correlation_id) do
+      %{error | correlation_id: conn.assigns[:correlation_id]}
+    else
+      error
+    end
+
+    ErrorAdapter.handle_error(conn, error_with_correlation)
+  end
+
+  @doc """
+  Handle generic errors by converting them to canonical Error structs.
+  """
+  def handle_error(conn, reason, context \\ %{}) do
+    context_with_correlation = Map.put(context, :correlation_id, conn.assigns[:correlation_id])
+    ErrorAdapter.handle_generic_error(conn, reason, context_with_correlation)
+  end
+
+  @doc """
+  Handle changeset errors.
+  """
+  def handle_changeset_error(conn, changeset, context \\ %{}) do
+    context_with_correlation = Map.put(context, :correlation_id, conn.assigns[:correlation_id])
+    ErrorAdapter.handle_changeset_error(conn, changeset, context_with_correlation)
+  end
+
+  @doc """
+  Extract and validate pagination parameters.
+  """
+  def extract_pagination_params(params) do
+    page = params
+    |> Map.get("page", "1")
+    |> String.to_integer()
+    |> max(1)
+
+    page_size = params
+    |> Map.get("page_size", "20")
+    |> String.to_integer()
+    |> min(100)  # Cap at 100 items per page
+    |> max(1)
+
+    %{page: page, page_size: page_size}
+  end
+
+  @doc """
+  Extract and validate sorting parameters.
+  """
+  def extract_sort_params(params) do
+    case Map.get(params, "sort") do
+      nil -> []
+      sort_string when is_binary(sort_string) ->
+        sort_string
+        |> String.split(",")
+        |> Enum.map(&parse_sort_field/1)
+        |> Enum.reject(&is_nil/1)
+      _ -> []
     end
   end
 
   @doc """
-  Macro to define async actions (like job queuing) with standard error handling.
+  Extract and validate filter parameters.
   """
-  defmacro async_action(name, do: block) do
-    quote do
-      def unquote(name)(conn, params) do
-        user_id = conn.assigns.current_user_id
-        context = %{action: unquote(name), user_id: user_id}
-
-        case ErrorHandler.with_error_handling(fn ->
-          unquote(block)
-        end, context) do
-          {:ok, response} ->
-            conn
-            |> put_status(202)
-            |> json(response.data)
-          {:error, error_response} ->
-            response = ErrorHandler.handle_common_error(error_response, context)
-            conn |> put_status(400) |> json(response)
-        end
+  def extract_filter_params(params) do
+    params
+    |> Map.drop(["page", "page_size", "sort"])
+    |> Enum.reduce(%{}, fn {key, value}, acc ->
+      if is_binary(value) and String.length(value) > 0 do
+        Map.put(acc, String.to_atom(key), value)
+      else
+        acc
       end
+    end)
+  end
+
+  # ============================================================================
+  # PRIVATE HELPER FUNCTIONS
+  # ============================================================================
+
+  defp get_correlation_id(conn) do
+    # Try to get from request headers first
+    case get_req_header(conn, "x-correlation-id") do
+      [correlation_id] when is_binary(correlation_id) -> correlation_id
+      _ -> Error.generate_correlation_id()
+    end
+  end
+
+  defp parse_sort_field(field_string) do
+    case String.split(field_string, ":") do
+      [field] -> {String.to_atom(field), :asc}
+      [field, direction] when direction in ["asc", "desc"] ->
+        {String.to_atom(field), String.to_atom(direction)}
+      _ -> nil
     end
   end
 end

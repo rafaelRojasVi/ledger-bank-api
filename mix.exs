@@ -60,16 +60,21 @@ defmodule LedgerBankApi.MixProject do
       {:bypass, "~> 2.1", only: :test},
       {:req, "~> 0.5.10"},
       {:argon2_elixir, "~> 3.0"},
-      {:stream_data, "~> 0.6", only: :test}
+      {:stream_data, "~> 0.6", only: :test},
+      {:open_api_spex, "~> 3.18"},
+      {:phoenix_swagger, "~> 0.8.3"}
     ]
   end
 
   # Aliases are shortcuts or tasks specific to the current project.
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup"],
+      setup: ["deps.get", "ecto.setup", "swagger.generate"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
+      # Documentation aliases
+      "docs.generate": ["swagger.generate"],
+      "docs.validate": ["swagger.validate"],
       # Test aliases for easier test running
       "test:auth": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/auth/"],
       "test:banking": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/banking/"],

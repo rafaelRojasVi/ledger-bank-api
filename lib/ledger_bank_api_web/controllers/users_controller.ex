@@ -1,78 +1,169 @@
-defmodule LedgerBankApiWeb.UsersController do
+defmodule LedgerBankApiWeb.Controllers.UsersController do
   @moduledoc """
-  Optimized users controller using base controller patterns.
-  Provides user management operations with admin-only access.
+  Users controller handling user CRUD operations.
+
+  Uses the "one-thing" error handling pattern with canonical Error structs.
   """
 
-  use LedgerBankApiWeb, :controller
+  use LedgerBankApiWeb.Controllers.BaseController
+  alias LedgerBankApi.Accounts.UserService
 
-  alias LedgerBankApi.Banking.Behaviours.ErrorHandler
+  @doc """
+  List users with optional filtering and pagination.
 
-  # Custom admin actions
-  def suspend(conn, %{"id" => user_id}) do
-    current_user_id = conn.assigns.current_user_id
-    context = %{action: :suspend, user_id: current_user_id, target_user_id: user_id}
+  GET /api/users?page=1&page_size=20&sort=email:asc&status=ACTIVE
+  """
+  def index(conn, params) do
+    pagination = extract_pagination_params(params)
+    sort = extract_sort_params(params)
+    filters = extract_filter_params(params)
 
-    # Require admin role
-    {:ok, current_user} = LedgerBankApi.Users.get_user(current_user_id)
-    if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
+    opts = [
+      pagination: pagination,
+      sort: sort,
+      filters: filters
+    ]
 
-    case ErrorHandler.with_error_handling(fn ->
-      {:ok, user} = LedgerBankApi.Users.get_user(user_id)
-      LedgerBankApi.Users.update_user(user, %{status: "SUSPENDED"})
-    end, context) do
-      {:ok, response} ->
-        conn
-        |> put_status(200)
-        |> json(response.data)
-      {:error, error_response} ->
-        response = ErrorHandler.handle_common_error(error_response, context)
-        conn |> put_status(400) |> json(response)
+    users = UserService.list_users(opts)
+
+    # Get total count for pagination metadata
+    total_count = UserService.get_user_statistics()
+    |> elem(1)
+    |> Map.get(:total_users)
+
+    metadata = %{
+      pagination: %{
+        page: pagination.page,
+        page_size: pagination.page_size,
+        total_count: total_count,
+        total_pages: ceil(total_count / pagination.page_size)
+      }
+    }
+
+    handle_success(conn, users, metadata)
+  end
+
+  @doc """
+  Get a specific user by ID.
+
+  GET /api/users/:id
+  """
+  def show(conn, %{"id" => id}) do
+    case UserService.get_user(id) do
+      {:ok, user} ->
+        handle_success(conn, user)
+
+      {:error, reason} ->
+        handle_error(conn, reason, %{action: :show, user_id: id})
     end
   end
 
-  def activate(conn, %{"id" => user_id}) do
-    current_user_id = conn.assigns.current_user_id
-    context = %{action: :activate, user_id: current_user_id, target_user_id: user_id}
+  @doc """
+  Create a new user.
 
-    # Require admin role
-    {:ok, current_user} = LedgerBankApi.Users.get_user(current_user_id)
-    if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
+  POST /api/users
+  Body: %{
+    "email" => "user@example.com",
+    "full_name" => "John Doe",
+    "password" => "password123",
+    "password_confirmation" => "password123",
+    "role" => "user"
+  }
+  """
+  def create(conn, params) do
+    case UserService.create_user(params) do
+      {:ok, user} ->
+        # Remove sensitive fields from response
+        user_data = %{
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          status: user.status,
+          active: user.active,
+          verified: user.verified,
+          inserted_at: user.inserted_at,
+          updated_at: user.updated_at
+        }
 
-    case ErrorHandler.with_error_handling(fn ->
-      {:ok, user} = LedgerBankApi.Users.get_user(user_id)
-      LedgerBankApi.Users.update_user(user, %{status: "ACTIVE"})
-    end, context) do
-      {:ok, response} ->
         conn
-        |> put_status(200)
-        |> json(response.data)
-      {:error, error_response} ->
-        response = ErrorHandler.handle_common_error(error_response, context)
-        conn |> put_status(400) |> json(response)
+        |> put_status(:created)
+        |> handle_success(user_data)
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        handle_changeset_error(conn, changeset, %{action: :create})
+
+      {:error, reason} ->
+        handle_error(conn, reason, %{action: :create})
     end
   end
 
-  def list_by_role(conn, %{"role" => role}) do
-    current_user_id = conn.assigns.current_user_id
-    context = %{action: :list_by_role, user_id: current_user_id, role: role}
+  @doc """
+  Update a user.
 
-    # Require admin role
-    {:ok, current_user} = LedgerBankApi.Users.get_user(current_user_id)
-    if current_user.role != "admin", do: raise "Unauthorized: Admin role required"
+  PUT /api/users/:id
+  Body: %{
+    "full_name" => "John Smith",
+    "status" => "ACTIVE"
+  }
+  """
+  def update(conn, %{"id" => id} = params) do
+    with {:ok, user} <- UserService.get_user(id) do
+      update_params = Map.delete(params, "id")
 
-    case ErrorHandler.with_error_handling(fn ->
-      LedgerBankApi.Users.list_users_by_role(role)
-    end, context) do
-      {:ok, response} ->
-        conn
-        |> put_status(200)
-        |> json(response.data)
-      {:error, error_response} ->
-        response = ErrorHandler.handle_common_error(error_response, context)
-        conn |> put_status(400) |> json(response)
+      case UserService.update_user(user, update_params) do
+        {:ok, updated_user} ->
+          # Remove sensitive fields from response
+          user_data = %{
+            id: updated_user.id,
+            email: updated_user.email,
+            full_name: updated_user.full_name,
+            role: updated_user.role,
+            status: updated_user.status,
+            active: updated_user.active,
+            verified: updated_user.verified,
+            inserted_at: updated_user.inserted_at,
+            updated_at: updated_user.updated_at
+          }
+
+          handle_success(conn, user_data)
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          handle_changeset_error(conn, changeset, %{action: :update, user_id: id})
+
+        {:error, reason} ->
+          handle_error(conn, reason, %{action: :update, user_id: id})
+      end
     end
   end
 
+  @doc """
+  Delete a user.
 
+  DELETE /api/users/:id
+  """
+  def delete(conn, %{"id" => id}) do
+    with {:ok, user} <- UserService.get_user(id) do
+      case UserService.delete_user(user) do
+        {:ok, _deleted_user} ->
+          handle_success(conn, %{message: "User deleted successfully"})
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          handle_changeset_error(conn, changeset, %{action: :delete, user_id: id})
+
+        {:error, reason} ->
+          handle_error(conn, reason, %{action: :delete, user_id: id})
+      end
+    end
+  end
+
+  @doc """
+  Get user statistics.
+
+  GET /api/users/stats
+  """
+  def stats(conn, _params) do
+    {:ok, stats} = UserService.get_user_statistics()
+    handle_success(conn, stats)
+  end
 end

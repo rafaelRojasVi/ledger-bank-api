@@ -1,189 +1,193 @@
-defmodule LedgerBankApiWeb.AuthController do
+defmodule LedgerBankApiWeb.Controllers.AuthController do
   @moduledoc """
-  Optimized auth controller using base controller patterns.
-  Provides authentication and user profile operations.
+  Authentication controller handling user login, logout, and token management.
+
+  Uses the "one-thing" error handling pattern with canonical Error structs.
   """
 
-  use LedgerBankApiWeb, :controller
-  require LedgerBankApiWeb.BaseController
-
-  alias LedgerBankApiWeb.AuthJSON
-  alias LedgerBankApi.Banking.Behaviours.ErrorHandler
-
-  # Helper functions for token extraction
-  defp extract_jti_from_token(token) do
-    case Joken.peek_claims(token) do
-      {:ok, %{"jti" => jti}} -> jti
-      _ -> nil
-    end
-  end
-
-  defp extract_exp_from_token(token) do
-    case Joken.peek_claims(token) do
-      {:ok, %{"exp" => exp}} -> DateTime.from_unix!(exp)
-      _ -> nil
-    end
-  end
-
-  @doc """
-  Register a new user.
-  """
-  def register(conn, %{"user" => user_params}) do
-    context = %{action: :register, email: user_params["email"]}
-
-    case ErrorHandler.with_error_handling(fn ->
-      LedgerBankApi.Users.create_user(user_params)
-    end, context) do
-      {:ok, response} ->
-        user = response.data
-        {:ok, access_token} = LedgerBankApi.Auth.generate_access_token(user)
-        {:ok, refresh_token} = LedgerBankApi.Auth.generate_refresh_token(user)
-        {:ok, _db_token} = LedgerBankApi.Users.create_refresh_token(%{
-          jti: extract_jti_from_token(refresh_token),
-          user_id: user.id,
-          expires_at: extract_exp_from_token(refresh_token)
-        })
-
-        conn
-        |> put_status(201)
-        |> json(AuthJSON.auth_response(user, access_token, refresh_token, "User registered successfully"))
-
-      {:error, error_response} ->
-        status_code = error_response.error.code
-        conn |> put_status(status_code) |> json(error_response)
-    end
-  end
-
-  def register(conn, _params) do
-    context = %{action: :register}
-    error_response = ErrorHandler.create_error_response(
-      :validation_error,
-      "Validation failed",
-      %{errors: %{user: ["is required"]}, context: context}
-    )
-    conn |> put_status(400) |> json(error_response)
-  end
+  use LedgerBankApiWeb.Controllers.BaseController
+  alias LedgerBankApi.Accounts.AuthService
 
   @doc """
   Login user with email and password.
+
+  POST /api/auth/login
+  Body: %{"email" => "user@example.com", "password" => "password123"}
   """
   def login(conn, %{"email" => email, "password" => password}) do
-    context = %{action: :login, email: email}
+    case AuthService.login_user(email, password) do
+      {:ok, %{access_token: access_token, refresh_token: refresh_token, user: user}} ->
+        response_data = %{
+          access_token: access_token,
+          refresh_token: refresh_token,
+          user: %{
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name,
+            role: user.role,
+            status: user.status
+          }
+        }
 
-    case LedgerBankApi.Auth.authenticate_user(email, password) do
-      {:ok, user} ->
-        {:ok, access_token} = LedgerBankApi.Auth.generate_access_token(user)
-        {:ok, refresh_token} = LedgerBankApi.Auth.generate_refresh_token(user)
+        handle_success(conn, response_data)
 
-        conn
-        |> put_status(200)
-        |> json(AuthJSON.auth_response(user, access_token, refresh_token, "Login successful"))
+      {:error, %Ecto.Changeset{} = changeset} ->
+        handle_changeset_error(conn, changeset, %{action: :login})
 
-      {:error, :invalid_password} ->
-        error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-        conn |> put_status(401) |> json(error_response)
-
-      {:error, :user_not_found} ->
-        error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-        conn |> put_status(401) |> json(error_response)
+      {:error, reason} ->
+        handle_error(conn, reason, %{action: :login, email: email})
     end
   end
 
   def login(conn, _params) do
-    context = %{action: :login}
-    error_response = ErrorHandler.create_error_response(
-      :validation_error,
-      "Validation failed",
-      %{errors: %{email: ["is required"], password: ["is required"]}, context: context}
-    )
-    conn |> put_status(400) |> json(error_response)
+    handle_error(conn, :missing_fields, %{
+      action: :login,
+      required_fields: ["email", "password"]
+    })
   end
 
   @doc """
   Refresh access token using refresh token.
+
+  POST /api/auth/refresh
+  Body: %{"refresh_token" => "refresh_token_here"}
   """
   def refresh(conn, %{"refresh_token" => refresh_token}) do
-    context = %{action: :refresh_token}
+    case AuthService.refresh_access_token(refresh_token) do
+      {:ok, access_token} ->
+        response_data = %{access_token: access_token}
+        handle_success(conn, response_data)
 
-    case LedgerBankApi.Auth.refresh_access_token(refresh_token) do
-      {:ok, new_access_token} ->
-        # Get user from the refresh token to generate new refresh token
-        case LedgerBankApi.Auth.verify_refresh_token(refresh_token) do
-          {:ok, claims} ->
-            user_id = claims["sub"]
-            case LedgerBankApi.Users.get_user(user_id) do
-              {:ok, user} ->
-                {:ok, new_refresh_token} = LedgerBankApi.Auth.generate_refresh_token(user)
-                conn
-                |> put_status(200)
-                |> json(AuthJSON.auth_response(user, new_access_token, new_refresh_token, "Tokens refreshed successfully"))
-              {:error, _} ->
-                error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-                conn |> put_status(401) |> json(error_response)
-            end
-          {:error, _} ->
-            error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-            conn |> put_status(401) |> json(error_response)
-        end
-
-      {:error, _reason} ->
-        error_response = ErrorHandler.create_error_response(:unauthorized, "Unauthorized access", %{context: context})
-        conn |> put_status(401) |> json(error_response)
+      {:error, reason} ->
+        handle_error(conn, reason, %{action: :refresh})
     end
   end
 
   def refresh(conn, _params) do
-    context = %{action: :refresh_token}
-    error_response = ErrorHandler.create_error_response(
-      :validation_error,
-      "Validation failed",
-      %{errors: %{refresh_token: ["is required"]}, context: context}
-    )
-    conn |> put_status(400) |> json(error_response)
+    handle_error(conn, :missing_fields, %{
+      action: :refresh,
+      required_fields: ["refresh_token"]
+    })
   end
 
   @doc """
-  Logout user by revoking all refresh tokens.
+  Logout user by revoking refresh token.
+
+  POST /api/auth/logout
+  Body: %{"refresh_token" => "refresh_token_here"}
   """
+  def logout(conn, %{"refresh_token" => refresh_token}) do
+    case AuthService.logout_user(refresh_token) do
+      {:ok, _} ->
+        handle_success(conn, %{message: "Logged out successfully"})
+
+      {:error, reason} ->
+        handle_error(conn, reason, %{action: :logout})
+    end
+  end
+
   def logout(conn, _params) do
-    user_id = conn.assigns.current_user_id
-    context = %{action: :logout, user_id: user_id}
+    handle_error(conn, :missing_fields, %{
+      action: :logout,
+      required_fields: ["refresh_token"]
+    })
+  end
 
-    case ErrorHandler.with_error_handling(fn ->
-      LedgerBankApi.Users.revoke_all_refresh_tokens(user_id)
-    end, context) do
-      {:ok, _response} ->
-        conn
-        |> put_status(200)
-        |> json(AuthJSON.logout_response())
+  @doc """
+  Logout user from all devices.
 
-      {:error, error_response} ->
-        status_code = error_response.error.code
-        conn |> put_status(status_code) |> json(error_response)
+  POST /api/auth/logout-all
+  Headers: Authorization: Bearer <access_token>
+  """
+  def logout_all(conn, _params) do
+    with {:ok, user} <- get_current_user(conn) do
+      case AuthService.logout_user_all_devices(user.id) do
+        {:ok, _} ->
+          handle_success(conn, %{message: "Logged out from all devices successfully"})
+
+        {:error, reason} ->
+          handle_error(conn, reason, %{action: :logout_all, user_id: user.id})
+      end
     end
   end
 
   @doc """
-  Get current user profile.
+  Get current user information from access token.
+
+  GET /api/auth/me
+  Headers: Authorization: Bearer <access_token>
   """
   def me(conn, _params) do
-    user_id = conn.assigns.current_user_id
-    context = %{action: :get_profile, user_id: user_id}
+    with {:ok, user} <- get_current_user(conn) do
+      user_data = %{
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        status: user.status,
+        active: user.active,
+        verified: user.verified,
+        inserted_at: user.inserted_at,
+        updated_at: user.updated_at
+      }
 
-    case ErrorHandler.with_error_handling(fn ->
-      LedgerBankApi.Users.get_user(user_id)
-    end, context) do
-      {:ok, response} ->
-        conn
-        |> put_status(200)
-        |> json(%{
-          data: %{
-            user: LedgerBankApiWeb.JSON.UserJSON.format(response.data)
-          }
-        })
-      {:error, error_response} ->
-        status_code = error_response.error.code
-        conn |> put_status(status_code) |> json(error_response)
+      handle_success(conn, user_data)
+    end
+  end
+
+  @doc """
+  Validate access token.
+
+  GET /api/auth/validate
+  Headers: Authorization: Bearer <access_token>
+  """
+  def validate(conn, _params) do
+    with {:ok, user} <- get_current_user(conn) do
+      response_data = %{
+        valid: true,
+        user_id: user.id,
+        role: user.role,
+        expires_at: get_token_expiration(conn)
+      }
+
+      handle_success(conn, response_data)
+    end
+  end
+
+  # ============================================================================
+  # PRIVATE HELPER FUNCTIONS
+  # ============================================================================
+
+  defp get_current_user(conn) do
+    case get_auth_header(conn) do
+      {:ok, token} ->
+        case AuthService.get_user_from_token(token) do
+          {:ok, user} -> {:ok, user}
+          {:error, reason} -> {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp get_auth_header(conn) do
+    case get_req_header(conn, "authorization") do
+      ["Bearer " <> token] -> {:ok, token}
+      _ -> {:error, :invalid_token}
+    end
+  end
+
+  defp get_token_expiration(conn) do
+    case get_auth_header(conn) do
+      {:ok, token} ->
+        case AuthService.get_token_expiration(token) do
+          {:ok, expiration} -> expiration
+          {:error, _} -> nil
+        end
+
+      {:error, _} ->
+        nil
     end
   end
 end

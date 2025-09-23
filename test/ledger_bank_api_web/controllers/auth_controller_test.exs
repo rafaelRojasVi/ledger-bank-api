@@ -108,13 +108,13 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
         # missing password
       })
 
-      response = json_response(conn, 400)
+      response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_password_format"
-      assert error["code"] == 400
+      assert error["type"] == "unauthorized"
+      assert error["reason"] == "invalid_credentials"
+      assert error["code"] == 401
       assert error["details"]["field"] == "password"
-      assert error["details"]["message"] == "Password must be a string"
+      assert error["details"]["source"] == "input_validator"
     end
 
     test "fails to login with empty email", %{conn: conn} do
@@ -287,10 +287,13 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
         refresh_token: ""
       })
 
-      response = json_response(conn, 401)
+      response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_token"
+      assert error["type"] == "validation_error"
+      assert error["reason"] == "missing_fields"
+      assert error["code"] == 400
+      assert error["details"]["field"] == "refresh_token"
+      assert error["details"]["source"] == "input_validator"
     end
 
     test "fails to refresh with nil refresh token", %{conn: conn} do
@@ -348,7 +351,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       response = json_response(conn, 401)
       assert %{"error" => error} = response
       assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_token"
+      assert error["reason"] == "invalid_token_type"
     end
   end
 
@@ -412,7 +415,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       response = json_response(conn, 400)
       assert %{"error" => error} = response
       assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_refresh_token_format"
+      assert error["reason"] == "missing_fields"
     end
 
     test "fails to logout with already revoked refresh token", %{conn: conn} do

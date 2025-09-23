@@ -2,7 +2,18 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   @moduledoc """
   Centralized error handling for the LedgerBankApi application.
 
-  Provides consistent error responses using the canonical Error struct.
+  This module is the primary interface for creating standardized error responses.
+  It works in conjunction with ErrorCatalog (error taxonomy) and Error (error struct).
+
+  ## Architecture Overview
+
+  The error handling system consists of four main components:
+
+  1. **Error** - Defines the canonical error struct and conversion functions
+  2. **ErrorCatalog** - Single source of truth for error taxonomy, categories, and messages
+  3. **ErrorHandler** - Creates errors and handles Ecto changesets (this module)
+  4. **Validator** - Core validation functions that return simple error reasons
+  5. **InputValidator** - Web layer validation that converts Validator results to Error structs
 
   ## Usage
 
@@ -38,66 +49,19 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   alias LedgerBankApi.Core.{Error, ErrorCatalog}
 
   @doc """
-  Complete mapping of business error reasons to their HTTP types, codes, and messages.
-  Now uses ErrorCatalog as the single source of truth.
+  Get error mapping from ErrorCatalog (single source of truth).
   """
-  def reason_map do
-    %{
-      # Validation errors -> 400 (Bad Request)
-      invalid_amount_format: {:validation_error, 400, "Invalid amount format"},
-      missing_fields: {:validation_error, 400, "Required fields are missing"},
-      invalid_direction: {:validation_error, 400, "Invalid payment direction"},
-      invalid_email_format: {:validation_error, 400, "Invalid email format"},
-      invalid_password_format: {:validation_error, 400, "Invalid password format"},
+  def get_error_mapping(reason) do
+    if ErrorCatalog.valid_reason?(reason) do
+      category = ErrorCatalog.category_for_reason(reason)
+      type = ErrorCatalog.error_type_for_category(category)
+      code = ErrorCatalog.http_status_for_category(category)
+      message = ErrorCatalog.default_message_for_reason(reason)
 
-      # Not found errors -> 404 (Not Found)
-      user_not_found: {:not_found, 404, "User not found"},
-      account_not_found: {:not_found, 404, "Account not found"},
-      payment_not_found: {:not_found, 404, "Payment not found"},
-      token_not_found: {:not_found, 404, "Token not found"},
-      bank_not_found: {:not_found, 404, "Bank not found"},
-
-      # Authentication errors -> 401 (Unauthorized)
-      invalid_credentials: {:unauthorized, 401, "Invalid credentials"},
-      invalid_password: {:unauthorized, 401, "Invalid password"},
-      invalid_token: {:unauthorized, 401, "Invalid token"},
-      token_expired: {:unauthorized, 401, "Token has expired"},
-      token_revoked: {:unauthorized, 401, "Token has been revoked"},
-      invalid_token_type: {:unauthorized, 401, "Invalid token type"},
-      invalid_issuer: {:unauthorized, 401, "Invalid token issuer"},
-      invalid_audience: {:unauthorized, 401, "Invalid token audience"},
-      token_not_yet_valid: {:unauthorized, 401, "Token not yet valid"},
-      missing_required_claims: {:unauthorized, 401, "Missing required token claims"},
-
-      # Authorization errors -> 403 (Forbidden)
-      forbidden: {:forbidden, 403, "Access forbidden"},
-      unauthorized_access: {:forbidden, 403, "Unauthorized access"},
-      insufficient_permissions: {:forbidden, 403, "Insufficient permissions"},
-
-      # Conflict errors -> 409 (Conflict)
-      email_already_exists: {:conflict, 409, "Email already exists"},
-      already_processed: {:conflict, 409, "Resource has already been processed"},
-      duplicate_transaction: {:conflict, 409, "Duplicate transaction"},
-
-      # Business rule errors -> 422 (Unprocessable Entity)
-      insufficient_funds: {:unprocessable_entity, 422, "Insufficient funds for this transaction"},
-      account_inactive: {:unprocessable_entity, 422, "Account is inactive"},
-      daily_limit_exceeded: {:unprocessable_entity, 422, "Daily payment limit exceeded"},
-      amount_exceeds_limit: {:unprocessable_entity, 422, "Payment amount exceeds single transaction limit"},
-      negative_amount: {:unprocessable_entity, 422, "Payment amount cannot be negative"},
-      negative_balance: {:unprocessable_entity, 422, "Account balance cannot be negative"},
-
-      # External dependency errors -> 503 (Service Unavailable)
-      timeout: {:service_unavailable, 503, "Request timeout"},
-      service_unavailable: {:service_unavailable, 503, "Service temporarily unavailable"},
-      bank_api_error: {:service_unavailable, 503, "Bank API error"},
-      payment_provider_error: {:service_unavailable, 503, "Payment provider error"},
-
-      # System errors -> 500 (Internal Server Error)
-      internal_server_error: {:internal_server_error, 500, "An unexpected error occurred"},
-      database_error: {:internal_server_error, 500, "Database error"},
-      configuration_error: {:internal_server_error, 500, "Configuration error"}
-    }
+      {type, code, message}
+    else
+      nil
+    end
   end
 
   @doc """
@@ -117,7 +81,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
       {:error, ErrorHandler.business_error(:timeout, %{service: "payment_provider", timeout_ms: 30000})}
   """
   def business_error(reason, context \\ %{}) when is_atom(reason) and is_map(context) do
-    error = case Map.get(reason_map(), reason) do
+    error = case get_error_mapping(reason) do
       {type, code, message} ->
         # Use ErrorCatalog for category inference
         category = ErrorCatalog.category_for_reason(reason)
@@ -150,7 +114,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   end
 
   @doc """
-  Handles Ecto changeset errors.
+  Handles Ecto changeset errors with intelligent error detection.
   """
   def handle_changeset_error(changeset, context) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
@@ -159,20 +123,179 @@ defmodule LedgerBankApi.Core.ErrorHandler do
       end)
     end)
 
-    # Check if this is a unique constraint error
-    has_unique_error = Enum.any?(errors, fn {_field, field_errors} ->
+    # Analyze changeset to determine the most appropriate error reason
+    error_reason = analyze_changeset_errors(changeset, errors)
+
+    # Create context with detailed validation errors
+    error_context = Map.put(context, :validation_errors, errors)
+    error_context = Map.put(error_context, :changeset_action, changeset.action)
+    error_context = Map.put(error_context, :changeset_valid?, changeset.valid?)
+
+    business_error(error_reason, error_context)
+  end
+
+  # Private function to analyze changeset errors and determine appropriate error reason
+  defp analyze_changeset_errors(_changeset, errors) do
+    cond do
+      # Check for unique constraint errors first (highest priority)
+      has_unique_constraint_error?(errors) ->
+        get_unique_constraint_error_reason(errors)
+
+      # Check for format validation errors
+      has_format_validation_error?(errors) ->
+        get_format_validation_error_reason(errors)
+
+      # Check for length validation errors
+      has_length_validation_error?(errors) ->
+        get_length_validation_error_reason(errors)
+
+      # Check for inclusion validation errors
+      has_inclusion_validation_error?(errors) ->
+        get_inclusion_validation_error_reason(errors)
+
+      # Check for custom validation errors
+      has_custom_validation_error?(errors) ->
+        get_custom_validation_error_reason(errors)
+
+      # Check for required field errors
+      has_required_field_error?(errors) ->
+        :missing_fields
+
+      # Default fallback
+      true ->
+        :missing_fields
+    end
+  end
+
+  # Check for unique constraint errors
+  defp has_unique_constraint_error?(errors) do
+    Enum.any?(errors, fn {_field, field_errors} ->
       Enum.any?(field_errors, fn error ->
-        String.contains?(error, "has already been taken")
+        String.contains?(error, "has already been taken") or
+        String.contains?(error, "already exists")
       end)
     end)
+  end
 
-    error = if has_unique_error do
-      business_error(:email_already_exists, Map.put(context, :validation_errors, errors))
-    else
-      business_error(:missing_fields, Map.put(context, :validation_errors, errors))
-    end
+  # Get specific unique constraint error reason
+  defp get_unique_constraint_error_reason(errors) do
+    # Check which field has the unique constraint error
+    Enum.find_value(errors, :email_already_exists, fn {field, field_errors} ->
+      if Enum.any?(field_errors, &String.contains?(&1, "has already been taken")) do
+        case field do
+          :email -> :email_already_exists
+          _ -> :already_processed
+        end
+      end
+    end)
+  end
 
-    error
+  # Check for format validation errors
+  defp has_format_validation_error?(errors) do
+    Enum.any?(errors, fn {_field, field_errors} ->
+      Enum.any?(field_errors, fn error ->
+        String.contains?(error, "format") or
+        String.contains?(error, "invalid")
+      end)
+    end)
+  end
+
+  # Get specific format validation error reason
+  defp get_format_validation_error_reason(errors) do
+    Enum.find_value(errors, :invalid_email_format, fn {field, field_errors} ->
+      if Enum.any?(field_errors, &String.contains?(&1, "format")) do
+        case field do
+          :email -> :invalid_email_format
+          :amount -> :invalid_amount_format
+          :direction -> :invalid_direction
+          :password -> :invalid_password_format
+          :user_id -> :invalid_uuid_format
+          :jti -> :invalid_uuid_format
+          :full_name -> :invalid_name_format
+          _ -> :invalid_email_format
+        end
+      end
+    end)
+  end
+
+  # Check for length validation errors
+  defp has_length_validation_error?(errors) do
+    Enum.any?(errors, fn {_field, field_errors} ->
+      Enum.any?(field_errors, fn error ->
+        String.contains?(error, "should be") and
+        (String.contains?(error, "character") or String.contains?(error, "at least"))
+      end)
+    end)
+  end
+
+  # Get specific length validation error reason
+  defp get_length_validation_error_reason(errors) do
+    Enum.find_value(errors, :invalid_password_format, fn {field, field_errors} ->
+      if Enum.any?(field_errors, &String.contains?(&1, "should be")) do
+        case field do
+          :password -> :invalid_password_format
+          :email -> :invalid_email_format
+          :full_name -> :invalid_name_format
+          _ -> :invalid_password_format
+        end
+      end
+    end)
+  end
+
+  # Check for required field errors
+  defp has_required_field_error?(errors) do
+    Enum.any?(errors, fn {_field, field_errors} ->
+      Enum.any?(field_errors, fn error ->
+        String.contains?(error, "can't be blank") or
+        String.contains?(error, "is required")
+      end)
+    end)
+  end
+
+  # Check for inclusion validation errors
+  defp has_inclusion_validation_error?(errors) do
+    Enum.any?(errors, fn {_field, field_errors} ->
+      Enum.any?(field_errors, fn error ->
+        String.contains?(error, "is invalid")
+      end)
+    end)
+  end
+
+  # Get specific inclusion validation error reason
+  defp get_inclusion_validation_error_reason(errors) do
+    Enum.find_value(errors, :invalid_direction, fn {field, field_errors} ->
+      if Enum.any?(field_errors, &String.contains?(&1, "is invalid")) do
+        case field do
+          :direction -> :invalid_direction
+          :status -> :invalid_direction
+          :role -> :invalid_direction
+          _ -> :invalid_direction
+        end
+      end
+    end)
+  end
+
+  # Check for custom validation errors
+  defp has_custom_validation_error?(errors) do
+    Enum.any?(errors, fn {_field, field_errors} ->
+      Enum.any?(field_errors, fn error ->
+        String.contains?(error, "cannot be changed") or
+        String.contains?(error, "business rule")
+      end)
+    end)
+  end
+
+  # Get specific custom validation error reason
+  defp get_custom_validation_error_reason(errors) do
+    Enum.find_value(errors, :missing_fields, fn {field, field_errors} ->
+      if Enum.any?(field_errors, &String.contains?(&1, "cannot be changed")) do
+        case field do
+          :role -> :insufficient_permissions
+          :status -> :insufficient_permissions
+          _ -> :missing_fields
+        end
+      end
+    end)
   end
 
   @doc """
@@ -245,14 +368,17 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   end
 
   @doc """
-  Gets the HTTP status code for an error type from the reason map.
+  Gets the HTTP status code for an error type from ErrorCatalog.
   """
   def get_error_code(type) do
-    case Enum.find_value(reason_map(), fn {_reason, {error_type, code, _message}} ->
-      if error_type == type, do: code
-    end) do
+    # Find the category that maps to this error type
+    category = Enum.find(ErrorCatalog.categories(), fn cat ->
+      ErrorCatalog.error_type_for_category(cat) == type
+    end)
+
+    case category do
       nil -> 500
-      code -> code
+      cat -> ErrorCatalog.http_status_for_category(cat)
     end
   end
 

@@ -3,7 +3,8 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
   Ecto schema for application users. Represents a registered user with email, name, status, and role.
   Valid roles: "user", "admin", "support".
   Passwords are securely hashed using Argon2 and never stored in plaintext.
-  Password requirements: minimum 8 characters, at least one letter, one number, and one special character.
+  Password requirements: minimum 8 characters for regular users, 15 characters for admin accounts.
+  Longer passwords are more secure than complex ones. Use memorable passphrases when possible.
   """
   use Ecto.Schema
   import Ecto.Changeset
@@ -99,11 +100,15 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
     if is_nil(password) do
       changeset
     else
+      # Get user role to determine minimum length requirement
+      user = changeset.data
+      role = get_field(changeset, :role) || user.role || "user"
+
+      min_length = if role in ["admin", "support"], do: 15, else: 8
+
       changeset
-      |> validate_length(:password, min: 8, max: 255)
-      |> validate_format(:password, ~r/[a-zA-Z]/, message: "must contain at least one letter")
-      |> validate_format(:password, ~r/\d/, message: "must contain at least one number")
-      |> validate_format(:password, ~r/[!@#$%^&*(),.?":{}|<>]/, message: "must contain at least one special character")
+      |> validate_length(:password, min: min_length, max: 255,
+          message: "must be at least #{min_length} characters long")
     end
   end
 

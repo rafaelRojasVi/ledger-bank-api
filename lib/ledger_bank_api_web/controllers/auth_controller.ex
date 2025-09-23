@@ -7,6 +7,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
 
   use LedgerBankApiWeb.Controllers.BaseController
   alias LedgerBankApi.Accounts.AuthService
+  alias LedgerBankApiWeb.Validation.InputValidator
 
   @doc """
   Login user with email and password.
@@ -14,36 +15,24 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   POST /api/auth/login
   Body: %{"email" => "user@example.com", "password" => "password123"}
   """
-  def login(conn, %{"email" => email, "password" => password}) do
-    case AuthService.login_user(email, password) do
-      {:ok, %{access_token: access_token, refresh_token: refresh_token, user: user}} ->
-        response_data = %{
+  def login(conn, params) do
+    context = build_context(conn, :login)
+
+    validate_and_execute(
+      conn,
+      context,
+      InputValidator.validate_login(params),
+      fn validated_params ->
+        AuthService.login_user(validated_params.email, validated_params.password)
+      end,
+      fn %{access_token: access_token, refresh_token: refresh_token, user: user} ->
+        handle_auth_success(conn, :login, %{
           access_token: access_token,
           refresh_token: refresh_token,
-          user: %{
-            id: user.id,
-            email: user.email,
-            full_name: user.full_name,
-            role: user.role,
-            status: user.status
-          }
-        }
-
-        handle_success(conn, response_data)
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        handle_changeset_error(conn, changeset, %{action: :login})
-
-      {:error, reason} ->
-        handle_error(conn, reason, %{action: :login, email: email})
-    end
-  end
-
-  def login(conn, _params) do
-    handle_error(conn, :missing_fields, %{
-      action: :login,
-      required_fields: ["email", "password"]
-    })
+          user: user
+        })
+      end
+    )
   end
 
   @doc """
@@ -52,22 +41,20 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   POST /api/auth/refresh
   Body: %{"refresh_token" => "refresh_token_here"}
   """
-  def refresh(conn, %{"refresh_token" => refresh_token}) do
-    case AuthService.refresh_access_token(refresh_token) do
-      {:ok, access_token} ->
-        response_data = %{access_token: access_token}
-        handle_success(conn, response_data)
+  def refresh(conn, params) do
+    context = build_context(conn, :refresh)
 
-      {:error, reason} ->
-        handle_error(conn, reason, %{action: :refresh})
-    end
-  end
-
-  def refresh(conn, _params) do
-    handle_error(conn, :missing_fields, %{
-      action: :refresh,
-      required_fields: ["refresh_token"]
-    })
+    validate_and_execute(
+      conn,
+      context,
+      InputValidator.validate_refresh_token(params),
+      fn validated_params ->
+        AuthService.refresh_access_token(validated_params.refresh_token)
+      end,
+      fn access_token ->
+        handle_auth_success(conn, :refresh, %{access_token: access_token})
+      end
+    )
   end
 
   @doc """
@@ -76,21 +63,20 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   POST /api/auth/logout
   Body: %{"refresh_token" => "refresh_token_here"}
   """
-  def logout(conn, %{"refresh_token" => refresh_token}) do
-    case AuthService.logout_user(refresh_token) do
-      {:ok, _} ->
-        handle_success(conn, %{message: "Logged out successfully"})
+  def logout(conn, params) do
+    context = build_context(conn, :logout)
 
-      {:error, reason} ->
-        handle_error(conn, reason, %{action: :logout})
-    end
-  end
-
-  def logout(conn, _params) do
-    handle_error(conn, :missing_fields, %{
-      action: :logout,
-      required_fields: ["refresh_token"]
-    })
+    validate_and_execute(
+      conn,
+      context,
+      InputValidator.validate_refresh_token(params),
+      fn validated_params ->
+        AuthService.logout_user(validated_params.refresh_token)
+      end,
+      fn _ ->
+        handle_auth_success(conn, :logout, "Logged out successfully")
+      end
+    )
   end
 
   @doc """
@@ -100,14 +86,13 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   Headers: Authorization: Bearer <access_token>
   """
   def logout_all(conn, _params) do
-    with {:ok, user} <- get_current_user(conn) do
-      case AuthService.logout_user_all_devices(user.id) do
-        {:ok, _} ->
-          handle_success(conn, %{message: "Logged out from all devices successfully"})
+    context = build_context(conn, :logout_all)
 
-        {:error, reason} ->
-          handle_error(conn, reason, %{action: :logout_all, user_id: user.id})
-      end
+    with {:ok, user} <- get_current_user(conn),
+         {:ok, _} <- AuthService.logout_user_all_devices(user.id) do
+      handle_auth_success(conn, :logout_all, "Logged out from all devices successfully")
+    else
+      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
@@ -118,20 +103,12 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   Headers: Authorization: Bearer <access_token>
   """
   def me(conn, _params) do
-    with {:ok, user} <- get_current_user(conn) do
-      user_data = %{
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role,
-        status: user.status,
-        active: user.active,
-        verified: user.verified,
-        inserted_at: user.inserted_at,
-        updated_at: user.updated_at
-      }
+    context = build_context(conn, :me)
 
-      handle_success(conn, user_data)
+    with {:ok, user} <- get_current_user(conn) do
+      handle_auth_success(conn, :me, user)
+    else
+      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
@@ -142,15 +119,16 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   Headers: Authorization: Bearer <access_token>
   """
   def validate(conn, _params) do
+    context = build_context(conn, :validate)
+
     with {:ok, user} <- get_current_user(conn) do
-      response_data = %{
-        valid: true,
+      handle_auth_success(conn, :validate, %{
         user_id: user.id,
         role: user.role,
         expires_at: get_token_expiration(conn)
-      }
-
-      handle_success(conn, response_data)
+      })
+    else
+      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
@@ -159,35 +137,26 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   # ============================================================================
 
   defp get_current_user(conn) do
-    case get_auth_header(conn) do
-      {:ok, token} ->
-        case AuthService.get_user_from_token(token) do
-          {:ok, user} -> {:ok, user}
-          {:error, reason} -> {:error, reason}
-        end
-
-      {:error, reason} ->
-        {:error, reason}
+    with {:ok, token} <- get_auth_header(conn),
+         {:ok, _validated_token} <- InputValidator.validate_access_token(token),
+         {:ok, user} <- AuthService.get_user_from_token(token) do
+      {:ok, user}
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
   defp get_auth_header(conn) do
-    case get_req_header(conn, "authorization") do
-      ["Bearer " <> token] -> {:ok, token}
-      _ -> {:error, :invalid_token}
-    end
+    get_auth_token(conn)
   end
 
   defp get_token_expiration(conn) do
-    case get_auth_header(conn) do
-      {:ok, token} ->
-        case AuthService.get_token_expiration(token) do
-          {:ok, expiration} -> expiration
-          {:error, _} -> nil
-        end
-
-      {:error, _} ->
-        nil
+    with {:ok, token} <- get_auth_header(conn),
+         {:ok, _validated_token} <- InputValidator.validate_access_token(token),
+         {:ok, expiration} <- AuthService.get_token_expiration(token) do
+      expiration
+    else
+      _ -> nil
     end
   end
 end

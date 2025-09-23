@@ -6,10 +6,20 @@ defmodule LedgerBankApi.Accounts.UserService do
   authentication, and user management.
   """
 
+  @behaviour LedgerBankApi.Core.ServiceBehavior
+
   import Ecto.Query, warn: false
+  require LedgerBankApi.Core.ServiceBehavior
   alias LedgerBankApi.Repo
-  alias LedgerBankApi.Core.ErrorHandler
+  alias LedgerBankApi.Core.{ErrorHandler, ServiceBehavior, Validator}
   alias LedgerBankApi.Accounts.Schemas.{User, RefreshToken}
+
+  # ============================================================================
+  # SERVICE BEHAVIOR IMPLEMENTATION
+  # ============================================================================
+
+  @impl LedgerBankApi.Core.ServiceBehavior
+  def service_name, do: "user_service"
 
   # ============================================================================
   # USER CRUD OPERATIONS
@@ -19,9 +29,14 @@ defmodule LedgerBankApi.Accounts.UserService do
   Get a user by ID.
   """
   def get_user(id) do
-    case Repo.get(User, id) do
-      nil -> {:error, ErrorHandler.business_error(:user_not_found, %{user_id: id, source: "user_service"})}
-      user -> {:ok, user}
+    context = ServiceBehavior.build_context(__MODULE__, :get_user, %{user_id: id})
+
+    # Validate user ID format before querying
+    case Validator.validate_uuid(id) do
+      :ok ->
+        ServiceBehavior.get_operation(User, id, :user_not_found, context)
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, context)}
     end
   end
 
@@ -29,10 +44,9 @@ defmodule LedgerBankApi.Accounts.UserService do
   Get a user by email.
   """
   def get_user_by_email(email) do
-    case Repo.get_by(User, email: email) do
-      nil -> {:error, ErrorHandler.business_error(:user_not_found, %{email: email, source: "user_service"})}
-      user -> {:ok, user}
-    end
+    context = ServiceBehavior.build_context(__MODULE__, :get_user_by_email, %{email: email})
+
+    ServiceBehavior.get_by_operation(User, [email: email], :user_not_found, context)
   end
 
   @doc """
@@ -50,41 +64,45 @@ defmodule LedgerBankApi.Accounts.UserService do
   Create a new user.
   """
   def create_user(attrs) do
-    # Check if email already exists
-    case get_user_by_email(attrs[:email]) do
-      {:ok, _user} ->
-        {:error, ErrorHandler.business_error(:email_already_exists, %{email: attrs[:email], source: "user_service"})}
-      {:error, %LedgerBankApi.Core.Error{} = _error} ->
-        # User not found, safe to create
-        %User{}
-        |> User.changeset(attrs)
-        |> Repo.insert()
-    end
+    context = ServiceBehavior.build_context(__MODULE__, :create_user, %{email: attrs[:email]})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Check if email already exists
+      case get_user_by_email(attrs[:email]) do
+        {:ok, _user} ->
+          {:error, ErrorHandler.business_error(:email_already_exists, context)}
+        {:error, %LedgerBankApi.Core.Error{} = _error} ->
+          # User not found, safe to create
+          ServiceBehavior.create_operation(&User.changeset(%User{}, &1), attrs, context)
+      end
+    end)
   end
 
   @doc """
   Update a user.
   """
   def update_user(user, attrs) do
-    user
-    |> User.update_changeset(attrs)
-    |> Repo.update()
+    context = ServiceBehavior.build_context(__MODULE__, :update_user, %{user_id: user.id})
+
+    ServiceBehavior.update_operation(&User.update_changeset/2, user, attrs, context)
   end
 
   @doc """
   Delete a user.
   """
   def delete_user(user) do
-    Repo.delete(user)
+    context = ServiceBehavior.build_context(__MODULE__, :delete_user, %{user_id: user.id})
+
+    ServiceBehavior.delete_operation(user, context)
   end
 
   @doc """
   Update user password.
   """
   def update_user_password(user, attrs) do
-    user
-    |> User.password_changeset(attrs)
-    |> Repo.update()
+    context = ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
+
+    ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context)
   end
 
   # ============================================================================
@@ -95,18 +113,31 @@ defmodule LedgerBankApi.Accounts.UserService do
   Create a refresh token.
   """
   def create_refresh_token(attrs) do
-    %RefreshToken{}
-    |> RefreshToken.changeset(attrs)
-    |> Repo.insert()
+    context = ServiceBehavior.build_context(__MODULE__, :create_refresh_token, %{user_id: attrs[:user_id]})
+
+    # Validate user_id, jti, and expires_at format before creating
+    with :ok <- Validator.validate_uuid(attrs[:user_id]),
+         :ok <- Validator.validate_uuid(attrs[:jti]),
+         :ok <- Validator.validate_future_datetime(attrs[:expires_at]) do
+      ServiceBehavior.create_operation(&RefreshToken.changeset(%RefreshToken{}, &1), attrs, context)
+    else
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, context)}
+    end
   end
 
   @doc """
   Get a refresh token by JTI.
   """
   def get_refresh_token(jti) do
-    case Repo.get_by(RefreshToken, jti: jti) do
-      nil -> {:error, ErrorHandler.business_error(:token_not_found, %{jti: jti, source: "user_service"})}
-      token -> {:ok, token}
+    context = ServiceBehavior.build_context(__MODULE__, :get_refresh_token, %{jti: jti})
+
+    # Validate JTI format before querying
+    case Validator.validate_uuid(jti) do
+      :ok ->
+        ServiceBehavior.get_by_operation(RefreshToken, [jti: jti], :token_not_found, context)
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, context)}
     end
   end
 
@@ -114,15 +145,30 @@ defmodule LedgerBankApi.Accounts.UserService do
   Revoke a refresh token.
   """
   def revoke_refresh_token(jti) do
-    case get_refresh_token(jti) do
-      {:ok, refresh_token} ->
-        refresh_token
-        |> RefreshToken.changeset(%{revoked_at: DateTime.utc_now()})
-        |> Repo.update()
-      {:error, %LedgerBankApi.Core.Error{} = error} when error.reason == :token_not_found ->
-        {:error, error}
-      error ->
-        error
+    context = ServiceBehavior.build_context(__MODULE__, :revoke_refresh_token, %{jti: jti})
+
+    # Validate JTI format before proceeding
+    case Validator.validate_uuid(jti) do
+      :ok ->
+        case get_refresh_token(jti) do
+          {:ok, refresh_token} ->
+            # Check if token is already revoked
+            if RefreshToken.revoked?(refresh_token) do
+              {:error, ErrorHandler.business_error(:token_not_found, context)}
+            else
+              case refresh_token
+                   |> RefreshToken.changeset(%{revoked_at: DateTime.utc_now()})
+                   |> Repo.update() do
+                {:ok, updated_token} -> {:ok, updated_token}
+                {:error, changeset} ->
+                  {:error, ErrorHandler.handle_changeset_error(changeset, %{jti: jti, source: "user_service"})}
+              end
+            end
+          {:error, %LedgerBankApi.Core.Error{} = error} ->
+            {:error, error}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, context)}
     end
   end
 
@@ -130,11 +176,19 @@ defmodule LedgerBankApi.Accounts.UserService do
   Revoke all refresh tokens for a user.
   """
   def revoke_all_refresh_tokens(user_id) do
-    {count, _} = Repo.update_all(
-      from(t in RefreshToken, where: t.user_id == ^user_id and is_nil(t.revoked_at)),
-      set: [revoked_at: DateTime.utc_now()]
-    )
-    {:ok, count}
+    context = ServiceBehavior.build_context(__MODULE__, :revoke_all_refresh_tokens, %{user_id: user_id})
+
+    # Validate user_id format before querying
+    case Validator.validate_uuid(user_id) do
+      :ok ->
+        {count, _} = Repo.update_all(
+          from(t in RefreshToken, where: t.user_id == ^user_id and is_nil(t.revoked_at)),
+          set: [revoked_at: DateTime.utc_now()]
+        )
+        {:ok, count}
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, context)}
+    end
   end
 
   @doc """
@@ -165,15 +219,29 @@ defmodule LedgerBankApi.Accounts.UserService do
   Authenticate user with email and password.
   """
   def authenticate_user(email, password) do
-    case get_user_by_email(email) do
-      {:ok, user} ->
-        if Argon2.verify_pass(password, user.password_hash) do
-          {:ok, user}
-        else
-          {:error, ErrorHandler.business_error(:invalid_credentials, %{email: email, source: "user_service"})}
-        end
-      {:error, %LedgerBankApi.Core.Error{} = error} ->
-        {:error, error}
+    context = ServiceBehavior.build_context(__MODULE__, :authenticate_user, %{email: email})
+
+    # Validate email and password format before querying
+    with :ok <- Validator.validate_email_secure(email),
+         :ok <- Validator.validate_password(password) do
+      case get_user_by_email(email) do
+        {:ok, user} ->
+          # Check if user is active before verifying password
+          if is_user_active?(user) do
+            if Argon2.verify_pass(password, user.password_hash) do
+              {:ok, user}
+            else
+              {:error, ErrorHandler.business_error(:invalid_credentials, %{email: email, source: "user_service"})}
+            end
+          else
+            {:error, ErrorHandler.business_error(:account_inactive, %{email: email, source: "user_service"})}
+          end
+        {:error, %LedgerBankApi.Core.Error{} = error} ->
+          {:error, error}
+      end
+    else
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, context)}
     end
   end
 

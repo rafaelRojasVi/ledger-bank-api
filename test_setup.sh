@@ -31,12 +31,25 @@ else
   echo "✅ PostgreSQL container is already running"
 fi
 
+echo "📦 Checking dependencies..."
+if [ ! -d "deps" ]; then
+  echo "Installing dependencies..."
+  mix deps.get
+fi
+
 echo "🔧 Setting up development database..."
 # Set up dev database first
 mix ecto.drop
 mix ecto.create
 mix ecto.migrate
-mix run priv/repo/seeds.exs
+
+# Check if seeds file exists and run it
+if [ -f "priv/repo/seeds.exs" ]; then
+  echo "🌱 Running seeds..."
+  mix run priv/repo/seeds.exs
+else
+  echo "⚠️  No seeds file found, skipping..."
+fi
 
 echo "🗑️  Setting up Test Database..."
 MIX_ENV=test mix ecto.drop

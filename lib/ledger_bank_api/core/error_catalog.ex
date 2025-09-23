@@ -41,6 +41,9 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_direction => :validation,
       :invalid_email_format => :validation,
       :invalid_password_format => :validation,
+      :invalid_uuid_format => :validation,
+      :invalid_datetime_format => :validation,
+      :invalid_name_format => :validation,
 
       # Not found errors
       :user_not_found => :not_found,
@@ -135,6 +138,89 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :business_rule -> 422
       :external_dependency -> 503
       :system -> 500
+    end
+  end
+
+  @doc """
+  Get error type for a category (for backward compatibility).
+  """
+  def error_type_for_category(category) do
+    case category do
+      :validation -> :validation_error
+      :not_found -> :not_found
+      :authentication -> :unauthorized
+      :authorization -> :forbidden
+      :conflict -> :conflict
+      :business_rule -> :unprocessable_entity
+      :external_dependency -> :service_unavailable
+      :system -> :internal_server_error
+    end
+  end
+
+  @doc """
+  Get default error message for a reason.
+  """
+  def default_message_for_reason(reason) do
+    case reason do
+      # Validation errors
+      :invalid_amount_format -> "Invalid amount format"
+      :missing_fields -> "Required fields are missing"
+      :invalid_direction -> "Invalid payment direction"
+      :invalid_email_format -> "Invalid email format"
+      :invalid_password_format -> "Invalid password format"
+      :invalid_uuid_format -> "Invalid UUID format"
+      :invalid_datetime_format -> "Invalid datetime format"
+      :invalid_name_format -> "Invalid name format"
+
+      # Not found errors
+      :user_not_found -> "User not found"
+      :account_not_found -> "Account not found"
+      :payment_not_found -> "Payment not found"
+      :token_not_found -> "Token not found"
+      :bank_not_found -> "Bank not found"
+
+      # Authentication errors
+      :invalid_credentials -> "Invalid credentials"
+      :invalid_password -> "Invalid password"
+      :invalid_token -> "Invalid token"
+      :token_expired -> "Token has expired"
+      :token_revoked -> "Token has been revoked"
+      :invalid_token_type -> "Invalid token type"
+      :invalid_issuer -> "Invalid token issuer"
+      :invalid_audience -> "Invalid token audience"
+      :token_not_yet_valid -> "Token not yet valid"
+      :missing_required_claims -> "Missing required token claims"
+
+      # Authorization errors
+      :forbidden -> "Access forbidden"
+      :unauthorized_access -> "Unauthorized access"
+      :insufficient_permissions -> "Insufficient permissions"
+
+      # Conflict errors
+      :email_already_exists -> "Email already exists"
+      :already_processed -> "Resource has already been processed"
+      :duplicate_transaction -> "Duplicate transaction"
+
+      # Business rule errors
+      :insufficient_funds -> "Insufficient funds for this transaction"
+      :account_inactive -> "Account is inactive"
+      :daily_limit_exceeded -> "Daily payment limit exceeded"
+      :amount_exceeds_limit -> "Payment amount exceeds single transaction limit"
+      :negative_amount -> "Payment amount cannot be negative"
+      :negative_balance -> "Account balance cannot be negative"
+
+      # External dependency errors
+      :timeout -> "Request timeout"
+      :service_unavailable -> "Service temporarily unavailable"
+      :bank_api_error -> "Bank API error"
+      :payment_provider_error -> "Payment provider error"
+
+      # System errors
+      :internal_server_error -> "An unexpected error occurred"
+      :database_error -> "Database error"
+      :configuration_error -> "Configuration error"
+
+      _ -> "An unexpected error occurred"
     end
   end
 end

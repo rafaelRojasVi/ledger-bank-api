@@ -41,8 +41,19 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshToken do
   def changeset(struct, attrs) do
     struct
     |> base_changeset(attrs)
+    |> validate_future_expiration()
     |> unique_constraint(:jti, name: :refresh_tokens_jti_index)
     |> foreign_key_constraint(:user_id)
+  end
+
+  defp validate_future_expiration(changeset) do
+    expires_at = get_change(changeset, :expires_at)
+
+    if expires_at && DateTime.compare(DateTime.utc_now(), expires_at) != :lt do
+      add_error(changeset, :expires_at, "must be in the future")
+    else
+      changeset
+    end
   end
 
   @doc """

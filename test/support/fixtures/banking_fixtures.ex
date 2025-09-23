@@ -1,6 +1,6 @@
 defmodule LedgerBankApi.BankingFixtures do
   alias LedgerBankApi.Repo
-  alias LedgerBankApi.Banking.Schemas.{UserBankLogin, UserBankAccount, UserPayment, Transaction, Bank, BankBranch}
+  alias LedgerBankApi.Financial.Schemas.{UserBankLogin, UserBankAccount, UserPayment, Transaction, Bank, BankBranch}
 
   def bank_fixture(attrs \\ %{}) do
     base = %{

@@ -1,12 +1,15 @@
 defmodule LedgerBankApiWeb.Controllers.UsersController do
   @moduledoc """
-  Users controller handling user CRUD operations.
+  Users controller handling user CRUD operations and profile management.
 
   Uses the "one-thing" error handling pattern with canonical Error structs.
+  Implements proper input validation and authorization.
   """
 
   use LedgerBankApiWeb.Controllers.BaseController
   alias LedgerBankApi.Accounts.UserService
+  alias LedgerBankApi.Core.ErrorHandler
+  alias LedgerBankApiWeb.Validation.InputValidator
 
   @doc """
   List users with optional filtering and pagination.
@@ -14,33 +17,37 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   GET /api/users?page=1&page_size=20&sort=email:asc&status=ACTIVE
   """
   def index(conn, params) do
-    pagination = extract_pagination_params(params)
-    sort = extract_sort_params(params)
-    filters = extract_filter_params(params)
+    context = build_context(conn, :list_users)
 
-    opts = [
-      pagination: pagination,
-      sort: sort,
-      filters: filters
-    ]
+    with {:ok, pagination} <- InputValidator.extract_pagination_params(params, context),
+         {:ok, sort} <- InputValidator.extract_sort_params(params, context),
+         {:ok, filters} <- InputValidator.extract_filter_params(params, context) do
 
-    users = UserService.list_users(opts)
+      opts = [
+        pagination: pagination,
+        sort: sort,
+        filters: filters
+      ]
 
-    # Get total count for pagination metadata
-    total_count = UserService.get_user_statistics()
-    |> elem(1)
-    |> Map.get(:total_users)
+      users = UserService.list_users(opts)
 
-    metadata = %{
-      pagination: %{
-        page: pagination.page,
-        page_size: pagination.page_size,
-        total_count: total_count,
-        total_pages: ceil(total_count / pagination.page_size)
+      # Get total count for pagination metadata
+      {:ok, stats} = UserService.get_user_statistics()
+      total_count = Map.get(stats, :total_users, 0)
+
+      metadata = %{
+        pagination: %{
+          page: pagination.page,
+          page_size: pagination.page_size,
+          total_count: total_count,
+          total_pages: ceil(total_count / pagination.page_size)
+        }
       }
-    }
 
-    handle_success(conn, users, metadata)
+      handle_success(conn, users, metadata)
+    else
+      error -> handle_standard_errors(conn, context).(error)
+    end
   end
 
   @doc """
@@ -49,17 +56,18 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   GET /api/users/:id
   """
   def show(conn, %{"id" => id}) do
-    case UserService.get_user(id) do
-      {:ok, user} ->
-        handle_success(conn, user)
+    context = build_context(conn, :show_user, user_id: id)
 
-      {:error, reason} ->
-        handle_error(conn, reason, %{action: :show, user_id: id})
+    with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
+         {:ok, user} <- UserService.get_user(id) do
+      handle_success(conn, user)
+    else
+      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
   @doc """
-  Create a new user.
+  Create a new user (registration).
 
   POST /api/users
   Body: %{
@@ -71,35 +79,23 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   }
   """
   def create(conn, params) do
-    case UserService.create_user(params) do
-      {:ok, user} ->
-        # Remove sensitive fields from response
-        user_data = %{
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
-          role: user.role,
-          status: user.status,
-          active: user.active,
-          verified: user.verified,
-          inserted_at: user.inserted_at,
-          updated_at: user.updated_at
-        }
+    context = build_context(conn, :create_user)
 
+    validate_and_execute(
+      conn,
+      context,
+      InputValidator.validate_user_creation(params),
+      &UserService.create_user/1,
+      fn user ->
         conn
         |> put_status(:created)
-        |> handle_success(user_data)
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        handle_changeset_error(conn, changeset, %{action: :create})
-
-      {:error, reason} ->
-        handle_error(conn, reason, %{action: :create})
-    end
+        |> handle_success(user)
+      end
+    )
   end
 
   @doc """
-  Update a user.
+  Update a user (admin only).
 
   PUT /api/users/:id
   Body: %{
@@ -108,62 +104,112 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   }
   """
   def update(conn, %{"id" => id} = params) do
-    with {:ok, user} <- UserService.get_user(id) do
-      update_params = Map.delete(params, "id")
+    context = build_context(conn, :update_user, user_id: id)
 
-      case UserService.update_user(user, update_params) do
-        {:ok, updated_user} ->
-          # Remove sensitive fields from response
-          user_data = %{
-            id: updated_user.id,
-            email: updated_user.email,
-            full_name: updated_user.full_name,
-            role: updated_user.role,
-            status: updated_user.status,
-            active: updated_user.active,
-            verified: updated_user.verified,
-            inserted_at: updated_user.inserted_at,
-            updated_at: updated_user.updated_at
-          }
-
-          handle_success(conn, user_data)
-
-        {:error, %Ecto.Changeset{} = changeset} ->
-          handle_changeset_error(conn, changeset, %{action: :update, user_id: id})
-
-        {:error, reason} ->
-          handle_error(conn, reason, %{action: :update, user_id: id})
-      end
+    with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
+         {:ok, user} <- UserService.get_user(id),
+         {:ok, validated_params} <- InputValidator.validate_user_update(params),
+         {:ok, updated_user} <- UserService.update_user(user, validated_params) do
+      handle_success(conn, updated_user)
+    else
+      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
   @doc """
-  Delete a user.
+  Delete a user (admin only).
 
   DELETE /api/users/:id
   """
   def delete(conn, %{"id" => id}) do
-    with {:ok, user} <- UserService.get_user(id) do
-      case UserService.delete_user(user) do
-        {:ok, _deleted_user} ->
-          handle_success(conn, %{message: "User deleted successfully"})
+    context = build_context(conn, :delete_user, user_id: id)
 
-        {:error, %Ecto.Changeset{} = changeset} ->
-          handle_changeset_error(conn, changeset, %{action: :delete, user_id: id})
-
-        {:error, reason} ->
-          handle_error(conn, reason, %{action: :delete, user_id: id})
-      end
+    with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
+         {:ok, user} <- UserService.get_user(id),
+         {:ok, _} <- UserService.delete_user(user) do
+      handle_success(conn, %{message: "User deleted successfully"})
+    else
+      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
   @doc """
-  Get user statistics.
+  Get user statistics (admin only).
 
   GET /api/users/stats
   """
   def stats(conn, _params) do
     {:ok, stats} = UserService.get_user_statistics()
     handle_success(conn, stats)
+  end
+
+  # ============================================================================
+  # PROFILE MANAGEMENT ENDPOINTS
+  # ============================================================================
+
+  @doc """
+  Get current user's profile.
+
+  GET /api/profile
+  """
+  def show_profile(conn, _params) do
+    context = build_context(conn, :show_profile)
+    current_user = conn.assigns[:current_user]
+
+    if current_user do
+      handle_success(conn, current_user)
+    else
+      handle_error(conn, ErrorHandler.business_error(:user_not_found, Map.put(context, :message, "User not found")))
+    end
+  end
+
+  @doc """
+  Update current user's profile.
+
+  PUT /api/profile
+  Body: %{
+    "full_name" => "John Smith"
+  }
+  """
+  def update_profile(conn, params) do
+    current_user = conn.assigns[:current_user]
+    context = build_context(conn, :update_profile, user_id: current_user.id)
+
+    validate_and_execute(
+      conn,
+      context,
+      InputValidator.validate_user_update(params),
+      fn validated_params ->
+        UserService.update_user(current_user, validated_params)
+      end,
+      &handle_success(conn, &1)
+    )
+  end
+
+  @doc """
+  Update current user's password.
+
+  PUT /api/profile/password
+  Body: %{
+    "current_password" => "oldpassword",
+    "new_password" => "newpassword123",
+    "password_confirmation" => "newpassword123"
+  }
+  """
+  def update_password(conn, params) do
+    current_user = conn.assigns[:current_user]
+    context = build_context(conn, :update_password, user_id: current_user.id)
+
+    validate_and_execute(
+      conn,
+      context,
+      InputValidator.validate_password_change(params, current_user.role),
+      fn validated_params ->
+        UserService.update_user_password(current_user, validated_params)
+      end,
+      fn _ ->
+        handle_success(conn, %{message: "Password updated successfully"})
+      end
+    )
   end
 end

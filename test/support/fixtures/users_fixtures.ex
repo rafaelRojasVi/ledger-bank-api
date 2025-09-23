@@ -1,14 +1,14 @@
 defmodule LedgerBankApi.UsersFixtures do
   alias LedgerBankApi.Repo
-  alias LedgerBankApi.Users.User
+  alias LedgerBankApi.Accounts.Schemas.User
 
   def user_fixture(attrs \\ %{}) do
     base = %{
       email: "user_#{System.unique_integer()}@ex.com",
       full_name: "User Test",
       role: "user",
-      password: "Passw0rd!",
-      password_confirmation: "Passw0rd!"
+      password: "ValidPassword123!",
+      password_confirmation: "ValidPassword123!"
     }
 
     {:ok, user} =

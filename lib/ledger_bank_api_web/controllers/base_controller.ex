@@ -80,52 +80,178 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
   end
 
   @doc """
-  Extract and validate pagination parameters.
+  Build context map with action and correlation_id for consistent error handling.
+
+  ## Examples
+
+      build_context(conn, :login)
+      # => %{action: :login, correlation_id: "abc123"}
+
+      build_context(conn, :update_user, user_id: 123)
+      # => %{action: :update_user, user_id: 123, correlation_id: "abc123"}
   """
-  def extract_pagination_params(params) do
-    page = params
-    |> Map.get("page", "1")
-    |> String.to_integer()
-    |> max(1)
+  def build_context(conn, action, additional_fields \\ %{}) do
+    base_context = %{
+      action: action,
+      correlation_id: conn.assigns[:correlation_id]
+    }
 
-    page_size = params
-    |> Map.get("page_size", "20")
-    |> String.to_integer()
-    |> min(100)  # Cap at 100 items per page
-    |> max(1)
-
-    %{page: page, page_size: page_size}
+    Map.merge(base_context, additional_fields)
   end
 
   @doc """
-  Extract and validate sorting parameters.
+  Extract Bearer token from Authorization header.
+
+  ## Examples
+
+      get_auth_token(conn)
+      # => {:ok, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+      # => {:error, %Error{}}
   """
-  def extract_sort_params(params) do
-    case Map.get(params, "sort") do
-      nil -> []
-      sort_string when is_binary(sort_string) ->
-        sort_string
-        |> String.split(",")
-        |> Enum.map(&parse_sort_field/1)
-        |> Enum.reject(&is_nil/1)
-      _ -> []
+  def get_auth_token(conn) do
+    case get_req_header(conn, "authorization") do
+      ["Bearer " <> token] when byte_size(token) > 0 ->
+        {:ok, token}
+      _ ->
+        {:error, LedgerBankApi.Core.ErrorHandler.business_error(:invalid_token, %{
+          source: "base_controller",
+          message: "Missing or invalid authorization header"
+        })}
     end
   end
 
   @doc """
-  Extract and validate filter parameters.
+  Handle authentication success responses with consistent structure.
+
+  ## Examples
+
+      handle_auth_success(conn, :login, %{access_token: token, refresh_token: refresh, user: user})
+      handle_auth_success(conn, :refresh, %{access_token: token})
+      handle_auth_success(conn, :logout, "Logged out successfully")
   """
-  def extract_filter_params(params) do
-    params
-    |> Map.drop(["page", "page_size", "sort"])
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
-      if is_binary(value) and String.length(value) > 0 do
-        Map.put(acc, String.to_atom(key), value)
-      else
-        acc
-      end
-    end)
+  def handle_auth_success(conn, action, data) do
+    response_data = case action do
+      :login ->
+        %{
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          user: data.user
+        }
+
+      :refresh ->
+        %{
+          access_token: data.access_token
+        }
+
+      :logout ->
+        %{
+          message: data
+        }
+
+      :logout_all ->
+        %{
+          message: data
+        }
+
+      :me ->
+        data  # User object directly
+
+      :validate ->
+        %{
+          valid: true,
+          user_id: data.user_id,
+          role: data.role,
+          expires_at: data.expires_at
+        }
+    end
+
+    handle_success(conn, response_data)
   end
+
+  @doc """
+  Handle standard error patterns for controller actions.
+
+  This helper eliminates the repetitive error handling pattern used across all controllers.
+
+  ## Examples
+
+      # Instead of:
+      else
+        {:error, %LedgerBankApi.Core.Error{} = error} ->
+          handle_error(conn, error)
+        {:error, %Ecto.Changeset{} = changeset} ->
+          handle_changeset_error(conn, changeset, context)
+      end
+
+      # Use:
+      else
+        handle_standard_errors(conn, context)
+      end
+  """
+  def handle_standard_errors(conn, context) do
+    fn
+      {:error, %LedgerBankApi.Core.Error{} = error} ->
+        handle_error(conn, error)
+      {:error, %Ecto.Changeset{} = changeset} ->
+        handle_changeset_error(conn, changeset, context)
+    end
+  end
+
+  @doc """
+  Validate parameters and execute service operation with standard error handling.
+
+  This helper eliminates the repetitive validation + service call pattern used across controllers.
+
+  ## Examples
+
+      # Instead of:
+      with {:ok, validated_params} <- InputValidator.validate_*(params),
+           {:ok, result} <- Service.operation(validated_params) do
+        handle_success(conn, result)
+      else
+        handle_standard_errors(conn, context)
+      end
+
+      # Use:
+      validate_and_execute(conn, context, InputValidator.validate_*(params), &Service.operation/1, &handle_success(conn, &1))
+  """
+  def validate_and_execute(conn, context, validation_result, service_operation, success_handler) do
+    with {:ok, validated_params} <- validation_result,
+         {:ok, result} <- service_operation.(validated_params) do
+      success_handler.(result)
+    else
+      error -> handle_standard_errors(conn, context).(error)
+    end
+  end
+
+  @doc """
+  Validate UUID and get resource with standard error handling.
+
+  This helper eliminates the repetitive UUID validation + resource retrieval pattern used across controllers.
+
+  ## Examples
+
+      # Instead of:
+      with {:ok, _validated_id} <- InputValidator.validate_uuid(id, context),
+           {:ok, resource} <- Service.get_resource(id) do
+        handle_success(conn, resource)
+      else
+        handle_standard_errors(conn, context)
+      end
+
+      # Use:
+      validate_uuid_and_get(conn, context, id, &Service.get_resource/1, &handle_success(conn, &1))
+  """
+  def validate_uuid_and_get(conn, context, id, service_operation, success_handler) do
+    with {:ok, _validated_id} <- LedgerBankApiWeb.Validation.InputValidator.validate_uuid(id, context),
+         {:ok, resource} <- service_operation.(id) do
+      success_handler.(resource)
+    else
+      error -> handle_standard_errors(conn, context).(error)
+    end
+  end
+
+  # Note: Parameter extraction functions moved to InputValidator for centralized validation
 
   # ============================================================================
   # PRIVATE HELPER FUNCTIONS
@@ -139,12 +265,5 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
     end
   end
 
-  defp parse_sort_field(field_string) do
-    case String.split(field_string, ":") do
-      [field] -> {String.to_atom(field), :asc}
-      [field, direction] when direction in ["asc", "desc"] ->
-        {String.to_atom(field), String.to_atom(direction)}
-      _ -> nil
-    end
-  end
+  # Note: parse_sort_field function moved to InputValidator
 end

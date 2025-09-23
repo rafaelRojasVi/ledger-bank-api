@@ -5,9 +5,17 @@ defmodule LedgerBankApi.Accounts.AuthService do
   Handles JWT token generation, verification, refresh, and user authentication.
   """
 
-  alias LedgerBankApi.Accounts.UserService
-  alias LedgerBankApi.Accounts.Schemas.RefreshToken
-  alias LedgerBankApi.Core.{ErrorHandler, Error}
+  @behaviour LedgerBankApi.Core.ServiceBehavior
+
+  alias LedgerBankApi.Accounts.{UserService, Token}
+  alias LedgerBankApi.Core.ServiceBehavior
+
+  # ============================================================================
+  # SERVICE BEHAVIOR IMPLEMENTATION
+  # ============================================================================
+
+  @impl LedgerBankApi.Core.ServiceBehavior
+  def service_name, do: "auth_service"
 
   # ============================================================================
   # JWT TOKEN MANAGEMENT
@@ -17,167 +25,51 @@ defmodule LedgerBankApi.Accounts.AuthService do
   Generate access token for user.
   """
   def generate_access_token(user) do
-    try do
-      # Token expires in 15 minutes
-      exp = System.system_time(:second) + 900
-
-      payload = %{
-        "sub" => to_string(user.id),
-        "email" => user.email,
-        "role" => user.role,
-        "exp" => exp,
-        "iat" => System.system_time(:second),
-        "type" => "access",
-        "iss" => "ledger-bank-api",
-        "aud" => "ledger-bank-api",
-        "jti" => Ecto.UUID.generate(),
-        "nbf" => System.system_time(:second)
-      }
-
-      secret = get_jwt_secret()
-      token = Joken.generate_and_sign!(payload, Joken.Signer.create("HS256", secret))
-      {:ok, token}
-    rescue
-      error ->
-        {:error, ErrorHandler.business_error(:internal_server_error, %{error: inspect(error), source: "auth_service"})}
-    end
+    Token.generate_access_token(user)
   end
 
   @doc """
   Generate refresh token for user.
   """
   def generate_refresh_token(user) do
-    try do
-      # Token expires in 7 days
-      exp = System.system_time(:second) + 604800
-
-      jti = Ecto.UUID.generate()
-      payload = %{
-        "sub" => to_string(user.id),
-        "jti" => jti,
-        "exp" => exp,
-        "iat" => System.system_time(:second),
-        "type" => "refresh",
-        "iss" => "ledger-bank-api",
-        "aud" => "ledger-bank-api",
-        "nbf" => System.system_time(:second)
-      }
-
-      secret = get_jwt_secret()
-      token = Joken.generate_and_sign!(payload, Joken.Signer.create("HS256", secret))
-
-      # Store refresh token in database
-      case UserService.create_refresh_token(%{
-        jti: jti,
-        user_id: user.id,
-        expires_at: DateTime.from_unix!(exp)
-      }) do
-        {:ok, _refresh_token} -> {:ok, token}
-        {:error, changeset} -> {:error, changeset}
-      end
-    rescue
-      error ->
-        {:error, ErrorHandler.business_error(:internal_server_error, %{error: inspect(error), source: "auth_service"})}
-    end
+    Token.generate_refresh_token(user)
   end
 
   @doc """
   Verify access token.
   """
   def verify_access_token(token) do
-    try do
-      secret = get_jwt_secret()
-      case Joken.verify_and_validate(token, Joken.Signer.create("HS256", secret)) do
-        {:ok, %{"type" => "access"} = claims} ->
-          # Validate token security claims
-          case validate_token_claims(claims) do
-            :ok ->
-              # Check if token is expired
-              exp = claims["exp"]
-              if exp > System.system_time(:second) do
-                {:ok, claims}
-              else
-                {:error, ErrorHandler.business_error(:token_expired, %{token_type: "access", source: "auth_service"})}
-              end
-            {:error, reason} -> {:error, reason}
-          end
-        {:ok, _claims} ->
-          {:error, ErrorHandler.business_error(:invalid_token_type, %{expected_type: "access", source: "auth_service"})}
-        {:error, _reason} ->
-          {:error, ErrorHandler.business_error(:invalid_token, %{token_type: "access", source: "auth_service"})}
-      end
-    rescue
-      error ->
-        {:error, ErrorHandler.business_error(:invalid_token, %{error: inspect(error), source: "auth_service"})}
-    end
+    Token.verify_access_token(token)
   end
 
   @doc """
   Verify refresh token.
   """
   def verify_refresh_token(token) do
-    try do
-      secret = get_jwt_secret()
-      case Joken.verify_and_validate(token, Joken.Signer.create("HS256", secret)) do
-        {:ok, %{"type" => "refresh"} = claims} ->
-          # Check if token is expired
-          exp = claims["exp"]
-          if exp > System.system_time(:second) do
-            # Check if token is revoked in database
-            jti = claims["jti"]
-            case UserService.get_refresh_token(jti) do
-              {:ok, refresh_token} ->
-                if RefreshToken.revoked?(refresh_token) do
-                  {:error, ErrorHandler.business_error(:token_revoked, %{jti: jti, source: "auth_service"})}
-                else
-                  {:ok, claims}
-                end
-              {:error, %Error{} = error} ->
-                {:error, error}
-            end
-          else
-            {:error, ErrorHandler.business_error(:token_expired, %{token_type: "refresh", source: "auth_service"})}
-          end
-        {:ok, _claims} ->
-          {:error, ErrorHandler.business_error(:invalid_token_type, %{expected_type: "refresh", source: "auth_service"})}
-        {:error, _reason} ->
-          {:error, ErrorHandler.business_error(:invalid_token, %{token_type: "refresh", source: "auth_service"})}
-      end
-    rescue
-      error ->
-        {:error, ErrorHandler.business_error(:invalid_token, %{error: inspect(error), source: "auth_service"})}
-    end
+    Token.verify_refresh_token(token)
   end
 
   @doc """
-  Refresh access token using refresh token.
+  Refresh access token using refresh token (with rotation for security).
   """
   def refresh_access_token(refresh_token) do
-    case verify_refresh_token(refresh_token) do
-      {:ok, claims} ->
-        user_id = claims["sub"]
-        case UserService.get_user(user_id) do
-          {:ok, user} ->
-            generate_access_token(user)
-          {:error, %Error{} = error} ->
-            {:error, error}
-        end
-      {:error, reason} ->
-        {:error, reason}
-    end
+    # Trust that refresh_token is valid (web layer already validated)
+    Token.refresh_access_token_with_rotation(refresh_token)
   end
 
   @doc """
   Revoke refresh token.
   """
   def revoke_refresh_token(token) do
-    case verify_refresh_token(token) do
-      {:ok, claims} ->
-        jti = claims["jti"]
-        UserService.revoke_refresh_token(jti)
-      {:error, reason} ->
-        {:error, reason}
-    end
+    # Trust that token is valid (web layer already validated)
+    context = ServiceBehavior.build_context(__MODULE__, :revoke_refresh_token, %{token_type: "refresh"})
+
+    ServiceBehavior.with_standard_error_handling(context, :token_revocation_failed, fn ->
+      with {:ok, claims} <- verify_refresh_token(token),
+           {:ok, result} <- UserService.revoke_refresh_token(claims["jti"]) do
+        {:ok, result}
+      end
+    end)
   end
 
   @doc """
@@ -195,13 +87,15 @@ defmodule LedgerBankApi.Accounts.AuthService do
   Get user from access token.
   """
   def get_user_from_token(token) do
-    case verify_access_token(token) do
-      {:ok, claims} ->
-        user_id = claims["sub"]
-        UserService.get_user(user_id)
-      {:error, reason} ->
-        {:error, reason}
-    end
+    # Trust that token is valid (web layer already validated)
+    context = ServiceBehavior.build_context(__MODULE__, :get_user_from_token, %{token_type: "access"})
+
+    ServiceBehavior.with_standard_error_handling(context, :token_verification_failed, fn ->
+      with {:ok, claims} <- verify_access_token(token),
+           {:ok, user} <- UserService.get_user(claims["sub"]) do
+        {:ok, user}
+      end
+    end)
   end
 
   @doc """
@@ -253,23 +147,20 @@ defmodule LedgerBankApi.Accounts.AuthService do
   Login user and return tokens.
   """
   def login_user(email, password) do
-    case UserService.authenticate_user(email, password) do
-      {:ok, user} ->
-        case generate_access_token(user) do
-          {:ok, access_token} ->
-            case generate_refresh_token(user) do
-              {:ok, refresh_token} ->
-                {:ok, %{
-                  access_token: access_token,
-                  refresh_token: refresh_token,
-                  user: user
-                }}
-              {:error, reason} -> {:error, reason}
-            end
-          {:error, reason} -> {:error, reason}
-        end
-      {:error, reason} -> {:error, reason}
-    end
+    # Trust that email and password are valid (web layer already validated)
+    context = ServiceBehavior.build_context(__MODULE__, :login_user, %{email: email})
+
+    ServiceBehavior.with_standard_error_handling(context, :login_failed, fn ->
+      with {:ok, user} <- UserService.authenticate_user(email, password),
+           {:ok, access_token} <- generate_access_token(user),
+           {:ok, refresh_token} <- generate_refresh_token(user) do
+        {:ok, %{
+          access_token: access_token,
+          refresh_token: refresh_token,
+          user: user
+        }}
+      end
+    end)
   end
 
   @doc """
@@ -293,6 +184,8 @@ defmodule LedgerBankApi.Accounts.AuthService do
     with {:ok, claims} <- verify_access_token(token),
          {:ok, user} <- get_user_from_claims(claims) do
       {:ok, user}
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -321,78 +214,25 @@ defmodule LedgerBankApi.Accounts.AuthService do
   Get token expiration time.
   """
   def get_token_expiration(token) do
-    case verify_access_token(token) do
-      {:ok, claims} ->
+    # Trust that token is valid (web layer already validated)
+    context = ServiceBehavior.build_context(__MODULE__, :get_token_expiration, %{token_type: "access"})
+
+    ServiceBehavior.with_standard_error_handling(context, :token_expiration_failed, fn ->
+      with {:ok, claims} <- verify_access_token(token) do
         exp = claims["exp"]
         {:ok, DateTime.from_unix!(exp)}
-      {:error, reason} ->
-        {:error, reason}
-    end
+      end
+    end)
   end
 
   @doc """
   Check if token is expired.
   """
   def is_token_expired?(token) do
-    case verify_access_token(token) do
-      {:ok, _claims} -> {:ok, false}
-      {:error, %{error: %{type: "token_expired"}}} -> {:ok, true}
-      {:error, _reason} -> {:ok, true}
-    end
+    Token.is_token_expired?(token)
   end
 
   # ============================================================================
   # PRIVATE HELPER FUNCTIONS
   # ============================================================================
-
-  # ============================================================================
-  # PRIVATE SECURITY FUNCTIONS
-  # ============================================================================
-
-  # Gets JWT secret from configuration with proper validation
-  defp get_jwt_secret do
-    case Application.get_env(:ledger_bank_api, :jwt_secret) do
-      nil ->
-        case System.get_env("JWT_SECRET") do
-          nil ->
-            require Logger
-            Logger.error("JWT_SECRET not configured in application config or environment variables")
-            raise "JWT_SECRET must be configured for security"
-          secret when is_binary(secret) and byte_size(secret) >= 32 ->
-            secret
-          _ ->
-            require Logger
-            Logger.error("JWT_SECRET must be at least 32 characters long")
-            raise "JWT_SECRET must be at least 32 characters long for security"
-        end
-      secret when is_binary(secret) and byte_size(secret) >= 32 ->
-        secret
-      _ ->
-        require Logger
-        Logger.error("JWT_SECRET in application config must be at least 32 characters long")
-        raise "JWT_SECRET in application config must be at least 32 characters long for security"
-    end
-  end
-
-  # Helper function to get missing required claims
-  defp get_missing_claims(claims) do
-    required_claims = ["sub", "exp", "iat"]
-    Enum.filter(required_claims, fn claim -> is_nil(claims[claim]) end)
-  end
-
-  # Validates JWT token claims for security.
-  defp validate_token_claims(claims) do
-    cond do
-      claims["iss"] != "ledger-bank-api" ->
-        {:error, ErrorHandler.business_error(:invalid_token, %{expected: "ledger-bank-api", actual: claims["iss"], source: "auth_service"})}
-      claims["aud"] != "ledger-bank-api" ->
-        {:error, ErrorHandler.business_error(:invalid_token, %{expected: "ledger-bank-api", actual: claims["aud"], source: "auth_service"})}
-      claims["nbf"] && claims["nbf"] > System.system_time(:second) ->
-        {:error, ErrorHandler.business_error(:invalid_token, %{nbf: claims["nbf"], current_time: System.system_time(:second), source: "auth_service"})}
-      is_nil(claims["sub"]) or is_nil(claims["exp"]) or is_nil(claims["iat"]) ->
-        {:error, ErrorHandler.business_error(:invalid_token, %{missing_claims: get_missing_claims(claims), source: "auth_service"})}
-      true ->
-        :ok
-    end
-  end
 end

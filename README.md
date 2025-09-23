@@ -473,7 +473,7 @@ The application includes built-in telemetry for monitoring:
 - **Environment Variables**: Never commit `.env` files to version control
 - **Database**: Use strong passwords in production
 - **OAuth2**: Secure token storage and refresh mechanisms
-- **Password Requirements**: Minimum 8 characters with letters, numbers, and special characters
+- **Password Requirements**: Minimum 8 characters for regular users, 15 characters for admin accounts (NIST 2024 standards)
 
 ## 🚀 Deployment
 

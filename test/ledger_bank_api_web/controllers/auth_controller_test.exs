@@ -123,10 +123,10 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
         password: "password123!"
       })
 
-      response = json_response(conn, 404)
+      response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "not_found"
-      assert error["reason"] == "user_not_found"
+      assert error["type"] == "validation_error"
+      assert error["reason"] == "missing_fields"
     end
 
     test "fails to login with empty password", %{conn: conn} do
@@ -153,10 +153,10 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
         password: "password123!"
       })
 
-      response = json_response(conn, 404)
+      response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "not_found"
-      assert error["reason"] == "user_not_found"
+      assert error["type"] == "validation_error"
+      assert error["reason"] == "missing_fields"
     end
 
     test "fails to login with nil password", %{conn: conn} do
@@ -276,10 +276,10 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       response = json_response(conn, 400)
       assert %{"error" => error} = response
       assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_refresh_token_format"
+      assert error["reason"] == "missing_fields"
       assert error["code"] == 400
       assert error["details"]["field"] == "refresh_token"
-      assert error["details"]["message"] == "Refresh token must be a string"
+      assert error["details"]["message"] == "Refresh token is required and must be a non-empty string"
     end
 
     test "fails to refresh with empty refresh token", %{conn: conn} do
@@ -304,7 +304,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       response = json_response(conn, 400)
       assert %{"error" => error} = response
       assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_refresh_token_format"
+      assert error["reason"] == "missing_fields"
     end
 
     test "fails to refresh with revoked refresh token", %{conn: conn} do
@@ -392,10 +392,10 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
 
       assert %{
         "error" => %{
-          "type" => "unauthorized",
-          "reason" => "invalid_token"
+          "type" => "validation_error",
+          "reason" => "missing_fields"
         }
-      } = json_response(conn, 401)
+      } = json_response(conn, 400)
     end
 
     test "fails to logout with nil refresh token", %{conn: conn} do
@@ -406,7 +406,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       response = json_response(conn, 400)
       assert %{"error" => error} = response
       assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_refresh_token_format"
+      assert error["reason"] == "missing_fields"
     end
 
     test "fails to logout with missing refresh token", %{conn: conn} do
@@ -534,7 +534,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert %{
         "error" => %{
           "type" => "unauthorized",
-          "reason" => "invalid_token"
+          "reason" => "invalid_token_type"
         }
       } = json_response(conn, 401)
     end
@@ -550,7 +550,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert %{
         "error" => %{
           "type" => "unauthorized",
-          "reason" => "invalid_token"
+          "reason" => "invalid_token_type"
         }
       } = json_response(conn, 401)
     end
@@ -661,7 +661,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert %{
         "error" => %{
           "type" => "unauthorized",
-          "reason" => "invalid_token"
+          "reason" => "invalid_token_type"
         }
       } = json_response(conn, 401)
     end
@@ -677,7 +677,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert %{
         "error" => %{
           "type" => "unauthorized",
-          "reason" => "invalid_token"
+          "reason" => "invalid_token_type"
         }
       } = json_response(conn, 401)
     end
@@ -782,7 +782,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert %{
         "error" => %{
           "type" => "unauthorized",
-          "reason" => "invalid_token"
+          "reason" => "invalid_token_type"
         }
       } = json_response(conn, 401)
     end
@@ -798,7 +798,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert %{
         "error" => %{
           "type" => "unauthorized",
-          "reason" => "invalid_token"
+          "reason" => "invalid_token_type"
         }
       } = json_response(conn, 401)
     end

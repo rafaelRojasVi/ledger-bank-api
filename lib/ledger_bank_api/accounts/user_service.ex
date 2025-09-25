@@ -228,7 +228,13 @@ defmodule LedgerBankApi.Accounts.UserService do
         {:ok, user} ->
           # Check if user is active before verifying password
           if is_user_active?(user) do
-            if Argon2.verify_pass(password, user.password_hash) do
+            verify_function = if Mix.env() == :test do
+              &LedgerBankApi.PasswordHelper.verify_pass/2
+            else
+              &Argon2.verify_pass/2
+            end
+
+            if verify_function.(password, user.password_hash) do
               {:ok, user}
             else
               {:error, ErrorHandler.business_error(:invalid_credentials, %{email: email, source: "user_service"})}

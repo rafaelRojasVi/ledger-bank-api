@@ -68,16 +68,33 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   def validate_user_update(params) do
     context = %{source: "input_validator", action: :user_update}
 
-    validated_fields = %{}
-    |> maybe_validate_field(:email, params["email"], &validate_email/2, context)
-    |> maybe_validate_field(:full_name, params["full_name"], &validate_full_name/2, context)
-    |> maybe_validate_field(:role, params["role"], &validate_role/2, context)
-    |> maybe_validate_field(:status, params["status"], &validate_status/2, context)
+    with {:ok, validated_fields} <- validate_user_update_fields(params, context) do
+      if map_size(validated_fields) == 0 do
+        {:error, ErrorHandler.business_error(:missing_fields, Map.put(context, :message, "At least one field must be provided for update"))}
+      else
+        {:ok, validated_fields}
+      end
+    end
+  end
 
-    if map_size(validated_fields) == 0 do
-      {:error, ErrorHandler.business_error(:missing_fields, Map.put(context, :message, "At least one field must be provided for update"))}
-    else
-      {:ok, validated_fields}
+  defp validate_user_update_fields(params, context) do
+    validated_fields = %{}
+
+    case maybe_validate_field(validated_fields, :email, params["email"], &validate_email/2, context) do
+      {:error, error} -> {:error, error}
+      validated_fields ->
+        case maybe_validate_field(validated_fields, :full_name, params["full_name"], &validate_full_name/2, context) do
+          {:error, error} -> {:error, error}
+          validated_fields ->
+            case maybe_validate_field(validated_fields, :role, params["role"], &validate_role/2, context) do
+              {:error, error} -> {:error, error}
+              validated_fields ->
+                case maybe_validate_field(validated_fields, :status, params["status"], &validate_status/2, context) do
+                  {:error, error} -> {:error, error}
+                  validated_fields -> {:ok, validated_fields}
+                end
+            end
+        end
     end
   end
 
@@ -332,7 +349,7 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
         {:ok, validated_value} -> Map.put(map, field, validated_value)
         {:error, %LedgerBankApi.Core.Error{} = error} ->
           # Return the error immediately - this will be caught by the calling function
-          throw({:error, error})
+          {:error, error}
       end
     else
       map

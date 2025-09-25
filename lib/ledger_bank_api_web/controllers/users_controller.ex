@@ -56,7 +56,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   GET /api/users/:id
   """
   def show(conn, %{"id" => id}) do
-    context = build_context(conn, :show_user, user_id: id)
+    context = build_context(conn, :show_user, %{user_id: id})
 
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id) do
@@ -104,7 +104,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   }
   """
   def update(conn, %{"id" => id} = params) do
-    context = build_context(conn, :update_user, user_id: id)
+    context = build_context(conn, :update_user, %{user_id: id})
 
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id),
@@ -122,7 +122,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   DELETE /api/users/:id
   """
   def delete(conn, %{"id" => id}) do
-    context = build_context(conn, :delete_user, user_id: id)
+    context = build_context(conn, :delete_user, %{user_id: id})
 
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id),
@@ -173,7 +173,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   """
   def update_profile(conn, params) do
     current_user = conn.assigns[:current_user]
-    context = build_context(conn, :update_profile, user_id: current_user.id)
+    context = build_context(conn, :update_profile, %{user_id: current_user.id})
 
     validate_and_execute(
       conn,
@@ -198,7 +198,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   """
   def update_password(conn, params) do
     current_user = conn.assigns[:current_user]
-    context = build_context(conn, :update_password, user_id: current_user.id)
+    context = build_context(conn, :update_password, %{user_id: current_user.id})
 
     validate_and_execute(
       conn,

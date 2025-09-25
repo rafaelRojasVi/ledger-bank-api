@@ -54,6 +54,12 @@ config :ledger_bank_api, Oban,
   queues: false,
   plugins: false
 
+# Configure password hashing for testing - use a simpler algorithm
+config :argon2_elixir,
+  t_cost: 1,
+  m_cost: 8,
+  parallelism: 1
+
 # Cache configuration for testing
 config :ledger_bank_api, :cache,
   ttl: 300,

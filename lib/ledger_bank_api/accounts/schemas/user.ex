@@ -179,7 +179,13 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
     case get_change(changeset, :password) do
       nil -> changeset
       password ->
-        put_change(changeset, :password_hash, Argon2.hash_pwd_salt(password))
+        hash_function = if Mix.env() == :test do
+          &LedgerBankApi.PasswordHelper.hash_pwd_salt/1
+        else
+          &Argon2.hash_pwd_salt/1
+        end
+
+        put_change(changeset, :password_hash, hash_function.(password))
     end
   end
 

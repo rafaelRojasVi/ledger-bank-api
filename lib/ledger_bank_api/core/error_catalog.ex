@@ -61,6 +61,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :token_expired => :authentication,
       :token_revoked => :authentication,
       :invalid_token_type => :authentication,
+      :invalid_refresh_token_format => :authentication,
       :invalid_issuer => :authentication,
       :invalid_audience => :authentication,
       :token_not_yet_valid => :authentication,
@@ -190,6 +191,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :token_expired -> "Token has expired"
       :token_revoked -> "Token has been revoked"
       :invalid_token_type -> "Invalid token type"
+      :invalid_refresh_token_format -> "Invalid refresh token format"
       :invalid_issuer -> "Invalid token issuer"
       :invalid_audience -> "Invalid token audience"
       :token_not_yet_valid -> "Token not yet valid"

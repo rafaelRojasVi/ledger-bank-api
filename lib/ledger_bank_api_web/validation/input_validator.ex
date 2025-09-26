@@ -135,10 +135,14 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   def validate_login(params) do
     context = %{source: "input_validator", action: :login}
 
-    with {:ok, email} <- validate_email(params["email"], context),
-         {:ok, password} <- validate_password(params["password"], context, "user") do
-      {:ok, %{email: email, password: password}}
-    else
+    # Check email first - empty email should return missing_fields (400)
+    case validate_email(params["email"], context) do
+      {:ok, email} ->
+        # Email is valid, now check password - empty password should return invalid_credentials (401)
+        case validate_password(params["password"], context, "user") do
+          {:ok, password} -> {:ok, %{email: email, password: password}}
+          {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
+        end
       {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
     end
   end

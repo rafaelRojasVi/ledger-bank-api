@@ -12,7 +12,6 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
   use LedgerBankApi.DataCase, async: false
   alias LedgerBankApi.Accounts.UserService
-  alias LedgerBankApi.Accounts.Schemas.User
   alias LedgerBankApi.UsersFixtures
 
   # ============================================================================

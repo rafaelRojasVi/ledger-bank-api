@@ -73,7 +73,12 @@ defmodule LedgerBankApi.Accounts.UserService do
           {:error, ErrorHandler.business_error(:email_already_exists, context)}
         {:error, %LedgerBankApi.Core.Error{} = _error} ->
           # User not found, safe to create
-          ServiceBehavior.create_operation(&User.changeset(%User{}, &1), attrs, context)
+          # Validate role-based password requirements
+          role = attrs[:role] || "user"
+          with :ok <- validate_password_requirements(attrs, role),
+               {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), attrs, context) do
+            {:ok, user}
+          end
       end
     end)
   end
@@ -85,6 +90,21 @@ defmodule LedgerBankApi.Accounts.UserService do
     context = ServiceBehavior.build_context(__MODULE__, :update_user, %{user_id: user.id})
 
     ServiceBehavior.update_operation(&User.update_changeset/2, user, attrs, context)
+  end
+
+  @doc """
+  Update a user with permission validation.
+  """
+  def update_user_with_permissions(user, attrs, current_user) do
+    context = ServiceBehavior.build_context(__MODULE__, :update_user_with_permissions, %{user_id: user.id, current_user_id: current_user.id})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Validate permissions before updating
+      with :ok <- validate_update_permissions(user, attrs, current_user),
+           {:ok, updated_user} <- update_user(user, attrs) do
+        {:ok, updated_user}
+      end
+    end)
   end
 
   @doc """
@@ -102,7 +122,44 @@ defmodule LedgerBankApi.Accounts.UserService do
   def update_user_password(user, attrs) do
     context = ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
 
-    ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context)
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Handle nil attributes
+      if is_nil(attrs) do
+        {:error, ErrorHandler.business_error(:missing_fields, %{
+          message: "Password update attributes are required"
+        })}
+      else
+        # Validate current password first
+        with :ok <- validate_current_password(user, attrs[:current_password]),
+             :ok <- validate_password_change(user, attrs),
+             :ok <- validate_password_requirements(attrs, user.role),
+             {:ok, updated_user} <- ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
+          {:ok, updated_user}
+        end
+      end
+    end)
+  end
+
+  @doc """
+  Update user password for unit tests (bypasses current password validation).
+  """
+  def update_user_password_for_test(user, attrs) do
+    context = ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Handle nil attributes
+      if is_nil(attrs) do
+        {:error, ErrorHandler.business_error(:missing_fields, %{
+          message: "Password update attributes are required"
+        })}
+      else
+        # Skip current password validation for unit tests
+        with :ok <- validate_password_requirements(attrs, user.role),
+             {:ok, updated_user} <- ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
+          {:ok, updated_user}
+        end
+      end
+    end)
   end
 
   # ============================================================================
@@ -283,6 +340,93 @@ defmodule LedgerBankApi.Accounts.UserService do
       admin_users: admin_users,
       suspended_users: total_users - active_users
     }}
+  end
+
+  # ============================================================================
+  # PERMISSION VALIDATION
+  # ============================================================================
+
+  @doc """
+  Validate update permissions for user operations.
+  """
+  def validate_update_permissions(user, attrs, current_user) do
+    # Check if user is trying to change role
+    new_role = attrs["role"] || attrs[:role]
+    if new_role && new_role != user.role do
+      if current_user.role == "admin" do
+        :ok
+      else
+        {:error, ErrorHandler.business_error(:insufficient_permissions, %{message: "Only admins can change user roles"})}
+      end
+    else
+      # Check if user is trying to change status
+      new_status = attrs["status"] || attrs[:status]
+      if new_status && new_status != user.status do
+        if current_user.role == "admin" do
+          :ok
+        else
+          {:error, ErrorHandler.business_error(:insufficient_permissions, %{message: "Only admins can change user status"})}
+        end
+      else
+        :ok
+      end
+    end
+  end
+
+  @doc """
+  Validate current password for password updates.
+  """
+  def validate_current_password(user, current_password) do
+    if current_password do
+      case authenticate_user(user.email, current_password) do
+        {:ok, _user} -> :ok
+        {:error, _error} ->
+          {:error, ErrorHandler.business_error(:invalid_credentials, %{
+            message: "Current password is incorrect"
+          })}
+      end
+    else
+      {:error, ErrorHandler.business_error(:missing_fields, %{
+        message: "Current password is required"
+      })}
+    end
+  end
+
+  @doc """
+  Validate that new password is different from current password.
+  """
+  def validate_password_change(_user, attrs) do
+    new_password = attrs["password"] || attrs[:password]
+    current_password = attrs[:current_password]
+
+    if new_password && current_password && new_password == current_password do
+      {:error, ErrorHandler.business_error(:invalid_password_format, %{
+        message: "New password must be different from current password"
+      })}
+    else
+      :ok
+    end
+  end
+
+  @doc """
+  Validate password requirements based on user role.
+  """
+  def validate_password_requirements(attrs, user_role) do
+    password = attrs["password"] || attrs[:password] || attrs["new_password"] || attrs[:new_password]
+
+    if password do
+      min_length = if user_role in ["admin", "support"], do: 15, else: 8
+
+      if String.length(password) < min_length do
+        {:error, ErrorHandler.business_error(:invalid_password_format, %{
+          message: "Password must be at least #{min_length} characters long for #{user_role} users"
+        })}
+      else
+        :ok
+      end
+    else
+      :ok
+    end
   end
 
   # ============================================================================

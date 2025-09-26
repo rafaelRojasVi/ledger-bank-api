@@ -1,16 +1,18 @@
 defmodule LedgerBankApi.Core.Validator do
   @moduledoc """
-  Centralized validation module for the LedgerBankApi application.
-
-  This module provides core validation functions that return simple error reasons.
-  These reasons are then converted to proper Error structs by ErrorHandler.
+  Core validation module for the LedgerBankApi application.
 
   ## Architecture Role
 
-  - **Purpose**: Core validation logic that can be reused across the application
-  - **Returns**: Simple error reasons (atoms) like `:invalid_uuid_format`, `:missing_fields`
-  - **Used by**: InputValidator (web layer), UserService (business layer)
-  - **Error conversion**: InputValidator converts these reasons to ErrorHandler.business_error calls
+  This module provides **core validation logic** that can be reused across the application.
+  It focuses on **data format validation** and returns simple error reasons.
+
+  ## Responsibilities
+
+  - **Data Format Validation**: UUID format, email format, password presence
+  - **Simple Error Reasons**: Returns atoms like `:invalid_uuid_format`, `:missing_fields`
+  - **No Business Logic**: Does not handle permissions, role-based validation, or complex business rules
+  - **Reusable**: Used by both web layer (InputValidator) and business layer (UserService)
 
   ## Usage
 
@@ -22,6 +24,13 @@ defmodule LedgerBankApi.Core.Validator do
 
       # Used by InputValidator for web layer validation
       InputValidator.validate_user_id(user_id)  # internally uses Validator.validate_uuid
+
+  ## Layer Separation
+
+  - **Core Validator** (this module): Data format validation
+  - **InputValidator**: Web layer validation with proper error formatting
+  - **Schema Validation**: Ecto changeset validation for database operations
+  - **Service Layer**: Business logic validation (permissions, role-based rules)
   """
 
   @doc """

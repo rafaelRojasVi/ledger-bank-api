@@ -44,6 +44,8 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_uuid_format => :validation,
       :invalid_datetime_format => :validation,
       :invalid_name_format => :validation,
+      :invalid_role => :validation,
+      :invalid_status => :validation,
 
       # Not found errors
       :user_not_found => :not_found,
@@ -171,6 +173,8 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_uuid_format -> "Invalid UUID format"
       :invalid_datetime_format -> "Invalid datetime format"
       :invalid_name_format -> "Invalid name format"
+      :invalid_role -> "Invalid role"
+      :invalid_status -> "Invalid status"
 
       # Not found errors
       :user_not_found -> "User not found"

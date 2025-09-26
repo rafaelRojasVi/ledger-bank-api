@@ -243,7 +243,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       response = json_response(conn, 400)
       assert %{"error" => error} = response
       assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_direction"
+      assert error["reason"] == "invalid_role"
     end
 
     test "fails to create user with duplicate email", %{conn: conn} do
@@ -639,47 +639,43 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       %{admin_user: admin_user, access_token: access_token}
     end
 
-    # Note: User updates are currently blocked by schema validation permission issues
-    # test "successfully updates user with valid data", %{conn: conn, access_token: access_token} do
-    #   user = UsersFixtures.user_fixture(%{
-    #     email: "updateuser@example.com",
-    #     full_name: "Original Name",
-    #     role: "user"
-    #   })
-    #   update_params = %{full_name: "Updated Name"}
-    #   conn = conn
-    #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/users/#{user.id}", update_params)
-    #   response = json_response(conn, 200)
-    #   assert %{"success" => true, "data" => user_data} = response
-    #   assert user_data["id"] == user.id
-    #   assert user_data["full_name"] == "Updated Name"
-    # end
+    test "successfully updates user with valid data", %{conn: conn, access_token: access_token} do
+      user = UsersFixtures.user_fixture(%{
+        email: "updateuser@example.com",
+        full_name: "Original Name",
+        role: "user"
+      })
+      update_params = %{full_name: "Updated Name"}
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{access_token}")
+      |> put(~p"/api/users/#{user.id}", update_params)
+      response = json_response(conn, 200)
+      assert %{"success" => true, "data" => user_data} = response
+      assert user_data["id"] == user.id
+      assert user_data["full_name"] == "Updated Name"
+    end
 
-    # Note: Role updates are currently blocked by schema validation
-    # This test is disabled until the permission system is fixed
-    # test "successfully updates user role", %{conn: conn, access_token: access_token} do
-    #   user = UsersFixtures.user_fixture(%{role: "user"})
-    #   update_params = %{role: "support"}
-    #   conn = conn
-    #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/users/#{user.id}", update_params)
-    #   response = json_response(conn, 200)
-    #   assert %{"success" => true, "data" => user_data} = response
-    #   assert user_data["role"] == "support"
-    # end
+    test "successfully updates user role", %{conn: conn, access_token: access_token} do
+      user = UsersFixtures.user_fixture(%{role: "user"})
+      update_params = %{role: "support"}
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{access_token}")
+      |> put(~p"/api/users/#{user.id}", update_params)
+      response = json_response(conn, 200)
+      assert %{"success" => true, "data" => user_data} = response
+      assert user_data["role"] == "support"
+    end
 
-    # Note: Email updates are currently blocked by schema validation permission issues
-    # test "successfully updates user email", %{conn: conn, access_token: access_token} do
-    #   user = UsersFixtures.user_fixture(%{email: "old@example.com"})
-    #   update_params = %{email: "new@example.com"}
-    #   conn = conn
-    #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/users/#{user.id}", update_params)
-    #   response = json_response(conn, 200)
-    #   assert %{"success" => true, "data" => user_data} = response
-    #   assert user_data["email"] == "new@example.com"
-    # end
+    test "successfully updates user email", %{conn: conn, access_token: access_token} do
+      user = UsersFixtures.user_fixture(%{email: "old@example.com"})
+      update_params = %{email: "new@example.com"}
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{access_token}")
+      |> put(~p"/api/users/#{user.id}", update_params)
+      response = json_response(conn, 200)
+      assert %{"success" => true, "data" => user_data} = response
+      assert user_data["email"] == "new@example.com"
+    end
 
     test "fails to update non-existent user", %{conn: conn, access_token: access_token} do
       fake_id = Ecto.UUID.generate()
@@ -732,7 +728,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       response = json_response(conn, 400)
       assert %{"error" => error} = response
       assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_direction"
+      assert error["reason"] == "invalid_role"
     end
 
     test "fails to update user with invalid status", %{conn: conn, access_token: access_token} do
@@ -746,7 +742,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       response = json_response(conn, 400)
       assert %{"error" => error} = response
       assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_direction"
+      assert error["reason"] == "invalid_status"
     end
 
     # Note: This test is disabled due to schema validation permission issues

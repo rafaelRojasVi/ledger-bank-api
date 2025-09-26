@@ -1,17 +1,19 @@
 defmodule LedgerBankApiWeb.Validation.InputValidator do
   @moduledoc """
-  Web layer input validation that provides consistent error formatting for controllers.
-
-  This module serves as the bridge between core validation logic and web layer error handling.
-  It uses the core Validator module for validation logic and converts results to proper Error structs.
+  Web layer input validation for controllers.
 
   ## Architecture Role
 
-  - **Purpose**: Web layer validation with proper error formatting for API responses
-  - **Uses**: Core Validator module for validation logic
-  - **Returns**: Proper Error structs via ErrorHandler.business_error
-  - **Used by**: Controllers for parameter validation
-  - **Error conversion**: Converts Validator error reasons to ErrorHandler.business_error calls
+  This module serves as the **web layer validation bridge** between HTTP requests and business logic.
+  It provides consistent error formatting for API responses and handles web-specific validation concerns.
+
+  ## Responsibilities
+
+  - **Web Layer Validation**: Validates HTTP request parameters and body data
+  - **Error Formatting**: Converts validation errors to proper Error structs for API responses
+  - **Field Mapping**: Maps HTTP field names to internal field names
+  - **Context Building**: Adds web-specific context (source, action) to errors
+  - **Parameter Extraction**: Extracts and validates pagination, sorting, and filtering parameters
 
   ## Usage
 
@@ -22,6 +24,13 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
       else
         error -> handle_standard_errors(conn, context).(error)
       end
+
+  ## Layer Separation
+
+  - **InputValidator** (this module): Web layer validation with error formatting
+  - **Core Validator**: Data format validation (used internally)
+  - **Schema Validation**: Ecto changeset validation for database operations
+  - **Service Layer**: Business logic validation (permissions, role-based rules)
 
   ## Design Principles
 
@@ -111,7 +120,7 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
          :ok <- validate_password_match(new_password, password_confirmation, context) do
       {:ok, %{
         current_password: current_password,
-        new_password: new_password,
+        password: new_password,  # Map new_password to password for schema
         password_confirmation: password_confirmation
       }}
     else
@@ -315,24 +324,24 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     if role in ["user", "admin", "support"] do
       {:ok, role}
     else
-      {:error, ErrorHandler.business_error(:invalid_direction, Map.put(context, :field, "role") |> Map.put(:value, role) |> Map.put(:message, "Role must be one of: user, admin, support"))}
+      {:error, ErrorHandler.business_error(:invalid_role, Map.put(context, :field, "role") |> Map.put(:value, role) |> Map.put(:message, "Role must be one of: user, admin, support"))}
     end
   end
 
   defp validate_role(_, context) do
-    {:error, ErrorHandler.business_error(:invalid_direction, Map.put(context, :field, "role") |> Map.put(:message, "Role must be a string"))}
+    {:error, ErrorHandler.business_error(:invalid_role, Map.put(context, :field, "role") |> Map.put(:message, "Role must be a string"))}
   end
 
   defp validate_status(status, context) when is_binary(status) do
     if status in ["ACTIVE", "SUSPENDED", "DELETED"] do
       {:ok, status}
     else
-      {:error, ErrorHandler.business_error(:invalid_direction, Map.put(context, :field, "status") |> Map.put(:value, status) |> Map.put(:message, "Status must be one of: ACTIVE, SUSPENDED, DELETED"))}
+      {:error, ErrorHandler.business_error(:invalid_status, Map.put(context, :field, "status") |> Map.put(:value, status) |> Map.put(:message, "Status must be one of: ACTIVE, SUSPENDED, DELETED"))}
     end
   end
 
   defp validate_status(_, context) do
-    {:error, ErrorHandler.business_error(:invalid_direction, Map.put(context, :field, "status") |> Map.put(:message, "Status must be a string"))}
+    {:error, ErrorHandler.business_error(:invalid_status, Map.put(context, :field, "status") |> Map.put(:message, "Status must be a string"))}
   end
 
   defp validate_password_match(password, password_confirmation, context) do

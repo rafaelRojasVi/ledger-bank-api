@@ -105,11 +105,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   """
   def update(conn, %{"id" => id} = params) do
     context = build_context(conn, :update_user, %{user_id: id})
+    current_user = conn.assigns[:current_user]
 
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id),
          {:ok, validated_params} <- InputValidator.validate_user_update(params),
-         {:ok, updated_user} <- UserService.update_user(user, validated_params) do
+         {:ok, updated_user} <- UserService.update_user_with_permissions(user, validated_params, current_user) do
       handle_success(conn, updated_user)
     else
       error -> handle_standard_errors(conn, context).(error)
@@ -180,7 +181,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
       context,
       InputValidator.validate_user_update(params),
       fn validated_params ->
-        UserService.update_user(current_user, validated_params)
+        UserService.update_user_with_permissions(current_user, validated_params, current_user)
       end,
       &handle_success(conn, &1)
     )

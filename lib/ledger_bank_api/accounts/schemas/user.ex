@@ -1,10 +1,33 @@
 defmodule LedgerBankApi.Accounts.Schemas.User do
   @moduledoc """
-  Ecto schema for application users. Represents a registered user with email, name, status, and role.
-  Valid roles: "user", "admin", "support".
-  Passwords are securely hashed using Argon2 and never stored in plaintext.
-  Password requirements: minimum 8 characters for regular users, 15 characters for admin accounts.
-  Longer passwords are more secure than complex ones. Use memorable passphrases when possible.
+  Ecto schema for application users.
+
+  ## Architecture Role
+
+  This module provides **data layer validation** for user records. It focuses on:
+  - **Data integrity**: Field formats, constraints, and database-level validation
+  - **Password hashing**: Secure password storage using Argon2
+  - **Basic validation**: Email format, role inclusion, status validation
+
+  ## Responsibilities
+
+  - **Data Format Validation**: Email format, role inclusion, status validation
+  - **Password Security**: Hashing and basic length validation (8+ characters)
+  - **Database Constraints**: Unique constraints, foreign keys, required fields
+  - **No Business Logic**: Does not handle permissions, role-based validation, or complex business rules
+
+  ## Layer Separation
+
+  - **Schema Validation** (this module): Data integrity and format validation
+  - **Service Layer**: Business logic validation (permissions, role-based rules)
+  - **InputValidator**: Web layer validation with proper error formatting
+  - **Core Validator**: Reusable data format validation
+
+  ## Valid Values
+
+  - **Roles**: "user", "admin", "support"
+  - **Status**: "ACTIVE", "SUSPENDED", "DELETED"
+  - **Password**: Minimum 8 characters (role-based requirements handled at service layer)
   """
   use Ecto.Schema
   import Ecto.Changeset
@@ -53,7 +76,7 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
     |> base_changeset(attrs)
     |> validate_email()
     |> validate_status()
-    |> validate_role_permissions(user, attrs)
+    |> validate_role()
     |> validate_password()
     |> validate_password_confirmation()
     |> maybe_hash_password()
@@ -68,8 +91,7 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
     |> validate_required(@required_fields)
     |> validate_email()
     |> validate_status()
-    |> validate_role_permissions(user, attrs)
-    |> validate_status_transitions(user, attrs)
+    |> validate_role()
   end
 
   @doc """
@@ -100,15 +122,11 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
     if is_nil(password) do
       changeset
     else
-      # Get user role to determine minimum length requirement
-      user = changeset.data
-      role = get_field(changeset, :role) || user.role || "user"
-
-      min_length = if role in ["admin", "support"], do: 15, else: 8
-
+      # Simple password validation - minimum 8 characters for all users
+      # Role-based validation will be handled at the service layer
       changeset
-      |> validate_length(:password, min: min_length, max: 255,
-          message: "must be at least #{min_length} characters long")
+      |> validate_length(:password, min: 8, max: 255,
+          message: "must be at least 8 characters long")
     end
   end
 
@@ -127,52 +145,8 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
     end
   end
 
-  defp validate_role_permissions(changeset, user, attrs) do
-    current_role = user.role
-    new_role = attrs["role"] || attrs[:role]
-
-    # Only allow role changes if user is admin or if it's a new user
-    cond do
-      # New user - allow any role
-      is_nil(user.id) ->
-        validate_inclusion(changeset, :role, ["user", "admin", "support"])
-
-      # Existing user - only admin can change roles
-      current_role == "admin" ->
-        validate_inclusion(changeset, :role, ["user", "admin", "support"])
-
-      # Non-admin user - role cannot be changed
-      new_role != current_role ->
-        add_error(changeset, :role, "cannot be changed by non-admin users")
-
-      # No role change
-      true ->
-        changeset
-    end
-  end
-
-  defp validate_status_transitions(changeset, user, attrs) do
-    current_status = user.status
-    new_status = attrs["status"] || attrs[:status]
-
-    # Only allow status changes if user is admin or if it's a new user
-    cond do
-      # New user - allow any status
-      is_nil(user.id) ->
-        validate_inclusion(changeset, :status, ["ACTIVE", "SUSPENDED", "DELETED"])
-
-      # Existing user - only admin can change status
-      user.role == "admin" ->
-        validate_inclusion(changeset, :status, ["ACTIVE", "SUSPENDED", "DELETED"])
-
-      # Non-admin user - status cannot be changed
-      new_status != current_status ->
-        add_error(changeset, :status, "cannot be changed by non-admin users")
-
-      # No status change
-      true ->
-        changeset
-    end
+  defp validate_role(changeset) do
+    validate_inclusion(changeset, :role, ["user", "admin", "support"])
   end
 
   defp maybe_hash_password(changeset) do

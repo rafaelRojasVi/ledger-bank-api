@@ -22,7 +22,7 @@ defmodule LedgerBankApiWeb.Router do
   end
 
   pipeline :user_or_admin do
-    plug LedgerBankApiWeb.Plugs.Authorize, roles: ["admin", "user"], allow_self: true
+    plug LedgerBankApiWeb.Plugs.Authorize, roles: ["admin", "user", "support"], allow_self: true
   end
 
   scope "/api", LedgerBankApiWeb do

@@ -2,12 +2,14 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   @moduledoc """
   Authentication controller handling user login, logout, and token management.
 
-  Uses the "one-thing" error handling pattern with canonical Error structs.
+  Uses action fallback for centralized error handling.
   """
 
   use LedgerBankApiWeb.Controllers.BaseController
   alias LedgerBankApi.Accounts.AuthService
   alias LedgerBankApiWeb.Validation.InputValidator
+
+  action_fallback LedgerBankApiWeb.FallbackController
 
   @doc """
   Login user with email and password.
@@ -86,13 +88,9 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   Headers: Authorization: Bearer <access_token>
   """
   def logout_all(conn, _params) do
-    context = build_context(conn, :logout_all)
-
     with {:ok, user} <- get_current_user(conn),
          {:ok, _} <- AuthService.logout_user_all_devices(user.id) do
       handle_auth_success(conn, :logout_all, "Logged out from all devices successfully")
-    else
-      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
@@ -103,12 +101,8 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   Headers: Authorization: Bearer <access_token>
   """
   def me(conn, _params) do
-    context = build_context(conn, :me)
-
     with {:ok, user} <- get_current_user(conn) do
       handle_auth_success(conn, :me, user)
-    else
-      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
@@ -119,16 +113,12 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   Headers: Authorization: Bearer <access_token>
   """
   def validate(conn, _params) do
-    context = build_context(conn, :validate)
-
     with {:ok, user} <- get_current_user(conn) do
       handle_auth_success(conn, :validate, %{
         user_id: user.id,
         role: user.role,
         expires_at: get_token_expiration(conn)
       })
-    else
-      error -> handle_standard_errors(conn, context).(error)
     end
   end
 

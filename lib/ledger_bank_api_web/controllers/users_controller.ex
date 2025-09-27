@@ -2,7 +2,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   @moduledoc """
   Users controller handling user CRUD operations and profile management.
 
-  Uses the "one-thing" error handling pattern with canonical Error structs.
+  Uses action fallback for centralized error handling.
   Implements proper input validation and authorization.
   """
 
@@ -11,17 +11,17 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   alias LedgerBankApi.Core.ErrorHandler
   alias LedgerBankApiWeb.Validation.InputValidator
 
+  action_fallback LedgerBankApiWeb.FallbackController
+
   @doc """
   List users with optional filtering and pagination.
 
   GET /api/users?page=1&page_size=20&sort=email:asc&status=ACTIVE
   """
   def index(conn, params) do
-    context = build_context(conn, :list_users)
-
-    with {:ok, pagination} <- InputValidator.extract_pagination_params(params, context),
-         {:ok, sort} <- InputValidator.extract_sort_params(params, context),
-         {:ok, filters} <- InputValidator.extract_filter_params(params, context) do
+    with {:ok, pagination} <- InputValidator.extract_pagination_params(params),
+         {:ok, sort} <- InputValidator.extract_sort_params(params),
+         {:ok, filters} <- InputValidator.extract_filter_params(params) do
 
       opts = [
         pagination: pagination,
@@ -45,8 +45,56 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
       }
 
       handle_success(conn, users, metadata)
-    else
-      error -> handle_standard_errors(conn, context).(error)
+    end
+  end
+
+  @doc """
+  List users with keyset pagination for better performance.
+
+  GET /api/users/keyset?limit=20&cursor={"inserted_at":"2024-01-01T00:00:00Z","id":"user-id"}&status=ACTIVE
+  """
+  def index_keyset(conn, params) do
+    with {:ok, filters} <- InputValidator.extract_filter_params(params) do
+      # Parse cursor from query params
+      cursor = case params["cursor"] do
+        nil -> nil
+        cursor_string when is_binary(cursor_string) ->
+          case Jason.decode(cursor_string) do
+            {:ok, %{"inserted_at" => inserted_at, "id" => id}} ->
+              case DateTime.from_iso8601(inserted_at) do
+                {:ok, dt, _} -> %{inserted_at: dt, id: id}
+                _ -> nil
+              end
+            _ -> nil
+          end
+        _ -> nil
+      end
+
+      # Parse limit
+      limit = case Integer.parse(params["limit"] || "20") do
+        {limit_num, ""} when limit_num >= 1 and limit_num <= 100 -> limit_num
+        {limit_num, ""} when limit_num > 100 -> 100
+        _ -> 20
+      end
+
+      opts = [
+        cursor: cursor,
+        limit: limit,
+        filters: filters
+      ]
+
+      result = UserService.list_users_keyset(opts)
+
+      metadata = %{
+        pagination: %{
+          type: "keyset",
+          limit: limit,
+          has_more: result.has_more,
+          next_cursor: result.next_cursor
+        }
+      }
+
+      handle_success(conn, result.data, metadata)
     end
   end
 
@@ -56,13 +104,9 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   GET /api/users/:id
   """
   def show(conn, %{"id" => id}) do
-    context = build_context(conn, :show_user, %{user_id: id})
-
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id) do
       handle_success(conn, user)
-    else
-      error -> handle_standard_errors(conn, context).(error)
     end
   end
 

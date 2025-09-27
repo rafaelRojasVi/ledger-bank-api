@@ -13,6 +13,8 @@ defmodule LedgerBankApi.Accounts.UserService do
   alias LedgerBankApi.Repo
   alias LedgerBankApi.Core.{ErrorHandler, ServiceBehavior, Validator}
   alias LedgerBankApi.Accounts.Schemas.{User, RefreshToken}
+  alias LedgerBankApi.Accounts.Policy
+  alias LedgerBankApi.Accounts.Normalize
 
   # ============================================================================
   # SERVICE BEHAVIOR IMPLEMENTATION
@@ -61,6 +63,63 @@ defmodule LedgerBankApi.Accounts.UserService do
   end
 
   @doc """
+  List users with keyset pagination for better performance and stability.
+
+  Uses cursor-based pagination with inserted_at and id for stable ordering.
+  """
+  def list_users_keyset(opts \\ []) do
+    cursor = opts[:cursor]
+    limit = min(opts[:limit] || 20, 100)
+    filters = opts[:filters] || %{}
+
+    base_query = User
+    |> apply_user_filters(filters)
+
+    query = case cursor do
+      nil ->
+        # First page
+        base_query
+        |> order_by([u], desc: u.inserted_at, desc: u.id)
+        |> limit(^limit)
+
+      %{inserted_at: cursor_time, id: cursor_id} when is_struct(cursor_time, DateTime) ->
+        # Subsequent pages
+        base_query
+        |> where([u],
+          u.inserted_at < ^cursor_time or
+          (u.inserted_at == ^cursor_time and u.id < ^cursor_id))
+        |> order_by([u], desc: u.inserted_at, desc: u.id)
+        |> limit(^limit)
+
+      _ ->
+        # Invalid cursor, treat as first page
+        base_query
+        |> order_by([u], desc: u.inserted_at, desc: u.id)
+        |> limit(^limit)
+    end
+
+    users = Repo.all(query)
+
+    # Build next cursor if we have results and there might be more
+    has_more = length(users) == limit
+    next_cursor = if has_more and length(users) > 0 do
+      last_user = List.last(users)
+      %{
+        inserted_at: last_user.inserted_at,
+        id: last_user.id
+      }
+    else
+      nil
+    end
+
+    %{
+      data: users,
+      next_cursor: next_cursor,
+      has_more: has_more
+    }
+  end
+
+  @doc """
   Create a new user.
   """
   def create_user(attrs) do
@@ -84,12 +143,46 @@ defmodule LedgerBankApi.Accounts.UserService do
   end
 
   @doc """
+  Create a new user with normalized attributes (new approach).
+  """
+  def create_user_with_normalization(attrs) do
+    normalized_attrs = Normalize.user_attrs(attrs)
+    context = ServiceBehavior.build_context(__MODULE__, :create_user, %{email: normalized_attrs["email"]})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Check if email already exists
+      case get_user_by_email(normalized_attrs["email"]) do
+        {:ok, _user} ->
+          {:error, ErrorHandler.business_error(:email_already_exists, context)}
+        {:error, %LedgerBankApi.Core.Error{} = _error} ->
+          # User not found, safe to create
+          # Validate role-based password requirements
+          role = normalized_attrs["role"]
+          with :ok <- validate_password_requirements(normalized_attrs, role),
+               {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), normalized_attrs, context) do
+            {:ok, user}
+          end
+      end
+    end)
+  end
+
+  @doc """
   Update a user.
   """
   def update_user(user, attrs) do
     context = ServiceBehavior.build_context(__MODULE__, :update_user, %{user_id: user.id})
 
     ServiceBehavior.update_operation(&User.update_changeset/2, user, attrs, context)
+  end
+
+  @doc """
+  Update a user with normalized attributes (new approach).
+  """
+  def update_user_with_normalization(user, attrs) do
+    normalized_attrs = Normalize.user_update_attrs(attrs)
+    context = ServiceBehavior.build_context(__MODULE__, :update_user, %{user_id: user.id})
+
+    ServiceBehavior.update_operation(&User.update_changeset/2, user, normalized_attrs, context)
   end
 
   @doc """
@@ -374,6 +467,17 @@ defmodule LedgerBankApi.Accounts.UserService do
   end
 
   @doc """
+  Validate update permissions using Policy module (new approach).
+  """
+  def validate_update_permissions_with_policy(user, attrs, current_user) do
+    if Policy.can_update_user?(current_user, user, attrs) do
+      :ok
+    else
+      {:error, ErrorHandler.business_error(:insufficient_permissions, %{message: "Insufficient permissions to update user"})}
+    end
+  end
+
+  @doc """
   Validate current password for password updates.
   """
   def validate_current_password(user, current_password) do
@@ -388,6 +492,19 @@ defmodule LedgerBankApi.Accounts.UserService do
     else
       {:error, ErrorHandler.business_error(:missing_fields, %{
         message: "Current password is required"
+      })}
+    end
+  end
+
+  @doc """
+  Validate password change using Policy module (new approach).
+  """
+  def validate_password_change_with_policy(user, attrs) do
+    if Policy.can_change_password?(user, attrs) do
+      :ok
+    else
+      {:error, ErrorHandler.business_error(:invalid_password_format, %{
+        message: "Invalid password change request"
       })}
     end
   end

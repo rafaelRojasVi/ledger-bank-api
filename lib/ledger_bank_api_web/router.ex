@@ -54,6 +54,7 @@ defmodule LedgerBankApiWeb.Router do
       pipe_through [:authenticated, :admin_only]
 
       get "/", Controllers.UsersController, :index
+      get "/keyset", Controllers.UsersController, :index_keyset
       get "/stats", Controllers.UsersController, :stats
       get "/:id", Controllers.UsersController, :show
       put "/:id", Controllers.UsersController, :update

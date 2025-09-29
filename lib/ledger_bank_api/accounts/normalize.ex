@@ -22,22 +22,34 @@ defmodule LedgerBankApi.Accounts.Normalize do
 
   Ensures all required fields are present and properly formatted.
   """
-  def user_attrs(attrs) do
-    attrs
+  def user_attrs(attrs) when is_map(attrs) do
+    # Convert atom keys to string keys for consistency
+    string_attrs = for {k, v} <- attrs, into: %{} do
+      {to_string(k), v}
+    end
+
+    string_attrs
     |> Map.take(["email", "full_name", "role", "password", "password_confirmation"])
     |> normalize_email()
     |> normalize_full_name()
     |> normalize_role()
     |> add_defaults()
   end
+  def user_attrs(nil), do: %{}
+  def user_attrs(_), do: %{}
 
   @doc """
   Normalize user attributes for user updates.
 
   Only includes fields that can be updated and adds timestamp.
   """
-  def user_update_attrs(attrs) do
-    attrs
+  def user_update_attrs(attrs) when is_map(attrs) do
+    # Convert atom keys to string keys for consistency
+    string_attrs = for {k, v} <- attrs, into: %{} do
+      {to_string(k), v}
+    end
+
+    string_attrs
     |> Map.take(["email", "full_name", "role", "status"])
     |> normalize_email()
     |> normalize_full_name()
@@ -45,6 +57,8 @@ defmodule LedgerBankApi.Accounts.Normalize do
     |> normalize_status()
     |> add_update_timestamp()
   end
+  def user_update_attrs(nil), do: %{}
+  def user_update_attrs(_), do: %{}
 
   @doc """
   Normalize password attributes for password changes.

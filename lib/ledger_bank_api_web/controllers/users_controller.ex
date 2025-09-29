@@ -123,19 +123,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   }
   """
   def create(conn, params) do
-    context = build_context(conn, :create_user)
-
-    validate_and_execute(
-      conn,
-      context,
-      InputValidator.validate_user_creation(params),
-      &UserService.create_user/1,
-      fn user ->
-        conn
-        |> put_status(:created)
-        |> handle_success(user)
-      end
-    )
+    with {:ok, validated_params} <- InputValidator.validate_user_creation(params),
+         {:ok, user} <- UserService.create_user_with_normalization(validated_params) do
+      conn
+      |> put_status(:created)
+      |> handle_success(user)
+    end
   end
 
   @doc """
@@ -148,16 +141,13 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   }
   """
   def update(conn, %{"id" => id} = params) do
-    context = build_context(conn, :update_user, %{user_id: id})
     current_user = conn.assigns[:current_user]
 
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id),
          {:ok, validated_params} <- InputValidator.validate_user_update(params),
-         {:ok, updated_user} <- UserService.update_user_with_permissions(user, validated_params, current_user) do
+         {:ok, updated_user} <- UserService.update_user_with_normalization_and_policy(user, validated_params, current_user) do
       handle_success(conn, updated_user)
-    else
-      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
@@ -167,14 +157,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   DELETE /api/users/:id
   """
   def delete(conn, %{"id" => id}) do
-    context = build_context(conn, :delete_user, %{user_id: id})
-
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id),
          {:ok, _} <- UserService.delete_user(user) do
       handle_success(conn, %{message: "User deleted successfully"})
-    else
-      error -> handle_standard_errors(conn, context).(error)
     end
   end
 
@@ -198,13 +184,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   GET /api/profile
   """
   def show_profile(conn, _params) do
-    context = build_context(conn, :show_profile)
     current_user = conn.assigns[:current_user]
 
     if current_user do
       handle_success(conn, current_user)
     else
-      handle_error(conn, ErrorHandler.business_error(:user_not_found, Map.put(context, :message, "User not found")))
+      {:error, ErrorHandler.business_error(:user_not_found, %{message: "User not found"})}
     end
   end
 
@@ -218,17 +203,11 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   """
   def update_profile(conn, params) do
     current_user = conn.assigns[:current_user]
-    context = build_context(conn, :update_profile, %{user_id: current_user.id})
 
-    validate_and_execute(
-      conn,
-      context,
-      InputValidator.validate_user_update(params),
-      fn validated_params ->
-        UserService.update_user_with_permissions(current_user, validated_params, current_user)
-      end,
-      &handle_success(conn, &1)
-    )
+    with {:ok, validated_params} <- InputValidator.validate_user_update(params),
+         {:ok, updated_user} <- UserService.update_user_with_normalization_and_policy(current_user, validated_params, current_user) do
+      handle_success(conn, updated_user)
+    end
   end
 
   @doc """
@@ -243,18 +222,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   """
   def update_password(conn, params) do
     current_user = conn.assigns[:current_user]
-    context = build_context(conn, :update_password, %{user_id: current_user.id})
 
-    validate_and_execute(
-      conn,
-      context,
-      InputValidator.validate_password_change(params, current_user.role),
-      fn validated_params ->
-        UserService.update_user_password(current_user, validated_params)
-      end,
-      fn _ ->
-        handle_success(conn, %{message: "Password updated successfully"})
-      end
-    )
+    with {:ok, validated_params} <- InputValidator.validate_password_change(params, current_user.role),
+         {:ok, _} <- UserService.update_user_password_with_policy(current_user, validated_params) do
+      handle_success(conn, %{message: "Password updated successfully"})
+    end
   end
 end

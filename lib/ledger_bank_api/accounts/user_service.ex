@@ -186,6 +186,21 @@ defmodule LedgerBankApi.Accounts.UserService do
   end
 
   @doc """
+  Update a user with normalized attributes and policy validation (new approach).
+  """
+  def update_user_with_normalization_and_policy(user, attrs, current_user) do
+    context = ServiceBehavior.build_context(__MODULE__, :update_user_with_permissions, %{user_id: user.id, current_user_id: current_user.id})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Validate permissions using Policy module
+      with :ok <- validate_update_permissions_with_policy(user, attrs, current_user),
+           {:ok, updated_user} <- update_user_with_normalization(user, attrs) do
+        {:ok, updated_user}
+      end
+    end)
+  end
+
+  @doc """
   Update a user with permission validation.
   """
   def update_user_with_permissions(user, attrs, current_user) do
@@ -507,6 +522,30 @@ defmodule LedgerBankApi.Accounts.UserService do
         message: "Invalid password change request"
       })}
     end
+  end
+
+  @doc """
+  Update user password with policy validation (new approach).
+  """
+  def update_user_password_with_policy(user, attrs) do
+    context = ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Handle nil attributes
+      if is_nil(attrs) do
+        {:error, ErrorHandler.business_error(:missing_fields, %{
+          message: "Password update attributes are required"
+        })}
+      else
+        # Validate using Policy module
+        with :ok <- validate_password_change_with_policy(user, attrs),
+             :ok <- validate_current_password(user, attrs[:current_password]),
+             :ok <- validate_password_requirements(attrs, user.role),
+             {:ok, updated_user} <- ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
+          {:ok, updated_user}
+        end
+      end
+    end)
   end
 
   @doc """

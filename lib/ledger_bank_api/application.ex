@@ -28,6 +28,9 @@ defmodule LedgerBankApi.Application do
         raise "Cache table creation failed: #{inspect(reason)}"
     end
 
+    # Initialize rate limiting table
+    LedgerBankApiWeb.Plugs.RateLimit.ensure_table_exists()
+
     http_child =
       if Application.get_env(:ledger_bank_api, LedgerBankApiWeb.Endpoint)[:server] do
         [LedgerBankApiWeb.Endpoint]

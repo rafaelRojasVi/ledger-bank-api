@@ -1,5 +1,5 @@
 defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
-  use LedgerBankApiWeb.ConnCase, async: true
+  use LedgerBankApiWeb.ConnCase, async: false
   alias LedgerBankApi.UsersFixtures
 
   setup %{conn: conn} do
@@ -21,7 +21,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
       :timer.sleep(10)
       _user3 = UsersFixtures.user_fixture(%{email: "user3@example.com"})
 
-      conn = get(conn, ~p"/api/users/keyset?limit=2")
+      conn = get(conn, "/api/users/keyset?limit=2")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users, "metadata" => metadata} = response
@@ -42,13 +42,13 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
       _user3 = UsersFixtures.user_fixture(%{email: "user3@example.com"})
 
       # Get first page
-      conn1 = get(conn, ~p"/api/users/keyset?limit=2")
+      conn1 = get(conn, "/api/users/keyset?limit=2")
       response1 = json_response(conn1, 200)
       next_cursor = response1["metadata"]["pagination"]["next_cursor"]
 
       # Get second page
       cursor_param = Jason.encode!(next_cursor)
-      conn2 = get(conn, ~p"/api/users/keyset?limit=2&cursor=#{cursor_param}")
+      conn2 = get(conn, "/api/users/keyset?limit=2&cursor=#{cursor_param}")
       response2 = json_response(conn2, 200)
 
       assert %{"success" => true, "data" => users, "metadata" => _metadata} = response2
@@ -66,7 +66,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
       :timer.sleep(10)
       _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com", role: "user"})
 
-      conn = get(conn, ~p"/api/users/keyset?role=user")
+      conn = get(conn, "/api/users/keyset?role=user")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users} = response
@@ -82,7 +82,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
         :timer.sleep(100)
       end
 
-      conn = get(conn, ~p"/api/users/keyset?limit=3")
+      conn = get(conn, "/api/users/keyset?limit=3")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users, "metadata" => metadata} = response
@@ -95,7 +95,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
     test "caps limit at 100", %{conn: conn} do
       UsersFixtures.user_fixture(%{email: "user@example.com"})
 
-      conn = get(conn, ~p"/api/users/keyset?limit=200")
+      conn = get(conn, "/api/users/keyset?limit=200")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "metadata" => metadata} = response
@@ -106,7 +106,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
     test "handles invalid cursor gracefully", %{conn: conn} do
       UsersFixtures.user_fixture(%{email: "user@example.com"})
 
-      conn = get(conn, ~p"/api/users/keyset?cursor=invalid")
+      conn = get(conn, "/api/users/keyset?cursor=invalid")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users} = response
@@ -121,7 +121,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{user_token}")
-      |> get(~p"/api/users/keyset")
+      |> get("/api/users/keyset")
 
       assert json_response(conn, 403)
     end
@@ -129,7 +129,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
     test "requires authentication", %{conn: conn} do
       conn = conn
       |> delete_req_header("authorization")
-      |> get(~p"/api/users/keyset")
+      |> get("/api/users/keyset")
 
       assert json_response(conn, 401)
     end

@@ -15,6 +15,9 @@ defmodule LedgerBankApi.Accounts.UserService do
   alias LedgerBankApi.Accounts.Schemas.{User, RefreshToken}
   alias LedgerBankApi.Accounts.Policy
   alias LedgerBankApi.Accounts.Normalize
+  alias LedgerBankApi.Financial.Workers.{BankSyncWorker, PaymentWorker}
+  alias LedgerBankApiWeb.Logger, as: AppLogger
+  alias LedgerBankApi.Core.Cache
 
   # ============================================================================
   # SERVICE BEHAVIOR IMPLEMENTATION
@@ -28,7 +31,7 @@ defmodule LedgerBankApi.Accounts.UserService do
   # ============================================================================
 
   @doc """
-  Get a user by ID.
+  Get a user by ID with caching.
   """
   def get_user(id) do
     context = ServiceBehavior.build_context(__MODULE__, :get_user, %{user_id: id})
@@ -36,7 +39,22 @@ defmodule LedgerBankApi.Accounts.UserService do
     # Validate user ID format before querying
     case Validator.validate_uuid(id) do
       :ok ->
-        ServiceBehavior.get_operation(User, id, :user_not_found, context)
+        cache_key = "user:#{id}"
+
+        # Try to get from cache first
+        case Cache.get(cache_key) do
+          {:ok, user} ->
+            {:ok, user}
+          :not_found ->
+            # Not in cache, fetch from database
+            case ServiceBehavior.get_operation(User, id, :user_not_found, context) do
+              {:ok, user} ->
+                # Cache the user for 5 minutes
+                Cache.put(cache_key, user, ttl: 300)
+                {:ok, user}
+              error -> error
+            end
+        end
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, context)}
     end
@@ -136,6 +154,14 @@ defmodule LedgerBankApi.Accounts.UserService do
           role = attrs[:role] || "user"
           with :ok <- validate_password_requirements(attrs, role),
                {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), attrs, context) do
+            # Log business event
+            AppLogger.log_business_event("user_created", %{
+              user_id: user.id,
+              email: user.email,
+              role: user.role,
+              correlation_id: context.correlation_id
+            })
+
             {:ok, user}
           end
       end
@@ -172,7 +198,25 @@ defmodule LedgerBankApi.Accounts.UserService do
   def update_user(user, attrs) do
     context = ServiceBehavior.build_context(__MODULE__, :update_user, %{user_id: user.id})
 
-    ServiceBehavior.update_operation(&User.update_changeset/2, user, attrs, context)
+    ServiceBehavior.with_error_handling(context, fn ->
+      case ServiceBehavior.update_operation(&User.update_changeset/2, user, attrs, context) do
+        {:ok, updated_user} ->
+          # Invalidate cache
+          cache_key = "user:#{updated_user.id}"
+          Cache.delete(cache_key)
+
+          # Log business event
+          AppLogger.log_business_event("user_updated", %{
+            user_id: updated_user.id,
+            email: updated_user.email,
+            updated_fields: Map.keys(attrs),
+            correlation_id: context.correlation_id
+          })
+
+          {:ok, updated_user}
+        error -> error
+      end
+    end)
   end
 
   @doc """
@@ -435,19 +479,93 @@ defmodule LedgerBankApi.Accounts.UserService do
   def is_support?(_), do: false
 
   @doc """
-  Get user statistics.
+  Get user statistics with caching.
   """
   def get_user_statistics do
-    total_users = Repo.aggregate(User, :count)
-    active_users = Repo.aggregate(from(u in User, where: u.status == "ACTIVE"), :count)
-    admin_users = Repo.aggregate(from(u in User, where: u.role == "admin"), :count)
+    cache_key = "user_statistics"
 
-    {:ok, %{
-      total_users: total_users,
-      active_users: active_users,
-      admin_users: admin_users,
-      suspended_users: total_users - active_users
-    }}
+    # Try to get from cache first
+    case Cache.get(cache_key) do
+      {:ok, stats} ->
+        {:ok, stats}
+      :not_found ->
+        # Not in cache, compute statistics
+        total_users = Repo.aggregate(User, :count)
+        active_users = Repo.aggregate(from(u in User, where: u.status == "ACTIVE"), :count)
+        admin_users = Repo.aggregate(from(u in User, where: u.role == "admin"), :count)
+
+        stats = %{
+          total_users: total_users,
+          active_users: active_users,
+          admin_users: admin_users,
+          suspended_users: total_users - active_users
+        }
+
+        # Cache the statistics for 1 minute (they change less frequently)
+        Cache.put(cache_key, stats, ttl: 60)
+
+        {:ok, stats}
+    end
+  end
+
+  # ============================================================================
+  # OBAN JOB SCHEDULING
+  # ============================================================================
+
+  @doc """
+  Schedule bank sync for a user.
+  """
+  def schedule_bank_sync(user_id, opts \\ []) do
+    context = ServiceBehavior.build_context(__MODULE__, :schedule_bank_sync, %{user_id: user_id})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      case BankSyncWorker.schedule_sync(user_id, opts) do
+        {:ok, job} -> {:ok, job}
+        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+      end
+    end)
+  end
+
+  @doc """
+  Schedule bank sync with delay.
+  """
+  def schedule_bank_sync_with_delay(user_id, delay_seconds, opts \\ []) do
+    context = ServiceBehavior.build_context(__MODULE__, :schedule_bank_sync_with_delay, %{user_id: user_id, delay_seconds: delay_seconds})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      case BankSyncWorker.schedule_sync_with_delay(user_id, delay_seconds, opts) do
+        {:ok, job} -> {:ok, job}
+        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+      end
+    end)
+  end
+
+  @doc """
+  Schedule payment processing for a user.
+  """
+  def schedule_payment_processing(payment_id, opts \\ []) do
+    context = ServiceBehavior.build_context(__MODULE__, :schedule_payment_processing, %{payment_id: payment_id})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      case PaymentWorker.schedule_payment(payment_id, opts) do
+        {:ok, job} -> {:ok, job}
+        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+      end
+    end)
+  end
+
+  @doc """
+  Schedule payment processing with priority.
+  """
+  def schedule_payment_processing_with_priority(payment_id, priority, opts \\ []) do
+    context = ServiceBehavior.build_context(__MODULE__, :schedule_payment_processing_with_priority, %{payment_id: payment_id, priority: priority})
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      case PaymentWorker.schedule_payment_with_priority(payment_id, priority, opts) do
+        {:ok, job} -> {:ok, job}
+        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+      end
+    end)
   end
 
   # ============================================================================

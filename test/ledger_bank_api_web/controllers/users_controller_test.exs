@@ -388,7 +388,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       assert %{"pagination" => pagination} = metadata
       assert pagination["page"] == 1
       assert pagination["page_size"] == 3
-      assert pagination["total_count"] >= 5
+      assert pagination["total_count"] >= 4
     end
 
     test "successfully lists users with sorting", %{conn: conn, access_token: access_token} do

@@ -25,7 +25,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "successfully shows current user profile", %{conn: conn, access_token: access_token, user: user} do
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/profile")
+      |> get("/api/profile")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
@@ -48,7 +48,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/profile")
+      |> get("/api/profile")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
@@ -63,7 +63,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/profile")
+      |> get("/api/profile")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
@@ -72,7 +72,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     end
 
     test "fails to show profile without authentication", %{conn: conn} do
-      conn = get(conn, ~p"/api/profile")
+      conn = get(conn, "/api/profile")
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -83,7 +83,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "fails to show profile with invalid token", %{conn: conn} do
       conn = conn
       |> put_req_header("authorization", "Bearer invalid_token")
-      |> get(~p"/api/profile")
+      |> get("/api/profile")
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -97,7 +97,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{expired_token}")
-      |> get(~p"/api/profile")
+      |> get("/api/profile")
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -107,7 +107,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "fails to show profile with malformed authorization header", %{conn: conn} do
       conn = conn
       |> put_req_header("authorization", "InvalidFormat token123")
-      |> get(~p"/api/profile")
+      |> get("/api/profile")
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -115,7 +115,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     end
 
     test "fails to show profile with missing authorization header", %{conn: conn} do
-      conn = get(conn, ~p"/api/profile")
+      conn = get(conn, "/api/profile")
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -143,7 +143,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     #   update_params = %{full_name: "Updated Name"}
     #   conn = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile", update_params)
+    #   |> put("/api/profile", update_params)
     #   response = json_response(conn, 200)
     #   assert %{"success" => true, "data" => user_data} = response
     #   assert user_data["id"] == user.id
@@ -156,7 +156,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     #   update_params = %{email: "newemail@example.com"}
     #   conn = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile", update_params)
+    #   |> put("/api/profile", update_params)
     #   response = json_response(conn, 200)
     #   assert %{"success" => true, "data" => user_data} = response
     #   assert user_data["id"] == user.id
@@ -168,7 +168,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       update_params = %{full_name: "New Full Name", email: "newemail@example.com"}
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
       assert user_data["id"] == user.id
@@ -179,7 +179,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "fails to update profile without authentication", %{conn: conn} do
       update_params = %{full_name: "Updated Name"}
 
-      conn = put(conn, ~p"/api/profile", update_params)
+      conn = put(conn, "/api/profile", update_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -191,7 +191,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer invalid_token")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -201,7 +201,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "fails to update profile with empty request body", %{conn: conn, access_token: access_token} do
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", %{})
+      |> put("/api/profile", %{})
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -212,7 +212,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "fails to update profile with nil request body", %{conn: conn, access_token: access_token} do
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", nil)
+      |> put("/api/profile", nil)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -224,7 +224,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -237,7 +237,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -250,7 +250,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -262,7 +262,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -275,7 +275,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -288,7 +288,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -303,7 +303,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     #   update_params = %{email: "duplicate@example.com"}
     #   conn = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile", update_params)
+    #   |> put("/api/profile", update_params)
     #   response = json_response(conn, 409)
     #   assert %{"error" => error} = response
     #   assert error["type"] == "conflict"
@@ -315,7 +315,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     #   update_params = %{email: user.email}
     #   conn = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile", update_params)
+    #   |> put("/api/profile", update_params)
     #   response = json_response(conn, 200)
     #   assert %{"success" => true, "data" => user_data} = response
     #   assert user_data["email"] == user.email
@@ -326,7 +326,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -339,7 +339,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile", update_params)
+      |> put("/api/profile", update_params)
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -362,6 +362,13 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     end
 
     test "successfully updates user password", %{conn: conn, access_token: access_token, user: user} do
+      # Clear cache to ensure we get fresh data
+      LedgerBankApi.Core.Cache.delete("user:#{user.id}")
+
+      # Get the original password hash before update
+      {:ok, original_user} = LedgerBankApi.Accounts.UserService.get_user(user.id)
+      original_hash = original_user.password_hash
+
       password_params = %{
         current_password: "OldPassword123!",
         new_password: "NewPassword123!",
@@ -369,13 +376,14 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       }
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => data} = response
       assert data["message"] == "Password updated successfully"
-      # Verify the password was actually changed by trying to authenticate
+      # Clear cache again and verify the password was actually changed
+      LedgerBankApi.Core.Cache.delete("user:#{user.id}")
       {:ok, updated_user} = LedgerBankApi.Accounts.UserService.get_user(user.id)
-      assert updated_user.password_hash != user.password_hash
+      assert updated_user.password_hash != original_hash
     end
 
     test "fails to update password without authentication", %{conn: conn} do
@@ -385,7 +393,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
         password_confirmation: "NewPassword123!"
       }
 
-      conn = put(conn, ~p"/api/profile/password", password_params)
+      conn = put(conn, "/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -401,7 +409,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer invalid_token")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -411,7 +419,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "fails to update password with empty request body", %{conn: conn, access_token: access_token} do
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", %{})
+      |> put("/api/profile/password", %{})
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -422,7 +430,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     test "fails to update password with nil request body", %{conn: conn, access_token: access_token} do
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", nil)
+      |> put("/api/profile/password", nil)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -438,7 +446,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -454,7 +462,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -470,7 +478,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -487,7 +495,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -504,7 +512,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -521,7 +529,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -538,7 +546,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -555,7 +563,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -572,7 +580,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -589,7 +597,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -606,7 +614,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
 
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -627,7 +635,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       }
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => data} = response
       assert data["message"] == "Password updated successfully"
@@ -646,7 +654,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       }
       conn = conn
       |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/profile/password", password_params)
+      |> put("/api/profile/password", password_params)
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => data} = response
       assert data["message"] == "Password updated successfully"
@@ -681,7 +689,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       for {token, role} <- [{user_token, "user"}, {admin_token, "admin"}, {support_token, "support"}] do
         conn = conn
         |> put_req_header("authorization", "Bearer #{token}")
-        |> get(~p"/api/profile")
+        |> get("/api/profile")
 
         response = json_response(conn, 200)
         assert %{"success" => true, "data" => user_data} = response
@@ -695,7 +703,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     #   update_params = %{full_name: "Updated Name Only"}
     #   conn = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile", update_params)
+    #   |> put("/api/profile", update_params)
     #   response = json_response(conn, 200)
     #   assert %{"success" => true, "data" => user_data} = response
     #   assert user_data["full_name"] == "Updated Name Only"
@@ -715,7 +723,7 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     #   }
     #   conn = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile/password", password_params)
+    #   |> put("/api/profile/password", password_params)
     #   response = json_response(conn, 200)
     #   assert %{"success" => true, "data" => data} = response
     #   assert data["message"] == "Password updated successfully"
@@ -732,14 +740,14 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
     #   # First update
     #   conn1 = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile", update_params1)
+    #   |> put("/api/profile", update_params1)
     #   response1 = json_response(conn1, 200)
     #   assert %{"success" => true, "data" => user_data1} = response1
     #   assert user_data1["full_name"] == "Concurrent Update 1"
     #   # Second update
     #   conn2 = conn
     #   |> put_req_header("authorization", "Bearer #{access_token}")
-    #   |> put(~p"/api/profile", update_params2)
+    #   |> put("/api/profile", update_params2)
     #   response2 = json_response(conn2, 200)
     #   assert %{"success" => true, "data" => user_data2} = response2
     #   assert user_data2["full_name"] == "Concurrent Update 2"

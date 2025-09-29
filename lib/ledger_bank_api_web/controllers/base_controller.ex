@@ -10,8 +10,10 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
 
   import Phoenix.Controller, only: [json: 2]
   import Plug.Conn, only: [assign: 3, put_resp_header: 3, get_req_header: 2]
+  require Logger
   alias LedgerBankApiWeb.Adapters.ErrorAdapter
   alias LedgerBankApi.Core.Error
+  alias LedgerBankApiWeb.Logger, as: AppLogger
 
   defmacro __using__(_opts) do
     quote do
@@ -22,6 +24,10 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
 
       # Add correlation ID to all requests
       plug :add_correlation_id
+      # Add request logging
+      plug :log_request
+      # Add response logging
+      plug :log_response
     end
   end
 
@@ -32,6 +38,31 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
     correlation_id = get_correlation_id(conn)
     conn = put_resp_header(conn, "x-correlation-id", correlation_id)
     assign(conn, :correlation_id, correlation_id)
+  end
+
+  @doc """
+  Plug to log incoming requests with structured data.
+  """
+  def log_request(conn, _opts) do
+    start_time = System.monotonic_time(:millisecond)
+
+    # Use our structured logging
+    AppLogger.log_request(conn, start_time)
+
+    # Store start time for response logging
+    assign(conn, :request_start_time, start_time)
+  end
+
+  @doc """
+  Plug to log outgoing responses with structured data.
+  """
+  def log_response(conn, _opts) do
+    start_time = conn.assigns[:request_start_time]
+
+    # Use our structured logging
+    AppLogger.log_response(conn, start_time)
+
+    conn
   end
 
   @doc """
@@ -264,6 +295,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
       _ -> Error.generate_correlation_id()
     end
   end
+
 
   # Note: parse_sort_field function moved to InputValidator
 end

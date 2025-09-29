@@ -9,6 +9,7 @@ defmodule LedgerBankApi.Accounts.AuthService do
 
   alias LedgerBankApi.Accounts.{UserService, Token}
   alias LedgerBankApi.Core.ServiceBehavior
+  alias LedgerBankApiWeb.Logger, as: AppLogger
 
   # ============================================================================
   # SERVICE BEHAVIOR IMPLEMENTATION
@@ -154,6 +155,12 @@ defmodule LedgerBankApi.Accounts.AuthService do
       with {:ok, user} <- UserService.authenticate_user(email, password),
            {:ok, access_token} <- generate_access_token(user),
            {:ok, refresh_token} <- generate_refresh_token(user) do
+        # Log authentication event
+        AppLogger.log_auth_event("user_login", user.id, %{
+          email: email,
+          correlation_id: context.correlation_id
+        })
+
         {:ok, %{
           access_token: access_token,
           refresh_token: refresh_token,

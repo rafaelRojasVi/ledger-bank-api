@@ -7,6 +7,14 @@ defmodule LedgerBankApiWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    # Add security headers to all API endpoints
+    plug LedgerBankApiWeb.Plugs.SecurityHeaders
+    # Add security audit logging
+    plug LedgerBankApiWeb.Plugs.SecurityAudit
+    # Add rate limiting to all API endpoints (disabled in test environment)
+    if Mix.env() != :test do
+      plug LedgerBankApiWeb.Plugs.RateLimit, max_requests: 100, window_size: 60_000
+    end
   end
 
   pipeline :authenticated do
@@ -28,8 +36,15 @@ defmodule LedgerBankApiWeb.Router do
   scope "/api", LedgerBankApiWeb do
     pipe_through :api
 
-    # Health check (public)
+    # Health check endpoints (public)
     get "/health", HealthController, :index
+    get "/health/detailed", HealthController, :detailed
+    get "/health/ready", HealthController, :ready
+    get "/health/live", HealthController, :live
+
+    # API Documentation endpoints (public) - TODO: Fix controller compilation
+    # get "/docs", Controllers.ApiDocsController, :swagger_ui
+    # get "/docs/openapi.json", Controllers.ApiDocsController, :openapi_spec
 
     # Authentication endpoints (public)
     post "/auth/login", Controllers.AuthController, :login

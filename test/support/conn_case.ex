@@ -40,8 +40,12 @@ defmodule LedgerBankApiWeb.ConnCase do
       Ecto.Adapters.SQL.Sandbox.mode(LedgerBankApi.Repo, {:shared, self()})
     end
 
-    # Start the endpoint for verified routes
-    start_supervised!(LedgerBankApiWeb.Endpoint)
+    # Start the endpoint for verified routes (only if not already started)
+    case start_supervised(LedgerBankApiWeb.Endpoint) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> raise "Failed to start endpoint: #{inspect(reason)}"
+    end
 
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end

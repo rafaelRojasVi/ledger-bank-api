@@ -15,11 +15,11 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
   describe "GET /api/users/keyset" do
     test "returns first page of users", %{conn: conn} do
       # Create test users
-      user1 = UsersFixtures.user_fixture(%{email: "user1@example.com"})
+      _user1 = UsersFixtures.user_fixture(%{email: "user1@example.com"})
       :timer.sleep(10)
-      user2 = UsersFixtures.user_fixture(%{email: "user2@example.com"})
+      _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com"})
       :timer.sleep(10)
-      user3 = UsersFixtures.user_fixture(%{email: "user3@example.com"})
+      _user3 = UsersFixtures.user_fixture(%{email: "user3@example.com"})
 
       conn = get(conn, ~p"/api/users/keyset?limit=2")
 
@@ -35,11 +35,11 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
 
     test "returns next page with cursor", %{conn: conn} do
       # Create test users
-      user1 = UsersFixtures.user_fixture(%{email: "user1@example.com"})
+      _user1 = UsersFixtures.user_fixture(%{email: "user1@example.com"})
       :timer.sleep(10)
-      user2 = UsersFixtures.user_fixture(%{email: "user2@example.com"})
+      _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com"})
       :timer.sleep(10)
-      user3 = UsersFixtures.user_fixture(%{email: "user3@example.com"})
+      _user3 = UsersFixtures.user_fixture(%{email: "user3@example.com"})
 
       # Get first page
       conn1 = get(conn, ~p"/api/users/keyset?limit=2")
@@ -51,7 +51,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
       conn2 = get(conn, ~p"/api/users/keyset?limit=2&cursor=#{cursor_param}")
       response2 = json_response(conn2, 200)
 
-      assert %{"success" => true, "data" => users, "metadata" => metadata} = response2
+      assert %{"success" => true, "data" => users, "metadata" => _metadata} = response2
       assert length(users) >= 1
       # has_more might be true if there are more users in the database
       # assert metadata["pagination"]["has_more"] == false
@@ -60,11 +60,11 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
 
     test "applies filters correctly", %{conn: conn} do
       # Create users with different roles
-      user1 = UsersFixtures.user_fixture(%{email: "user1@example.com", role: "user"})
+      _user1 = UsersFixtures.user_fixture(%{email: "user1@example.com", role: "user"})
       :timer.sleep(10)
-      admin1 = UsersFixtures.user_fixture(%{email: "admin1@example.com", role: "admin"})
+      _admin1 = UsersFixtures.user_fixture(%{email: "admin1@example.com", role: "admin"})
       :timer.sleep(10)
-      user2 = UsersFixtures.user_fixture(%{email: "user2@example.com", role: "user"})
+      _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com", role: "user"})
 
       conn = get(conn, ~p"/api/users/keyset?role=user")
 

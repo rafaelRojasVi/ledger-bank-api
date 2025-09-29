@@ -81,11 +81,11 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
 
     test "applies filters correctly" do
       # Create users with different roles
-      user1 = UsersFixtures.user_fixture(%{email: "user1@example.com", role: "user"})
+      _user1 = UsersFixtures.user_fixture(%{email: "user1@example.com", role: "user"})
       :timer.sleep(10)
-      admin1 = UsersFixtures.user_fixture(%{email: "admin1@example.com", role: "admin"})
+      _admin1 = UsersFixtures.user_fixture(%{email: "admin1@example.com", role: "admin"})
       :timer.sleep(10)
-      user2 = UsersFixtures.user_fixture(%{email: "user2@example.com", role: "user"})
+      _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com", role: "user"})
 
       result = UserService.list_users_keyset(%{
         limit: 10,

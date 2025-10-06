@@ -275,7 +275,7 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       assert access_claims["role"] == "admin"
     end
 
-    test "fails to login with invalid email" do
+    test "SECURITY: fails to login with invalid email (returns :invalid_credentials)" do
       UsersFixtures.user_fixture(%{
         email: "test@example.com",
         password: "ValidPassword123!",
@@ -283,7 +283,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       })
 
       {:error, error} = AuthService.login_user("wrong@example.com", "ValidPassword123!")
-      assert error.type == :not_found
+
+      # SECURITY: Should return :unauthorized with :invalid_credentials
+      # NOT :not_found to prevent email enumeration
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
+      refute error.type == :not_found
     end
 
     test "fails to login with invalid password" do

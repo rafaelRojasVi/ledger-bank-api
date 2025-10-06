@@ -48,11 +48,14 @@ config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET", "test-secret-
 # Joken configuration for testing
 config :joken, default_signer: System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
 
-# Configure Oban for testing - use manual mode for better control
+# Configure Oban for testing - use inline mode for faster tests
 config :ledger_bank_api, Oban,
-  testing: :manual,
-  queues: false,
-  plugins: false
+  repo: LedgerBankApi.Repo,
+  testing: :inline,  # Run jobs immediately for faster testing
+  queues: [banking: 5, payments: 3, notifications: 2, default: 1],
+  plugins: [
+    Oban.Plugins.Pruner  # Keep pruner for cleanup
+  ]
 
 # Configure password hashing for testing - use a simpler algorithm
 config :argon2_elixir,
@@ -64,3 +67,6 @@ config :argon2_elixir,
 config :ledger_bank_api, :cache,
   ttl: 300,
   cleanup_interval: 60
+
+# Configure Mox for mocking
+config :ledger_bank_api, :financial_service, LedgerBankApi.Financial.FinancialServiceMock

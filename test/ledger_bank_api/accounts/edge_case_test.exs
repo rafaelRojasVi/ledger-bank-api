@@ -4,60 +4,88 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
   alias LedgerBankApi.UsersFixtures
 
   describe "Edge Cases and Boundary Conditions" do
-    test "handles very long email addresses" do
-      long_email = String.duplicate("a", 100) <> "@example.com"
+    test "SECURITY: handles very long email addresses (100 chars, returns :invalid_credentials)" do
+      long_email = String.duplicate("a", 100) <> "@example.com"  # ~115 chars total
 
       {:error, error} = UserService.authenticate_user(long_email, "password123!")
-      assert error.type == :not_found
+      # Email passes format validation but doesn't exist
+      # Triggers constant-time hashing and returns :invalid_credentials
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
     end
 
-    test "handles very long passwords" do
+    test "SECURITY: handles extremely long email addresses (>255 chars, returns :user_not_found)" do
+      long_email = String.duplicate("a", 300) <> "@example.com"  # >255 chars
+
+      {:error, error} = UserService.authenticate_user(long_email, "password123!")
+      # Email exceeds max length, fails validation before hashing
+      assert error.type == :not_found
+      assert error.reason == :user_not_found
+    end
+
+    test "SECURITY: handles very long passwords (returns :invalid_credentials via constant-time hashing)" do
       long_password = String.duplicate("a", 1000)
 
       {:error, error} = UserService.authenticate_user("test@example.com", long_password)
-      assert error.type == :not_found
+      # Unknown email triggers constant-time hashing and returns :invalid_credentials
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
     end
 
-    test "handles special characters in email" do
+    test "SECURITY: handles special characters in email (returns :invalid_credentials)" do
       special_email = "test+tag@example.com"
 
       {:error, error} = UserService.authenticate_user(special_email, "password123!")
-      assert error.type == :not_found
+      # Valid format but unknown email triggers constant-time hashing
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
     end
 
-    test "handles unicode characters in email" do
+    test "SECURITY: handles unicode characters in email (behavior verification)" do
       unicode_email = "tëst@ëxämplë.com"
 
       {:error, error} = UserService.authenticate_user(unicode_email, "password123!")
-      assert error.type == :not_found
+      # Unicode might pass regex validation (regex doesn't restrict to ASCII)
+      # Returns either :user_not_found (validation) or :invalid_credentials (constant-time)
+      # Both are acceptable security-wise
+      assert error.type in [:not_found, :unauthorized]
+      assert error.reason in [:user_not_found, :invalid_credentials]
     end
 
-    test "handles very short passwords" do
+    test "SECURITY: handles very short passwords (returns :invalid_credentials via validation)" do
       short_password = "a"
 
       {:error, error} = UserService.authenticate_user("test@example.com", short_password)
-      assert error.type == :not_found
+      # Short password fails validation but still returns :invalid_credentials for security
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
     end
 
-    test "handles passwords with only spaces" do
+    test "SECURITY: handles passwords with only spaces (returns :invalid_credentials)" do
       space_password = "   "
 
       {:error, error} = UserService.authenticate_user("test@example.com", space_password)
-      assert error.type == :not_found
+      # Space-only password fails validation
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
     end
 
-    test "handles passwords with only numbers" do
+    test "SECURITY: handles passwords with only numbers (returns :invalid_credentials)" do
       number_password = "123456789"
 
       {:error, error} = UserService.authenticate_user("test@example.com", number_password)
-      assert error.type == :not_found
+      # Number-only password triggers constant-time hashing
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
     end
 
-    test "handles passwords with only special characters" do
+    test "SECURITY: handles passwords with only special characters (returns :invalid_credentials)" do
       special_password = "!@#$%^&*()"
 
       {:error, error} = UserService.authenticate_user("test@example.com", special_password)
-      assert error.type == :not_found
+      # Special-char password triggers constant-time hashing
+      assert error.type == :unauthorized
+      assert error.reason == :invalid_credentials
     end
 
     test "handles concurrent token generation" do

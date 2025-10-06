@@ -18,11 +18,34 @@ defmodule LedgerBankApi.Accounts.Normalize do
   """
 
   @doc """
-  Normalize user attributes for user creation.
+  Normalize user attributes for user creation (public registration).
 
   Ensures all required fields are present and properly formatted.
+  SECURITY: Forces role to "user" to prevent unauthorized admin creation.
   """
   def user_attrs(attrs) when is_map(attrs) do
+    # Convert atom keys to string keys for consistency
+    string_attrs = for {k, v} <- attrs, into: %{} do
+      {to_string(k), v}
+    end
+
+    string_attrs
+    |> Map.take(["email", "full_name", "password", "password_confirmation"])
+    |> normalize_email()
+    |> normalize_full_name()
+    |> add_defaults()
+    |> force_user_role()  # SECURITY: Always set role to "user" for public registration
+  end
+  def user_attrs(nil), do: %{}
+  def user_attrs(_), do: %{}
+
+  @doc """
+  Normalize user attributes for admin-initiated user creation.
+
+  Similar to user_attrs/1 but allows role selection by administrators.
+  Should only be called from admin-protected endpoints.
+  """
+  def admin_user_attrs(attrs) when is_map(attrs) do
     # Convert atom keys to string keys for consistency
     string_attrs = for {k, v} <- attrs, into: %{} do
       {to_string(k), v}
@@ -35,8 +58,8 @@ defmodule LedgerBankApi.Accounts.Normalize do
     |> normalize_role()
     |> add_defaults()
   end
-  def user_attrs(nil), do: %{}
-  def user_attrs(_), do: %{}
+  def admin_user_attrs(nil), do: %{}
+  def admin_user_attrs(_), do: %{}
 
   @doc """
   Normalize user attributes for user updates.
@@ -243,5 +266,11 @@ defmodule LedgerBankApi.Accounts.Normalize do
 
   defp add_update_timestamp(attrs) do
     Map.put(attrs, "updated_at", DateTime.utc_now())
+  end
+
+  defp force_user_role(attrs) do
+    # SECURITY: Always force role to "user" for public registration
+    # Admins must use admin_user_attrs/1 to create users with other roles
+    Map.put(attrs, "role", "user")
   end
 end

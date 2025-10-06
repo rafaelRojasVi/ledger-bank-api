@@ -52,14 +52,20 @@ defmodule LedgerBankApi.Core.Validator do
   Validates email format using the same regex as User schema.
 
   Returns :ok for valid emails, {:error, reason} for invalid ones.
+  SECURITY: Rejects null bytes to prevent injection attacks.
   """
   def validate_email(nil), do: {:error, :missing_fields}
   def validate_email(""), do: {:error, :missing_fields}
   def validate_email(email) when is_binary(email) do
-    # Use the same regex as User schema for consistency
-    case Regex.match?(~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, email) do
-      true -> :ok
-      false -> {:error, :invalid_email_format}
+    # SECURITY: Reject null bytes (potential injection vector)
+    if String.contains?(email, <<0>>) do
+      {:error, :invalid_email_format}
+    else
+      # Use the same regex as User schema for consistency
+      case Regex.match?(~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, email) do
+        true -> :ok
+        false -> {:error, :invalid_email_format}
+      end
     end
   end
   def validate_email(_), do: {:error, :invalid_email_format}
@@ -69,13 +75,27 @@ defmodule LedgerBankApi.Core.Validator do
 
   For security reasons, invalid email formats return :user_not_found
   instead of :invalid_email_format to prevent email enumeration attacks.
+  SECURITY: Rejects null bytes and excessively long emails.
   """
   def validate_email_secure(nil), do: {:error, :user_not_found}
   def validate_email_secure(""), do: {:error, :user_not_found}
   def validate_email_secure(email) when is_binary(email) do
-    case Regex.match?(~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, email) do
-      true -> :ok
-      false -> {:error, :user_not_found}
+    cond do
+      # SECURITY: Reject null bytes (potential injection vector)
+      String.contains?(email, <<0>>) ->
+        {:error, :user_not_found}
+
+      # SECURITY: Reject excessively long emails (potential DoS)
+      String.length(email) > 255 ->
+        {:error, :user_not_found}
+
+      # Validate format
+      Regex.match?(~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, email) ->
+        :ok
+
+      # Invalid format
+      true ->
+        {:error, :user_not_found}
     end
   end
   def validate_email_secure(_), do: {:error, :user_not_found}

@@ -4,8 +4,19 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
 
   Uses pure domain error handling with canonical Error structs.
   All errors are returned as {:error, %Error{}} tuples with proper categorization.
+
+  ## Configuration
+  - Queue: `:payments`
+  - Max attempts: 5
+  - Timeout: 5 minutes
+  - Backoff: Exponential with custom error-based delays
+  - Uniqueness: 60 seconds period on payment_id
   """
-  use Oban.Worker, queue: :payments
+  use Oban.Worker,
+    queue: :payments,
+    max_attempts: 5,
+    priority: 0,
+    tags: ["payment", "financial"]
   require Logger
   alias LedgerBankApi.Core.{Error, ErrorHandler}
 
@@ -15,27 +26,43 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
   Returns :ok on success or {:error, %Error{}} on failure.
   """
   def perform(%Oban.Job{args: %{"payment_id" => payment_id}} = job) do
+    start_time = System.monotonic_time(:millisecond)
     correlation_id = Error.generate_correlation_id()
     context = %{
       worker: __MODULE__,
       payment_id: payment_id,
       job_id: job.id,
       attempt: job.attempt,
+      max_attempts: job.max_attempts,
       correlation_id: correlation_id
     }
 
     Logger.info("Starting payment processing", context)
 
-    with {:ok, _payment} <- fetch_payment(payment_id, context),
-         {:ok, _result} <- process_payment(payment_id, context) do
-      Logger.info("Payment processed successfully", context)
+    result = with {:ok, _payment} <- fetch_payment(payment_id, context),
+                  {:ok, _result} <- process_payment(payment_id, context) do
+      duration = System.monotonic_time(:millisecond) - start_time
+      Logger.info("Payment processed successfully", Map.put(context, :duration_ms, duration))
+
+      # Emit success telemetry
+      emit_telemetry(:success, duration, context)
       :ok
     else
       {:error, %Error{} = error} ->
-        log_error(error, context)
+        duration = System.monotonic_time(:millisecond) - start_time
+        log_error(error, Map.put(context, :duration_ms, duration))
+
+        # Emit failure telemetry
+        emit_telemetry(:failure, duration, Map.put(context, :error_reason, error.reason))
+
         handle_worker_error(error, context)
     end
+
+    result
   end
+
+  @impl Oban.Worker
+  def timeout(_job), do: :timer.minutes(5)
 
   # ============================================================================
   # PRIVATE DOMAIN FUNCTIONS
@@ -43,7 +70,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
 
   defp fetch_payment(payment_id, context) do
     try do
-      case LedgerBankApi.Financial.FinancialService.get_user_payment(payment_id) do
+      financial_service = Application.get_env(:ledger_bank_api, :financial_service, LedgerBankApi.Financial.FinancialService)
+      case financial_service.get_user_payment(payment_id) do
         {:ok, payment} -> {:ok, payment}
         {:error, %Error{} = error} -> {:error, error}
         {:error, reason} when is_atom(reason) ->
@@ -59,7 +87,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
 
   defp process_payment(payment_id, context) do
     try do
-      case LedgerBankApi.Financial.FinancialService.process_payment(payment_id) do
+      financial_service = Application.get_env(:ledger_bank_api, :financial_service, LedgerBankApi.Financial.FinancialService)
+      case financial_service.process_payment(payment_id) do
         {:ok, result} -> {:ok, result}
         {:error, %Error{} = error} -> {:error, error}
         {:error, reason} when is_atom(reason) ->
@@ -83,7 +112,7 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
     )
   end
 
-  defp handle_worker_error(%Error{} = error, _context) do
+  defp handle_worker_error(%Error{} = error, context) do
     # Use policy functions to determine retry behavior
     if Error.should_retry?(error) do
       # Log retry decision with policy details
@@ -93,7 +122,9 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
         retryable: error.retryable,
         max_attempts: Error.max_retry_attempts(error),
         retry_delay: Error.retry_delay(error),
-        circuit_breaker: Error.should_circuit_break?(error)
+        circuit_breaker: Error.should_circuit_break?(error),
+        current_attempt: context.attempt,
+        max_job_attempts: context.max_attempts
       })
     else
       # Log non-retryable error
@@ -102,10 +133,31 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
         error_category: error.category,
         retryable: error.retryable
       })
+
+      # Emit dead-letter queue telemetry for non-retryable errors
+      emit_dead_letter_telemetry(error, context)
     end
 
     # Return the canonical error - Oban will handle retries based on the error
     {:error, error}
+  end
+
+  @doc false
+  def backoff(%Oban.Job{attempt: attempt, args: %{"error_category" => category}}) do
+    # Custom backoff based on error category
+    base_delay = case category do
+      "external_dependency" -> 1000  # 1 second for external deps
+      "system" -> 500               # 500ms for system errors
+      _ -> 1000
+    end
+
+    # Exponential backoff: base_delay * 2^(attempt - 1)
+    trunc(base_delay * :math.pow(2, attempt - 1))
+  end
+
+  def backoff(%Oban.Job{attempt: attempt}) do
+    # Default exponential backoff
+    trunc(1000 * :math.pow(2, attempt - 1))
   end
 
   @doc """
@@ -131,11 +183,57 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
 
   @doc """
   Schedule a payment processing job with priority.
+  Priority range: 0-9 (0 = highest priority, 9 = lowest priority)
   """
   def schedule_payment_with_priority(payment_id, priority, opts \\ [])
-      when is_binary(payment_id) and is_integer(priority) and priority >= 0 and priority <= 10 do
+      when is_binary(payment_id) and is_integer(priority) and priority >= 0 and priority <= 9 do
     %{"payment_id" => payment_id}
-    |> new(Keyword.merge(opts, [priority: priority]))
+    |> new(Keyword.merge(opts, [
+      priority: priority,
+      unique: [period: 60, fields: [:args], keys: [:payment_id]]
+    ]))
     |> Oban.insert()
+  end
+
+  # ============================================================================
+  # TELEMETRY
+  # ============================================================================
+
+  defp emit_telemetry(status, duration, context) do
+    base_metadata = %{
+      worker: "PaymentWorker",
+      payment_id: context.payment_id,
+      job_id: context.job_id,
+      attempt: context.attempt,
+      correlation_id: context.correlation_id
+    }
+
+    # Add error_reason if present in context
+    metadata = if Map.has_key?(context, :error_reason) do
+      Map.put(base_metadata, :error_reason, context.error_reason)
+    else
+      base_metadata
+    end
+
+    :telemetry.execute(
+      [:ledger_bank_api, :worker, :payment, status],
+      %{duration: duration, count: 1},
+      metadata
+    )
+  end
+
+  defp emit_dead_letter_telemetry(error, context) do
+    :telemetry.execute(
+      [:ledger_bank_api, :worker, :dead_letter],
+      %{count: 1},
+      %{
+        worker: "PaymentWorker",
+        payment_id: context.payment_id,
+        job_id: context.job_id,
+        error_reason: error.reason,
+        error_category: error.category,
+        correlation_id: context.correlation_id
+      }
+    )
   end
 end

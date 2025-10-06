@@ -6,6 +6,8 @@ defmodule LedgerBankApi.Financial.FinancialService do
   bank synchronization, payment processing, and account management.
   """
 
+  @behaviour LedgerBankApi.Financial.FinancialServiceBehaviour
+
   import Ecto.Query, warn: false
   alias LedgerBankApi.Repo
   alias LedgerBankApi.Core.ErrorHandler
@@ -145,6 +147,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
   @doc """
   Get a user bank login by ID.
   """
+  @impl true
   def get_user_bank_login(id) do
     case Repo.get(UserBankLogin, id) do
       nil -> {:error, ErrorHandler.business_error(:account_not_found, %{resource: "user_bank_login", id: id, source: "financial_service"})}
@@ -221,6 +224,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
   @doc """
   Get a user payment by ID.
   """
+  @impl true
   def get_user_payment(payment_id) do
     case Repo.get(UserPayment, payment_id) do
       nil -> {:error, ErrorHandler.business_error(:payment_not_found, %{resource: "payment", id: payment_id, source: "financial_service"})}
@@ -252,6 +256,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
   @doc """
   Process a user payment.
   """
+  @impl true
   def process_payment(payment_id) do
     case get_user_payment(payment_id) do
       {:ok, payment} ->
@@ -275,9 +280,11 @@ defmodule LedgerBankApi.Financial.FinancialService do
   # BANK SYNCHRONIZATION
   # ============================================================================
 
+
   @doc """
   Synchronizes bank login data with external bank API.
   """
+  @impl true
   def sync_login(login_id) do
     case get_user_bank_login(login_id) do
       {:ok, login} ->

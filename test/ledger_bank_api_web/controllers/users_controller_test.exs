@@ -36,44 +36,46 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       assert is_binary(user_id)
     end
 
-    test "successfully creates an admin user with valid data", %{conn: conn} do
+    test "SECURITY: public endpoint ignores admin role and creates regular user", %{conn: conn} do
       user_params = %{
-        email: "admin@example.com",
-        full_name: "Admin User",
+        email: "attempted-admin@example.com",
+        full_name: "Attempted Admin",
         password: "AdminPassword123!",
         password_confirmation: "AdminPassword123!",
-        role: "admin"
+        role: "admin"  # ← Attempting to create admin via public endpoint
       }
 
       conn = post(conn, ~p"/api/users", user_params)
 
+      # Should succeed but role should be forced to "user"
       assert %{
         "success" => true,
         "data" => %{
-          "email" => "admin@example.com",
-          "full_name" => "Admin User",
-          "role" => "admin"
+          "email" => "attempted-admin@example.com",
+          "full_name" => "Attempted Admin",
+          "role" => "user"  # ← Role is forced to "user", NOT "admin"
         }
       } = json_response(conn, 201)
     end
 
-    test "successfully creates a support user with valid data", %{conn: conn} do
+    test "SECURITY: public endpoint ignores support role and creates regular user", %{conn: conn} do
       user_params = %{
-        email: "support@example.com",
-        full_name: "Support User",
+        email: "attempted-support@example.com",
+        full_name: "Attempted Support",
         password: "SupportPassword123!",
         password_confirmation: "SupportPassword123!",
-        role: "support"
+        role: "support"  # ← Attempting to create support via public endpoint
       }
 
       conn = post(conn, ~p"/api/users", user_params)
 
+      # Should succeed but role should be forced to "user"
       assert %{
         "success" => true,
         "data" => %{
-          "email" => "support@example.com",
-          "full_name" => "Support User",
-          "role" => "support"
+          "email" => "attempted-support@example.com",
+          "full_name" => "Attempted Support",
+          "role" => "user"  # ← Role is forced to "user", NOT "support"
         }
       } = json_response(conn, 201)
     end
@@ -229,21 +231,26 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       assert error["reason"] == "invalid_password_format"
     end
 
-    test "fails to create user with invalid role", %{conn: conn} do
+    test "SECURITY: invalid role is ignored and user is created with default role", %{conn: conn} do
       user_params = %{
-        email: "newuser@example.com",
-        full_name: "New User",
+        email: "invalrole@example.com",
+        full_name: "Invalid Role User",
         password: "ValidPassword123!",
         password_confirmation: "ValidPassword123!",
-        role: "invalid_role"
+        role: "invalid_role"  # ← Invalid role attempt
       }
 
       conn = post(conn, ~p"/api/users", user_params)
 
-      response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_role"
+      # Should succeed with role forced to "user"
+      response = json_response(conn, 201)
+      assert %{
+        "success" => true,
+        "data" => %{
+          "email" => "invalrole@example.com",
+          "role" => "user"  # ← Invalid role is ignored, defaults to "user"
+        }
+      } = response
     end
 
     test "fails to create user with duplicate email", %{conn: conn} do
@@ -992,6 +999,195 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       assert %{"error" => error} = response
       assert error["type"] == "unauthorized"
       assert error["reason"] == "invalid_token"
+    end
+  end
+
+  # ============================================================================
+  # POST /api/users/admin (Admin User Creation)
+  # ============================================================================
+
+  describe "POST /api/users/admin - Admin user creation" do
+    setup do
+      # Create admin user for authentication
+      admin = UsersFixtures.user_fixture(%{
+        email: "admin@example.com",
+        role: "admin"
+      })
+      {:ok, admin_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(admin)
+
+      %{admin: admin, admin_token: admin_token}
+    end
+
+    test "admin can create admin user with valid data", %{conn: conn, admin_token: admin_token} do
+      user_params = %{
+        email: "newadmin@example.com",
+        full_name: "New Admin",
+        password: "AdminPassword123!",
+        password_confirmation: "AdminPassword123!",
+        role: "admin"
+      }
+
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{admin_token}")
+      |> post(~p"/api/users/admin", user_params)
+
+      assert %{
+        "success" => true,
+        "data" => %{
+          "email" => "newadmin@example.com",
+          "full_name" => "New Admin",
+          "role" => "admin"  # ← Admin can create admin users
+        }
+      } = json_response(conn, 201)
+    end
+
+    test "admin can create support user with valid data", %{conn: conn, admin_token: admin_token} do
+      user_params = %{
+        email: "newsupport@example.com",
+        full_name: "New Support",
+        password: "SupportPassword123!",
+        password_confirmation: "SupportPassword123!",
+        role: "support"
+      }
+
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{admin_token}")
+      |> post(~p"/api/users/admin", user_params)
+
+      assert %{
+        "success" => true,
+        "data" => %{
+          "email" => "newsupport@example.com",
+          "full_name" => "New Support",
+          "role" => "support"  # ← Admin can create support users
+        }
+      } = json_response(conn, 201)
+    end
+
+    test "admin can create regular user with valid data", %{conn: conn, admin_token: admin_token} do
+      user_params = %{
+        email: "newuser@example.com",
+        full_name: "New User",
+        password: "UserPassword123!",
+        password_confirmation: "UserPassword123!",
+        role: "user"
+      }
+
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{admin_token}")
+      |> post(~p"/api/users/admin", user_params)
+
+      assert %{
+        "success" => true,
+        "data" => %{
+          "email" => "newuser@example.com",
+          "role" => "user"
+        }
+      } = json_response(conn, 201)
+    end
+
+    test "admin user creation defaults to user role when not specified", %{conn: conn, admin_token: admin_token} do
+      user_params = %{
+        email: "defaultrole@example.com",
+        full_name: "Default Role User",
+        password: "Password123!",
+        password_confirmation: "Password123!"
+        # No role specified
+      }
+
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{admin_token}")
+      |> post(~p"/api/users/admin", user_params)
+
+      assert %{
+        "success" => true,
+        "data" => %{
+          "role" => "user"
+        }
+      } = json_response(conn, 201)
+    end
+
+    test "SECURITY: non-admin cannot access admin user creation endpoint", %{conn: conn} do
+      # Create regular user
+      regular_user = UsersFixtures.user_fixture(%{email: "regular@example.com", role: "user"})
+      {:ok, user_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(regular_user)
+
+      user_params = %{
+        email: "hacker@example.com",
+        full_name: "Hacker",
+        password: "HackerPassword123!",
+        password_confirmation: "HackerPassword123!",
+        role: "admin"
+      }
+
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{user_token}")
+      |> post(~p"/api/users/admin", user_params)
+
+      # Should return 403 Forbidden
+      response = json_response(conn, 403)
+      assert %{"error" => error} = response
+      assert error["type"] == "forbidden"
+      assert error["reason"] == "insufficient_permissions"
+    end
+
+    test "SECURITY: unauthenticated user cannot access admin endpoint", %{conn: conn} do
+      user_params = %{
+        email: "hacker@example.com",
+        full_name: "Hacker",
+        password: "HackerPassword123!",
+        password_confirmation: "HackerPassword123!",
+        role: "admin"
+      }
+
+      conn = post(conn, ~p"/api/users/admin", user_params)
+
+      # Should return 401 Unauthorized
+      response = json_response(conn, 401)
+      assert %{"error" => error} = response
+      assert error["type"] == "unauthorized"
+    end
+
+    test "admin user creation validates password length for admin role", %{conn: conn, admin_token: admin_token} do
+      user_params = %{
+        email: "shortpass@example.com",
+        full_name: "Short Pass Admin",
+        password: "Short123!",  # Only 9 chars, needs 15 for admin
+        password_confirmation: "Short123!",
+        role: "admin"
+      }
+
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{admin_token}")
+      |> post(~p"/api/users/admin", user_params)
+
+      # Should fail validation due to password length
+      response = json_response(conn, 400)
+      assert %{"error" => error} = response
+      assert error["type"] == "validation_error"
+    end
+
+    test "admin user creation enforces policy checks", %{conn: conn} do
+      # Create support user (not admin)
+      support_user = UsersFixtures.user_fixture(%{email: "support@example.com", role: "support"})
+      {:ok, support_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(support_user)
+
+      user_params = %{
+        email: "newadmin@example.com",
+        full_name: "New Admin",
+        password: "AdminPassword123!",
+        password_confirmation: "AdminPassword123!",
+        role: "admin"
+      }
+
+      conn = conn
+      |> put_req_header("authorization", "Bearer #{support_token}")
+      |> post(~p"/api/users/admin", user_params)
+
+      # Support user cannot access admin-only endpoint
+      response = json_response(conn, 403)
+      assert %{"error" => error} = response
+      assert error["type"] == "forbidden"
     end
   end
 end

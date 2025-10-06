@@ -62,7 +62,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert is_binary(refresh_token)
     end
 
-    test "fails to login with invalid email", %{conn: conn} do
+    test "SECURITY: fails to login with non-existent email (returns 401 to prevent enumeration)", %{conn: conn} do
       UsersFixtures.user_fixture(%{
         email: "test@example.com",
         password: "password123!",
@@ -74,12 +74,14 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
         password: "password123!"
       })
 
+      # SECURITY: Should return 401 :invalid_credentials (not 404 :user_not_found)
+      # This prevents attackers from discovering which emails are registered
       assert %{
         "error" => %{
-          "type" => "not_found",
-          "reason" => "user_not_found"
+          "type" => "unauthorized",
+          "reason" => "invalid_credentials"
         }
-      } = json_response(conn, 404)
+      } = json_response(conn, 401)
     end
 
     test "fails to login with invalid password", %{conn: conn} do
@@ -215,22 +217,25 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       assert error["reason"] == "account_inactive"
     end
 
-    test "fails to login with case-sensitive email", %{conn: conn} do
+    test "SECURITY: login with non-existent email returns 401 (not 404)", %{conn: conn} do
+      # Create a user with one email
       UsersFixtures.user_fixture(%{
-        email: "Test@Example.com",
+        email: "existing@example.com",
         password: "password123!",
         password_confirmation: "password123!"
       })
 
+      # Try to login with completely different email
       conn = post(conn, ~p"/api/auth/login", %{
-        email: "test@example.com",
+        email: "nonexistent@example.com",
         password: "password123!"
       })
 
-      response = json_response(conn, 404)
+      # SECURITY: Should return 401 :invalid_credentials to prevent email enumeration
+      response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "not_found"
-      assert error["reason"] == "user_not_found"
+      assert error["type"] == "unauthorized"
+      assert error["reason"] == "invalid_credentials"
     end
   end
 

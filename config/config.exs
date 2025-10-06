@@ -118,16 +118,14 @@ import_config "#{config_env()}.exs"
 config :ledger_bank_api, Oban,
   repo: LedgerBankApi.Repo,
   plugins: [
-    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
-    {Oban.Plugins.Cron,
-     crontab: [
-       # {"0 */6 * * *", LedgerBankApi.Workers.BankingDataSyncWorker},
-       # {"0 2 * * *", LedgerBankApi.Workers.PaymentProcessingWorker}
-     ]}
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7}
+    # Cron plugin removed - use external schedulers for periodic jobs
   ],
   queues: [
-    banking: 10,
-    payments: 5,
-    notifications: 3,
-    default: 1
+    # Reduced concurrency to avoid overwhelming external APIs
+    # and respect rate limits from bank providers
+    banking: 3,        # Bank API calls (external, slow, rate-limited)
+    payments: 2,       # Payment processing (external, critical)
+    notifications: 3,  # Email/SMS notifications (external)
+    default: 1         # Miscellaneous background tasks
   ]

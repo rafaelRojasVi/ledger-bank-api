@@ -169,7 +169,10 @@ defmodule LedgerBankApi.Accounts.UserService do
   end
 
   @doc """
-  Create a new user with normalized attributes (new approach).
+  Create a new user with normalized attributes (public registration).
+
+  SECURITY: This function forces role to "user" to prevent unauthorized admin creation.
+  For admin/support user creation, use create_user_as_admin/2.
   """
   def create_user_with_normalization(attrs) do
     normalized_attrs = Normalize.user_attrs(attrs)
@@ -186,10 +189,77 @@ defmodule LedgerBankApi.Accounts.UserService do
           role = normalized_attrs["role"]
           with :ok <- validate_password_requirements(normalized_attrs, role),
                {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), normalized_attrs, context) do
+            # Log business event
+            AppLogger.log_business_event("user_created", %{
+              user_id: user.id,
+              email: user.email,
+              role: user.role,
+              correlation_id: context.correlation_id
+            })
+
             {:ok, user}
           end
       end
     end)
+  end
+
+  @doc """
+  Create a new user as admin (allows role selection).
+
+  SECURITY: This function allows creating users with any role (admin, support, user).
+  Should only be called from admin-protected endpoints with proper authorization.
+  Requires current_user to enforce policy checks.
+  """
+  def create_user_as_admin(attrs, current_user) do
+    # First check if current user has permission to create users with this role
+    requested_role = attrs["role"] || attrs[:role] || "user"
+
+    context = ServiceBehavior.build_context(__MODULE__, :create_user_as_admin, %{
+      email: attrs["email"] || attrs[:email],
+      requested_role: requested_role,
+      admin_id: current_user.id
+    })
+
+    ServiceBehavior.with_error_handling(context, fn ->
+      # Check policy: Can this admin create a user with the requested role?
+      with :ok <- validate_admin_user_creation_policy(current_user, attrs),
+           normalized_attrs <- Normalize.admin_user_attrs(attrs),
+           {:ok, _user} <- validate_email_not_exists(normalized_attrs["email"]),
+           :ok <- validate_password_requirements(normalized_attrs, normalized_attrs["role"]),
+           {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), normalized_attrs, context) do
+        # Log business event with admin context
+        AppLogger.log_business_event("user_created_by_admin", %{
+          user_id: user.id,
+          email: user.email,
+          role: user.role,
+          created_by_admin_id: current_user.id,
+          correlation_id: context.correlation_id
+        })
+
+        {:ok, user}
+      end
+    end)
+  end
+
+  # Helper to check if email already exists
+  defp validate_email_not_exists(email) do
+    case get_user_by_email(email) do
+      {:ok, _user} ->
+        {:error, ErrorHandler.business_error(:email_already_exists, %{email: email})}
+      {:error, %LedgerBankApi.Core.Error{} = _error} ->
+        {:ok, :email_available}
+    end
+  end
+
+  # Helper to validate admin user creation policy
+  defp validate_admin_user_creation_policy(current_user, attrs) do
+    if Policy.can_create_user?(current_user, attrs) do
+      :ok
+    else
+      {:error, ErrorHandler.business_error(:insufficient_permissions, %{
+        message: "Only admins can create users with admin or support roles"
+      })}
+    end
   end
 
   @doc """
@@ -424,8 +494,26 @@ defmodule LedgerBankApi.Accounts.UserService do
   # USER AUTHENTICATION HELPERS
   # ============================================================================
 
+  # SECURITY: Dummy password hash for constant-time authentication
+  # This is used when a user doesn't exist to prevent email enumeration via timing attacks.
+  # The hash is computed once at module load time for the dummy password.
+  @dummy_password_hash (if Mix.env() == :test do
+    LedgerBankApi.PasswordHelper.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
+  else
+    Argon2.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
+  end)
+
   @doc """
   Authenticate user with email and password.
+
+  SECURITY: This function implements constant-time authentication to prevent:
+  1. Email enumeration attacks (timing differences between valid/invalid emails)
+  2. Account status enumeration (timing differences between active/inactive accounts)
+
+  Implementation:
+  - Always performs password hashing (even for non-existent users)
+  - Checks password BEFORE checking user status
+  - Returns same error type for all authentication failures
   """
   def authenticate_user(email, password) do
     context = ServiceBehavior.build_context(__MODULE__, :authenticate_user, %{email: email})
@@ -433,26 +521,43 @@ defmodule LedgerBankApi.Accounts.UserService do
     # Validate email and password format before querying
     with :ok <- Validator.validate_email_secure(email),
          :ok <- Validator.validate_password(password) do
-      case get_user_by_email(email) do
-        {:ok, user} ->
-          # Check if user is active before verifying password
-          if is_user_active?(user) do
-            verify_function = if Mix.env() == :test do
-              &LedgerBankApi.PasswordHelper.verify_pass/2
-            else
-              &Argon2.verify_pass/2
-            end
 
-            if verify_function.(password, user.password_hash) do
-              {:ok, user}
-            else
-              {:error, ErrorHandler.business_error(:invalid_credentials, %{email: email, source: "user_service"})}
-            end
-          else
-            {:error, ErrorHandler.business_error(:account_inactive, %{email: email, source: "user_service"})}
-          end
-        {:error, %LedgerBankApi.Core.Error{} = error} ->
-          {:error, error}
+      # Get user by email (or nil if not found)
+      user = case get_user_by_email(email) do
+        {:ok, user} -> user
+        {:error, %LedgerBankApi.Core.Error{}} -> nil
+      end
+
+      # SECURITY: Always verify password, even if user doesn't exist
+      # This prevents timing attacks that could reveal which emails are registered
+      password_hash = if user, do: user.password_hash, else: @dummy_password_hash
+
+      verify_function = if Mix.env() == :test do
+        &LedgerBankApi.PasswordHelper.verify_pass/2
+      else
+        &Argon2.verify_pass/2
+      end
+
+      password_valid? = verify_function.(password, password_hash)
+
+      # SECURITY: Check password validity BEFORE checking user status
+      # This maintains constant time regardless of account state
+      cond do
+        # User doesn't exist - return generic error (don't reveal email isn't registered)
+        is_nil(user) ->
+          {:error, ErrorHandler.business_error(:invalid_credentials, %{source: "user_service"})}
+
+        # Password is invalid - return generic error
+        not password_valid? ->
+          {:error, ErrorHandler.business_error(:invalid_credentials, %{source: "user_service"})}
+
+        # User exists and password is valid, but account is not active
+        not is_user_active?(user) ->
+          {:error, ErrorHandler.business_error(:account_inactive, %{email: email, source: "user_service"})}
+
+        # User exists, password is valid, and account is active - success!
+        true ->
+          {:ok, user}
       end
     else
       {:error, reason} ->

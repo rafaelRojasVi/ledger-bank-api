@@ -62,12 +62,13 @@ defmodule LedgerBankApiWeb.Router do
 
     # User management endpoints with proper authorization
     scope "/users" do
-      # Public user creation (registration)
+      # Public user creation (registration) - role forced to "user"
       post "/", Controllers.UsersController, :create
 
       # Admin-only user management
       pipe_through [:authenticated, :admin_only]
 
+      post "/admin", Controllers.UsersController, :create_as_admin
       get "/", Controllers.UsersController, :index
       get "/keyset", Controllers.UsersController, :index_keyset
       get "/stats", Controllers.UsersController, :stats

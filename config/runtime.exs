@@ -20,6 +20,34 @@ if System.get_env("PHX_SERVER") do
   config :ledger_bank_api, LedgerBankApiWeb.Endpoint, server: true
 end
 
+# ============================================================================
+# OBAN CONFIGURATION (Environment-Driven)
+# ============================================================================
+
+# Parse queue configuration from environment variables
+# Format: "banking:3,payments:2,notifications:3,default:1"
+# Defaults are conservative to avoid overwhelming external APIs and respect rate limits
+queues =
+  System.get_env("OBAN_QUEUES", "banking:3,payments:2,notifications:3,default:1")
+  |> String.split(",", trim: true)
+  |> Enum.map(fn defn ->
+    [name, limit] = String.split(defn, ":", parts: 2)
+    {String.to_atom(name), String.to_integer(limit)}
+  end)
+
+# Configure Oban with environment-driven settings
+config :ledger_bank_api, Oban,
+  repo: LedgerBankApi.Repo,
+  queues: queues,
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},  # Clean up old jobs (7 days)
+    # Note: Cron jobs removed - use external schedulers or explicit scheduling
+    # Bank sync and payment processing should be triggered by business events,
+    # not on a fixed schedule. If periodic processing is needed, use an
+    # external scheduler (cron, Kubernetes CronJob, etc.) that calls your API
+    # to trigger the appropriate jobs.
+  ]
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

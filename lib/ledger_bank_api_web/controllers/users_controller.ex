@@ -111,20 +111,47 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   end
 
   @doc """
-  Create a new user (registration).
+  Create a new user (public registration).
 
   POST /api/users
   Body: %{
     "email" => "user@example.com",
     "full_name" => "John Doe",
     "password" => "password123",
-    "password_confirmation" => "password123",
-    "role" => "user"
+    "password_confirmation" => "password123"
   }
+
+  SECURITY NOTE: Role is always forced to "user" for public registration.
+  The "role" parameter is ignored to prevent unauthorized admin creation.
   """
   def create(conn, params) do
     with {:ok, validated_params} <- InputValidator.validate_user_creation(params),
          {:ok, user} <- UserService.create_user_with_normalization(validated_params) do
+      conn
+      |> put_status(:created)
+      |> handle_success(user)
+    end
+  end
+
+  @doc """
+  Create a new user as admin (allows role selection).
+
+  POST /api/users/admin
+  Body: %{
+    "email" => "admin@example.com",
+    "full_name" => "Admin User",
+    "password" => "password123456789",
+    "password_confirmation" => "password123456789",
+    "role" => "admin"
+  }
+
+  SECURITY NOTE: This endpoint is admin-only and allows creating users with any role.
+  """
+  def create_as_admin(conn, params) do
+    current_user = conn.assigns[:current_user]
+
+    with {:ok, validated_params} <- InputValidator.validate_admin_user_creation(params),
+         {:ok, user} <- UserService.create_user_as_admin(validated_params, current_user) do
       conn
       |> put_status(:created)
       |> handle_success(user)

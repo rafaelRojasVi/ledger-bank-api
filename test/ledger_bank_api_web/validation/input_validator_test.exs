@@ -8,12 +8,12 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
   # USER CREATION VALIDATION TESTS
   # ============================================================================
 
-  describe "validate_user_creation/1" do
-    test "successfully validates user creation with valid attributes" do
+  describe "validate_user_creation/1 - Public registration (no role)" do
+    test "SECURITY: validates user creation and ignores role parameter" do
       params = %{
         "email" => "test@example.com",
         "full_name" => "John Doe",
-        "role" => "user",
+        "role" => "admin",  # ← Role parameter is present but will be ignored
         "password" => "ValidPassword123!",
         "password_confirmation" => "ValidPassword123!"
       }
@@ -21,12 +21,28 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
       assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
       assert validated_params.email == "test@example.com"
       assert validated_params.full_name == "John Doe"
-      assert validated_params.role == "user"
+      refute Map.has_key?(validated_params, :role)  # ← Role not in output (security)
       assert validated_params.password == "ValidPassword123!"
       assert validated_params.password_confirmation == "ValidPassword123!"
     end
 
-    test "successfully validates admin user creation with longer password" do
+    test "SECURITY: validates creation without role parameter" do
+      params = %{
+        "email" => "test@example.com",
+        "full_name" => "John Doe",
+        # No role parameter at all
+        "password" => "ValidPassword123!",
+        "password_confirmation" => "ValidPassword123!"
+      }
+
+      assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
+      assert validated_params.email == "test@example.com"
+      refute Map.has_key?(validated_params, :role)  # ← No role in output
+    end
+  end
+
+  describe "validate_admin_user_creation/1 - Admin-initiated creation (allows role)" do
+    test "successfully validates admin user creation with role selection" do
       params = %{
         "email" => "admin@example.com",
         "full_name" => "Admin User",
@@ -35,8 +51,10 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "AdminPassword123!"
       }
 
-      assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
-      assert validated_params.role == "admin"
+      assert {:ok, validated_params} = InputValidator.validate_admin_user_creation(params)
+      assert validated_params.email == "admin@example.com"
+      assert validated_params.role == "admin"  # ← Role IS in output for admin endpoint
+      assert validated_params.password == "AdminPassword123!"
     end
 
     test "successfully validates support user creation with longer password" do
@@ -48,8 +66,21 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "SupportPassword123!"
       }
 
-      assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
+      assert {:ok, validated_params} = InputValidator.validate_admin_user_creation(params)
       assert validated_params.role == "support"
+    end
+
+    test "validates regular user creation via admin endpoint" do
+      params = %{
+        "email" => "user@example.com",
+        "full_name" => "Regular User",
+        "role" => "user",
+        "password" => "ValidPassword123!",
+        "password_confirmation" => "ValidPassword123!"
+      }
+
+      assert {:ok, validated_params} = InputValidator.validate_admin_user_creation(params)
+      assert validated_params.role == "user"
     end
 
     test "fails to validate user creation with missing email" do
@@ -147,39 +178,46 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
       assert {:error, %Error{reason: :invalid_name_format}} = InputValidator.validate_user_creation(params)
     end
 
-    test "fails to validate user creation with missing role" do
+    test "SECURITY: missing role is OK for public registration (role forced server-side)" do
       params = %{
         "email" => "test@example.com",
         "full_name" => "John Doe",
         "password" => "ValidPassword123!",
         "password_confirmation" => "ValidPassword123!"
+        # No role - this is OK for public registration
       }
 
-      assert {:error, %Error{reason: :invalid_role}} = InputValidator.validate_user_creation(params)
+      # Should succeed, role will be forced to "user" in normalization layer
+      assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
+      refute Map.has_key?(validated_params, :role)
     end
 
-    test "fails to validate user creation with invalid role" do
+    test "SECURITY: invalid role is ignored for public registration" do
       params = %{
         "email" => "test@example.com",
         "full_name" => "John Doe",
-        "role" => "invalid_role",
+        "role" => "invalid_role",  # ← Invalid role is ignored
         "password" => "ValidPassword123!",
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_role}} = InputValidator.validate_user_creation(params)
+      # Should succeed, invalid role is ignored
+      assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
+      refute Map.has_key?(validated_params, :role)
     end
 
-    test "fails to validate user creation with nil role" do
+    test "SECURITY: nil role is ignored for public registration" do
       params = %{
         "email" => "test@example.com",
         "full_name" => "John Doe",
-        "role" => nil,
+        "role" => nil,  # ← Nil role is ignored
         "password" => "ValidPassword123!",
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_role}} = InputValidator.validate_user_creation(params)
+      # Should succeed, nil role is ignored
+      assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
+      refute Map.has_key?(validated_params, :role)
     end
 
     test "fails to validate user creation with missing password" do
@@ -217,28 +255,30 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
       assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_user_creation(params)
     end
 
-    test "fails to validate user creation with password too short for admin role" do
+    test "admin endpoint: fails to validate admin creation with password too short" do
       params = %{
         "email" => "admin@example.com",
         "full_name" => "Admin User",
         "role" => "admin",
-        "password" => "Short123!",
+        "password" => "Short123!",  # Only 9 chars, needs 15 for admin
         "password_confirmation" => "Short123!"
       }
 
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_user_creation(params)
+      # Use admin validation endpoint (which validates role-based password requirements)
+      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_admin_user_creation(params)
     end
 
-    test "fails to validate user creation with password too short for support role" do
+    test "admin endpoint: fails to validate support creation with password too short" do
       params = %{
         "email" => "support@example.com",
         "full_name" => "Support User",
         "role" => "support",
-        "password" => "Short123!",
+        "password" => "Short123!",  # Only 9 chars, needs 15 for support
         "password_confirmation" => "Short123!"
       }
 
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_user_creation(params)
+      # Use admin validation endpoint (which validates role-based password requirements)
+      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_admin_user_creation(params)
     end
 
     test "fails to validate user creation with missing password_confirmation" do

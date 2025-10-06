@@ -46,15 +46,46 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   # ============================================================================
 
   @doc """
-  Validates user creation parameters with consistent error format.
+  Validates user creation parameters with consistent error format (public registration).
+
+  SECURITY: Does NOT validate or pass role parameter - role is forced to "user" at normalization layer.
   Returns {:ok, validated_params} or {:error, %Error{}}.
   """
   def validate_user_creation(params) do
     context = %{source: "input_validator", action: :user_creation}
 
+    # Note: We default to "user" role for password validation, but actual role
+    # assignment happens in Normalize.user_attrs which forces role to "user"
     with {:ok, email} <- validate_email(params["email"], context),
          {:ok, full_name} <- validate_full_name(params["full_name"], context),
-         {:ok, role} <- validate_role(params["role"], context),
+         {:ok, password} <- validate_password(params["password"], context, "user"),
+         {:ok, password_confirmation} <- validate_password_confirmation(params["password_confirmation"], context),
+         :ok <- validate_password_match(password, password_confirmation, context) do
+      {:ok, %{
+        email: email,
+        full_name: full_name,
+        password: password,
+        password_confirmation: password_confirmation
+        # NOTE: No role in output - forced to "user" in Normalize.user_attrs
+      }}
+    else
+      {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Validates admin user creation parameters with consistent error format.
+
+  SECURITY: Allows role selection but should only be called from admin-protected endpoints.
+  The actual authorization check happens in UserService.create_user_as_admin.
+  Returns {:ok, validated_params} or {:error, %Error{}}.
+  """
+  def validate_admin_user_creation(params) do
+    context = %{source: "input_validator", action: :admin_user_creation}
+
+    with {:ok, email} <- validate_email(params["email"], context),
+         {:ok, full_name} <- validate_full_name(params["full_name"], context),
+         {:ok, role} <- validate_role(params["role"] || "user", context),
          {:ok, password} <- validate_password(params["password"], context, role),
          {:ok, password_confirmation} <- validate_password_confirmation(params["password_confirmation"], context),
          :ok <- validate_password_match(password, password_confirmation, context) do

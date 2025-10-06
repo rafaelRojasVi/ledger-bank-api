@@ -19,7 +19,12 @@ config :ledger_bank_api, LedgerBankApi.Repo,
   end),
   port: String.to_integer(System.get_env("DB_PORT", "5432"))
 
-# We don't run a server during test since this is a banking API without web interface
+# We don't run a server during test. Configure the endpoint so VerifiedRoutes works in tests
+config :ledger_bank_api, LedgerBankApiWeb.Endpoint,
+  server: false,
+  check_origin: false,
+  secret_key_base: "test_secret_key_base_v1_please_replace_in_real_projects_abcdefghijklmnopqrstuvwxyz012345",
+  http: [ip: {127, 0, 0, 1}, port: 4002]
 
 # In test we don't send emails
 config :ledger_bank_api, LedgerBankApi.Mailer, adapter: Swoosh.Adapters.Test

@@ -23,7 +23,7 @@ defmodule LedgerBankApi.Financial.Workers.PriorityExecutionTest do
       end)
 
       # Track job execution order
-      job_starts = []
+      _job_starts = []
 
       with_telemetry_handler(:priority_test, fn _event, _measure, meta, _pid ->
         if meta.worker == "LedgerBankApi.Financial.Workers.PaymentWorker" do

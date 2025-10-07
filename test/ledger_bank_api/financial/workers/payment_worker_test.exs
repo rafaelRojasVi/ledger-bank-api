@@ -465,7 +465,10 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
         handler_id,
         [:ledger_bank_api, :worker, :dead_letter],
         fn event, measurements, metadata, _config ->
-          send(self_pid, {:telemetry_event, event, measurements, metadata})
+          # Only send events from PaymentWorker
+          if metadata.worker == "PaymentWorker" do
+            send(self_pid, {:telemetry_event, event, measurements, metadata})
+          end
         end,
         nil
       )

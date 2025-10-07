@@ -263,13 +263,13 @@ defmodule LedgerBankApi.Core.ErrorHandler do
 
   # Get specific inclusion validation error reason
   defp get_inclusion_validation_error_reason(errors) do
-    Enum.find_value(errors, :invalid_direction, fn {field, field_errors} ->
+    Enum.find_value(errors, :invalid_inclusion, fn {field, field_errors} ->
       if Enum.any?(field_errors, &String.contains?(&1, "is invalid")) do
         case field do
           :direction -> :invalid_direction
-          :status -> :invalid_direction
-          :role -> :invalid_direction
-          _ -> :invalid_direction
+          :status -> :invalid_status
+          :role -> :invalid_role
+          _ -> :invalid_inclusion
         end
       end
     end)

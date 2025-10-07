@@ -10,6 +10,9 @@ defmodule LedgerBankApi.Application do
 
   @impl true
   def start(_type, _args) do
+    # Fail fast if JWT secret is missing or weak
+    LedgerBankApi.Accounts.Token.ensure_jwt_secret!()
+
     base_children = [
       LedgerBankApiWeb.Telemetry,
       LedgerBankApi.Repo,

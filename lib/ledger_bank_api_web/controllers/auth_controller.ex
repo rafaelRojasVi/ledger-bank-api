@@ -53,8 +53,9 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
       fn validated_params ->
         AuthService.refresh_access_token(validated_params.refresh_token)
       end,
-      fn access_token ->
-        handle_auth_success(conn, :refresh, %{access_token: access_token})
+      fn %{access_token: access_token, refresh_token: refresh_token} ->
+        # The success format nests both tokens under the access_token key as a map
+        handle_auth_success(conn, :refresh, %{access_token: %{access_token: access_token, refresh_token: refresh_token}})
       end
     )
   end

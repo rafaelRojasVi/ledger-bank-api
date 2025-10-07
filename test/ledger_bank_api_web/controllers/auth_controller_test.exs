@@ -1,5 +1,5 @@
 defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
-  use LedgerBankApiWeb.ConnCase, async: true
+  use LedgerBankApiWeb.ConnCase, async: false
   alias LedgerBankApi.UsersFixtures
 
   describe "POST /api/auth/login" do

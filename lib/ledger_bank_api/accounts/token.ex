@@ -217,6 +217,16 @@ defmodule LedgerBankApi.Accounts.Token do
   # PRIVATE HELPER FUNCTIONS
   # ============================================================================
 
+  @doc """
+  Ensures a strong JWT secret is configured. Raises on failure.
+
+  This can be called at application startup to fail fast.
+  """
+  def ensure_jwt_secret! do
+    _ = get_jwt_secret()
+    :ok
+  end
+
   # Gets JWT secret from configuration with proper validation
   defp get_jwt_secret do
     case Application.get_env(:ledger_bank_api, :jwt_secret) do

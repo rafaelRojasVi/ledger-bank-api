@@ -290,7 +290,7 @@ lib/
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/ledger-bank-api.git
+git clone https://github.com/rafaelRojasVi/ledger-bank-api.git
 cd ledger-bank-api
 ```
 
@@ -1615,7 +1615,7 @@ OBAN_QUEUES=banking:3,payments:2,notifications:3,default:1
 
 #### 1. Build the Image
 
-```bash
+   ```bash
 # Build production image
 docker compose build --pull
 
@@ -1625,7 +1625,7 @@ docker build -t ledger-bank-api:latest .
 
 #### 2. Run with Docker Compose
 
-```bash
+   ```bash
 # Start all services
 docker compose up -d
 
@@ -1638,7 +1638,7 @@ curl http://localhost:4000/api/health/ready
 
 #### 3. Run Migrations
 
-```bash
+   ```bash
 # Inside the container
 docker compose exec app bin/ledger_bank_api eval "LedgerBankApi.Release.migrate()"
 
@@ -1649,7 +1649,7 @@ docker compose exec app bin/ledger_bank_api eval "LedgerBankApi.Release.migrate(
 
 Build an Elixir release for production:
 
-```bash
+   ```bash
 # Install dependencies
 mix deps.get --only prod
 
@@ -1664,7 +1664,7 @@ MIX_ENV=prod mix release
 
 Run the release:
 
-```bash
+   ```bash
 # Start the server
 _build/prod/rel/ledger_bank_api/bin/ledger_bank_api start
 
@@ -1698,7 +1698,7 @@ spec:
       containers:
       - name: app
         image: ledger-bank-api:latest
-        ports:
+   ports:
         - containerPort: 4000
         env:
         - name: PHX_SERVER
@@ -1807,7 +1807,7 @@ Structured JSON logging for production:
    ```
 
 2. **Start Development Server**
-   ```bash
+```bash
    iex -S mix phx.server
    ```
 
@@ -1984,9 +1984,9 @@ Built with:
 
 For questions, issues, or contributions:
 
-- 🐛 [Report a Bug](https://github.com/yourusername/ledger-bank-api/issues)
-- 💡 [Request a Feature](https://github.com/yourusername/ledger-bank-api/issues)
-- 📧 Email: support@yourdomain.com
+- 🐛 [Report a Bug](https://github.com/rafaelRojasVi/ledger-bank-api/issues)
+- 💡 [Request a Feature](https://github.com/rafaelRojasVi/ledger-bank-api/issues)
+- 📧 Email: rafarojasv6@gmail.com
 
 ---
 

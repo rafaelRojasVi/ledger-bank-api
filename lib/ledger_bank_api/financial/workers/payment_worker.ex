@@ -221,10 +221,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
   """
   def schedule_payment_with_delay(payment_id, delay_seconds, opts \\ [])
       when is_binary(payment_id) and is_integer(delay_seconds) and delay_seconds > 0 do
-    schedule_in = DateTime.add(DateTime.utc_now(), delay_seconds, :second)
-
     %{"payment_id" => payment_id}
-    |> new(Keyword.merge(opts, [scheduled_at: schedule_in]))
+    |> new(Keyword.merge(opts, [schedule_in: delay_seconds]))
     |> Oban.insert()
   end
 

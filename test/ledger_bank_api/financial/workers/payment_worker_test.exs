@@ -193,21 +193,30 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
   end
 
   describe "schedule_payment_with_delay/3" do
-    test "schedules a payment with delay" do
+    @tag :tmp_dir
+    test "schedules a payment with delay", %{tmp_dir: _tmp_dir} do
       payment_id = Ecto.UUID.generate()
-      delay_seconds = 3600  # 1 hour to ensure it's in the future
+      delay_seconds = 3600  # 1 hour
 
       # Get time before scheduling
       before_time = DateTime.utc_now()
 
-      assert {:ok, job} = PaymentWorker.schedule_payment_with_delay(payment_id, delay_seconds)
+      # Use manual testing mode to verify scheduling behavior
+      {:ok, job} =
+        Oban.Testing.with_testing_mode(:manual, fn ->
+          PaymentWorker.schedule_payment_with_delay(payment_id, delay_seconds)
+        end)
+
       assert job.args["payment_id"] == payment_id
       assert job.scheduled_at != nil
 
-      # Verify that the scheduled time is in the future
+      # Verify that the scheduled time is approximately delay_seconds in the future
       after_time = DateTime.utc_now()
-      assert DateTime.compare(job.scheduled_at, before_time) == :gt
-      assert DateTime.compare(job.scheduled_at, after_time) in [:gt, :eq]
+      min_expected_time = DateTime.add(before_time, delay_seconds, :second)
+      max_expected_time = DateTime.add(after_time, delay_seconds, :second)
+
+      assert DateTime.compare(job.scheduled_at, min_expected_time) in [:gt, :eq]
+      assert DateTime.compare(job.scheduled_at, max_expected_time) in [:lt, :eq]
     end
   end
 

@@ -161,11 +161,9 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorker do
   """
   def schedule_sync_with_delay(login_id, delay_seconds, opts \\ [])
       when is_binary(login_id) and is_integer(delay_seconds) and delay_seconds > 0 do
-    schedule_in = DateTime.add(DateTime.utc_now(), delay_seconds, :second)
-
     %{"login_id" => login_id}
     |> new(Keyword.merge(opts, [
-      schedule_in: schedule_in,
+      schedule_in: delay_seconds,
       unique: [period: 300, fields: [:args], keys: [:login_id]]
     ]))
     |> Oban.insert()

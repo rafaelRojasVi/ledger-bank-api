@@ -299,6 +299,106 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   end
 
   # ============================================================================
+  # FINANCIAL VALIDATION
+  # ============================================================================
+
+  @doc """
+  Validates payment creation parameters with consistent error format.
+  Returns {:ok, validated_params} or {:error, %Error{}}.
+  """
+  def validate_payment_creation(params) do
+    context = %{source: "input_validator", action: :payment_creation}
+
+    with {:ok, amount} <- validate_amount(params["amount"], context),
+         {:ok, direction} <- validate_direction(params["direction"], context),
+         {:ok, payment_type} <- validate_payment_type(params["payment_type"], context),
+         {:ok, description} <- validate_description(params["description"], context),
+         {:ok, user_bank_account_id} <- validate_uuid(params["user_bank_account_id"], context) do
+      {:ok, %{
+        amount: amount,
+        direction: direction,
+        payment_type: payment_type,
+        description: description,
+        user_bank_account_id: user_bank_account_id
+      }}
+    else
+      {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Validates bank account creation parameters with consistent error format.
+  Returns {:ok, validated_params} or {:error, %Error{}}.
+  """
+  def validate_bank_account_creation(params) do
+    context = %{source: "input_validator", action: :bank_account_creation}
+
+    with {:ok, currency} <- validate_currency(params["currency"], context),
+         {:ok, account_type} <- validate_account_type(params["account_type"], context),
+         {:ok, account_name} <- validate_account_name(params["account_name"], context),
+         {:ok, user_bank_login_id} <- validate_uuid(params["user_bank_login_id"], context) do
+      {:ok, %{
+        currency: currency,
+        account_type: account_type,
+        account_name: account_name,
+        user_bank_login_id: user_bank_login_id,
+        last_four: params["last_four"],
+        external_account_id: params["external_account_id"]
+      }}
+    else
+      {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Validates payment filter parameters with consistent error format.
+  Returns {:ok, validated_params} or {:error, %Error{}}.
+  """
+  def validate_payment_filters(params) do
+    context = %{source: "input_validator", action: :payment_filters}
+
+    with {:ok, pagination} <- extract_pagination_params(params, context),
+         {:ok, direction} <- maybe_validate_direction(params["direction"], context),
+         {:ok, status} <- maybe_validate_payment_status(params["status"], context),
+         {:ok, payment_type} <- maybe_validate_payment_type(params["payment_type"], context),
+         {:ok, date_from} <- maybe_validate_date(params["date_from"], context),
+         {:ok, date_to} <- maybe_validate_date(params["date_to"], context) do
+
+      validated_params = pagination
+      |> maybe_put(:direction, direction)
+      |> maybe_put(:status, status)
+      |> maybe_put(:payment_type, payment_type)
+      |> maybe_put(:date_from, date_from)
+      |> maybe_put(:date_to, date_to)
+
+      {:ok, validated_params}
+    else
+      {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Validates transaction filter parameters with consistent error format.
+  Returns {:ok, validated_params} or {:error, %Error{}}.
+  """
+  def validate_transaction_filters(params) do
+    context = %{source: "input_validator", action: :transaction_filters}
+
+    with {:ok, direction} <- maybe_validate_direction(params["direction"], context),
+         {:ok, date_from} <- maybe_validate_date(params["date_from"], context),
+         {:ok, date_to} <- maybe_validate_date(params["date_to"], context) do
+      filters = %{}
+      |> maybe_put(:direction, direction)
+      |> maybe_put(:date_from, date_from)
+      |> maybe_put(:date_to, date_to)
+
+      {:ok, filters}
+    else
+      {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
+    end
+  end
+
+  # ============================================================================
   # PRIVATE VALIDATION FUNCTIONS
   # ============================================================================
 
@@ -408,4 +508,142 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
       _ -> nil
     end
   end
+
+  # ============================================================================
+  # FINANCIAL PRIVATE VALIDATION FUNCTIONS
+  # ============================================================================
+
+  defp validate_amount(amount, context) do
+    case Validator.validate_required(amount) do
+      :ok ->
+        case Decimal.parse(amount) do
+          {decimal_amount, ""} ->
+            if Decimal.gt?(decimal_amount, Decimal.new(0)) do
+              {:ok, decimal_amount}
+            else
+              {:error, ErrorHandler.business_error(:negative_amount, Map.put(context, :field, "amount"))}
+            end
+          _ ->
+            {:error, ErrorHandler.business_error(:invalid_amount_format, Map.put(context, :field, "amount"))}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "amount"))}
+    end
+  end
+
+  defp validate_direction(direction, context) do
+    case Validator.validate_required(direction) do
+      :ok ->
+        normalized_direction = String.upcase(String.trim(direction))
+        if normalized_direction in ["CREDIT", "DEBIT"] do
+          {:ok, normalized_direction}
+        else
+          {:error, ErrorHandler.business_error(:invalid_direction, Map.put(context, :field, "direction"))}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "direction"))}
+    end
+  end
+
+  defp validate_payment_type(payment_type, context) do
+    case Validator.validate_required(payment_type) do
+      :ok ->
+        normalized_type = String.upcase(String.trim(payment_type))
+        if normalized_type in ["TRANSFER", "PAYMENT", "DEPOSIT", "WITHDRAWAL"] do
+          {:ok, normalized_type}
+        else
+          {:error, ErrorHandler.business_error(:invalid_payment_type, Map.put(context, :field, "payment_type"))}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "payment_type"))}
+    end
+  end
+
+  defp validate_currency(currency, context) do
+    case Validator.validate_required(currency) do
+      :ok ->
+        normalized_currency = String.upcase(String.trim(currency))
+        if String.match?(normalized_currency, ~r/^[A-Z]{3}$/) do
+          {:ok, normalized_currency}
+        else
+          {:error, ErrorHandler.business_error(:invalid_currency_format, Map.put(context, :field, "currency"))}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "currency"))}
+    end
+  end
+
+  defp validate_account_type(account_type, context) do
+    case Validator.validate_required(account_type) do
+      :ok ->
+        normalized_type = String.upcase(String.trim(account_type))
+        if normalized_type in ["CHECKING", "SAVINGS", "CREDIT", "INVESTMENT"] do
+          {:ok, normalized_type}
+        else
+          {:error, ErrorHandler.business_error(:invalid_account_type, Map.put(context, :field, "account_type"))}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "account_type"))}
+    end
+  end
+
+  defp validate_description(description, context) do
+    case Validator.validate_required(description) do
+      :ok ->
+        if String.length(description) > 255 do
+          {:error, ErrorHandler.business_error(:invalid_description_format, Map.put(context, :field, "description"))}
+        else
+          {:ok, String.trim(description)}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "description"))}
+    end
+  end
+
+  defp validate_account_name(account_name, context) do
+    case Validator.validate_required(account_name) do
+      :ok ->
+        if String.length(account_name) > 100 do
+          {:error, ErrorHandler.business_error(:invalid_account_name_format, Map.put(context, :field, "account_name"))}
+        else
+          {:ok, String.trim(account_name)}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "account_name"))}
+    end
+  end
+
+  # Optional validation functions (return :ok if nil)
+  defp maybe_validate_direction(nil, _context), do: {:ok, nil}
+  defp maybe_validate_direction(direction, context), do: validate_direction(direction, context)
+
+  defp maybe_validate_payment_type(nil, _context), do: {:ok, nil}
+  defp maybe_validate_payment_type(payment_type, context), do: validate_payment_type(payment_type, context)
+
+  defp maybe_validate_payment_status(nil, _context), do: {:ok, nil}
+  defp maybe_validate_payment_status(status, context) do
+    case Validator.validate_required(status) do
+      :ok ->
+        normalized_status = String.upcase(String.trim(status))
+        if normalized_status in ["PENDING", "COMPLETED", "FAILED", "CANCELLED"] do
+          {:ok, normalized_status}
+        else
+          {:error, ErrorHandler.business_error(:invalid_status, Map.put(context, :field, "status"))}
+        end
+      {:error, reason} ->
+        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "status"))}
+    end
+  end
+
+  defp maybe_validate_date(nil, _context), do: {:ok, nil}
+  defp maybe_validate_date(date_string, context) do
+    case DateTime.from_iso8601(date_string) do
+      {:ok, _datetime, _offset} -> {:ok, date_string}
+      _ -> {:error, ErrorHandler.business_error(:invalid_datetime_format, Map.put(context, :field, "date"))}
+    end
+  end
+
+  # Helper function to conditionally add to map
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

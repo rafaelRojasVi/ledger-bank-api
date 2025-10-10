@@ -36,7 +36,7 @@ defmodule LedgerBankApi.BankingFixtures do
       external_login_id: "login_#{System.unique_integer()}",
       user_id: user.id,
       bank_branch_id: branch.id,
-      username: "testuser_#{System.unique_integer()}",
+      username: "testuser#{abs(System.unique_integer())}",
       encrypted_password: "encrypted_password_#{System.unique_integer()}"
     }
 
@@ -50,7 +50,8 @@ defmodule LedgerBankApi.BankingFixtures do
       account_type: "CHECKING",
       currency: "GBP",
       balance: Decimal.new("1000.00"),
-      user_bank_login_id: login.id
+      user_bank_login_id: login.id,
+      user_id: login.user_id
     }
 
     {:ok, account} =
@@ -66,7 +67,8 @@ defmodule LedgerBankApi.BankingFixtures do
       description: "Test Payment",
       status: "PENDING",
       payment_type: "PAYMENT",  # Required field
-      user_bank_account_id: account.id
+      user_bank_account_id: account.id,
+      user_id: account.user_id
     }
 
     {:ok, payment} = %UserPayment{} |> UserPayment.changeset(Map.merge(base, attrs)) |> Repo.insert()
@@ -79,7 +81,9 @@ defmodule LedgerBankApi.BankingFixtures do
       direction: "DEBIT",
       description: "Test Transaction",
       posted_at: DateTime.utc_now(),
-      user_bank_account_id: account.id
+      user_bank_account_id: account.id,
+      account_id: account.id,
+      user_id: account.user_id
     }
 
     {:ok, transaction} = %Transaction{} |> Transaction.changeset(Map.merge(base, attrs)) |> Repo.insert()

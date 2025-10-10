@@ -85,5 +85,19 @@ defmodule LedgerBankApiWeb.Router do
       put "/", Controllers.UsersController, :update_profile
       put "/password", Controllers.UsersController, :update_password
     end
+
+    # Financial endpoints (payments, accounts, transactions)
+    scope "/payments" do
+      pipe_through [:authenticated, :user_or_admin]
+
+      post "/", Controllers.PaymentsController, :create
+      get "/", Controllers.PaymentsController, :index
+      get "/stats", Controllers.PaymentsController, :stats
+      post "/validate", Controllers.PaymentsController, :validate
+      get "/:id", Controllers.PaymentsController, :show
+      post "/:id/process", Controllers.PaymentsController, :process
+      get "/:id/status", Controllers.PaymentsController, :status
+      delete "/:id", Controllers.PaymentsController, :delete
+    end
   end
 end

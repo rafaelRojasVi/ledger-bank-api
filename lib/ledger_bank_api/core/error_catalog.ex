@@ -46,6 +46,17 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_name_format => :validation,
       :invalid_role => :validation,
       :invalid_status => :validation,
+      :invalid_payment_type => :validation,
+      :invalid_currency_format => :validation,
+      :invalid_account_type => :validation,
+    :invalid_description_format => :validation,
+    :invalid_account_name_format => :validation,
+    :amount_too_small => :validation,
+    :account_frozen => :business_rule,
+    :account_suspended => :business_rule,
+    :description_required => :validation,
+    :description_too_long => :validation,
+    :unauthorized_access => :authorization,
 
       # Not found errors
       :user_not_found => :not_found,
@@ -69,7 +80,6 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
 
       # Authorization errors
       :forbidden => :authorization,
-      :unauthorized_access => :authorization,
       :insufficient_permissions => :authorization,
 
       # Conflict errors
@@ -84,6 +94,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :amount_exceeds_limit => :business_rule,
       :negative_amount => :business_rule,
       :negative_balance => :business_rule,
+      :currency_mismatch => :business_rule,
 
       # External dependency errors
       :timeout => :external_dependency,
@@ -176,6 +187,17 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_name_format -> "Invalid name format"
       :invalid_role -> "Invalid role"
       :invalid_status -> "Invalid status"
+      :invalid_payment_type -> "Invalid payment type"
+      :invalid_currency_format -> "Invalid currency format"
+      :invalid_account_type -> "Invalid account type"
+    :invalid_description_format -> "Invalid description format"
+    :invalid_account_name_format -> "Invalid account name format"
+    :amount_too_small -> "Amount is too small"
+    :account_frozen -> "Account is frozen"
+    :account_suspended -> "Account is suspended"
+    :description_required -> "Description is required"
+    :description_too_long -> "Description is too long"
+    :unauthorized_access -> "Unauthorized access to account"
 
       # Not found errors
       :user_not_found -> "User not found"
@@ -199,7 +221,6 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
 
       # Authorization errors
       :forbidden -> "Access forbidden"
-      :unauthorized_access -> "Unauthorized access"
       :insufficient_permissions -> "Insufficient permissions"
 
       # Conflict errors
@@ -214,6 +235,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :amount_exceeds_limit -> "Payment amount exceeds single transaction limit"
       :negative_amount -> "Payment amount cannot be negative"
       :negative_balance -> "Account balance cannot be negative"
+      :currency_mismatch -> "Payment currency does not match account currency"
 
       # External dependency errors
       :timeout -> "Request timeout"

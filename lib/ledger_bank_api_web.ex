@@ -38,8 +38,7 @@ defmodule LedgerBankApiWeb do
   def controller do
     quote do
       use Phoenix.Controller,
-        formats: [:html, :json],
-        layouts: [html: LedgerBankApiWeb.Layouts]
+        formats: [:html, :json]
 
       use Gettext, backend: LedgerBankApiWeb.Gettext
 
@@ -66,8 +65,7 @@ defmodule LedgerBankApiWeb do
     quote do
       # HTML escaping functionality
       import Phoenix.HTML
-      # Core UI components and translation
-      import LedgerBankApiWeb.CoreComponents
+      # Translation
       import LedgerBankApiWeb.Gettext
 
       unquote(verified_routes())

@@ -184,10 +184,23 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   DELETE /api/users/:id
   """
   def delete(conn, %{"id" => id}) do
+    current_user = conn.assigns[:current_user]
+
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
-         {:ok, user} <- UserService.get_user(id),
-         {:ok, _} <- UserService.delete_user(user) do
-      handle_success(conn, %{message: "User deleted successfully"})
+         {:ok, user} <- UserService.get_user(id) do
+      # Check policy before deletion
+      if LedgerBankApi.Accounts.Policy.can_delete_user?(current_user, user) do
+        case UserService.delete_user(user) do
+          {:ok, _} -> handle_success(conn, %{message: "User deleted successfully"})
+          {:error, error} -> {:error, error}
+        end
+      else
+        {:error, ErrorHandler.business_error(:insufficient_permissions, %{
+          action: :delete_user,
+          user_id: user.id,
+          current_user_id: current_user.id
+        })}
+      end
     end
   end
 

@@ -335,7 +335,22 @@ defmodule LedgerBankApi.Accounts.UserService do
   def delete_user(user) do
     context = ServiceBehavior.build_context(__MODULE__, :delete_user, %{user_id: user.id})
 
-    ServiceBehavior.delete_operation(user, context)
+    case ServiceBehavior.delete_operation(user, context) do
+      {:ok, deleted_user} ->
+        # Invalidate cache after deletion
+        cache_key = "user:#{deleted_user.id}"
+        Cache.delete(cache_key)
+
+        # Log business event
+        AppLogger.log_business_event("user_deleted", %{
+          user_id: deleted_user.id,
+          email: deleted_user.email,
+          correlation_id: context.correlation_id
+        })
+
+        {:ok, deleted_user}
+      error -> error
+    end
   end
 
   @doc """

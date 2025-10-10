@@ -4,6 +4,7 @@ defmodule LedgerBankApiWeb.Router do
   """
 
   use LedgerBankApiWeb, :router
+  import Phoenix.LiveDashboard.Router
 
   pipeline :api do
     plug :accepts, ["json"]
@@ -15,6 +16,12 @@ defmodule LedgerBankApiWeb.Router do
     if Mix.env() != :test do
       plug LedgerBankApiWeb.Plugs.RateLimit, max_requests: 100, window_size: 60_000
     end
+  end
+
+  # Minimal browser pipeline for LiveDashboard only (dev/test)
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
   end
 
   pipeline :authenticated do
@@ -98,6 +105,17 @@ defmodule LedgerBankApiWeb.Router do
       post "/:id/process", Controllers.PaymentsController, :process
       get "/:id/status", Controllers.PaymentsController, :status
       delete "/:id", Controllers.PaymentsController, :delete
+    end
+  end
+
+  # Enable LiveDashboard in development and test
+  if Mix.env() in [:dev, :test] do
+    scope "/" do
+      pipe_through :browser
+
+      live_dashboard "/dashboard",
+        metrics: LedgerBankApiWeb.Telemetry,
+        ecto_repos: [LedgerBankApi.Repo]
     end
   end
 end

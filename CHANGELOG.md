@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Comprehensive Test Suite Expansion** - Added extensive unit and integration tests
+  - Added schema-level tests for User and RefreshToken models (2,027 lines)
+  - Added Token service tests covering JWT generation, verification, and rotation (639 lines)
+  - Added Core.Error module tests for error handling and categorization (786 lines)
+  - Added Core.Validator tests for input validation and security (650 lines)
+  - Added ErrorAdapter tests for HTTP error responses and sanitization (708 lines)
+  - Added Authentication plug tests for JWT validation and security (479 lines)
+  - Added Authorization plug tests for RBAC and self-access patterns (574 lines)
+  - Added SecurityAudit plug tests for suspicious activity detection (593 lines)
+  - Total new test coverage: **6,456 lines** across 8 new test files
+  - All 1,448 tests passing successfully ✅
+
+### Removed
+- Deleted `DASHBOARD_GUIDE.md` (documentation consolidation)
+
 ### In Progress
 - Planning for future features and improvements
 

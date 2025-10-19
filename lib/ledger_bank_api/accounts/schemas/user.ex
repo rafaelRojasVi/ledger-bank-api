@@ -6,7 +6,7 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
 
   This module provides **data layer validation** for user records. It focuses on:
   - **Data integrity**: Field formats, constraints, and database-level validation
-  - **Password hashing**: Secure password storage using Argon2
+  - **Password hashing**: Secure password storage using PBKDF2
   - **Basic validation**: Email format, role inclusion, status validation
 
   ## Responsibilities
@@ -156,7 +156,7 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
         hash_function = if Mix.env() == :test do
           &LedgerBankApi.PasswordHelper.hash_pwd_salt/1
         else
-          &Argon2.hash_pwd_salt/1
+          &Pbkdf2.hash_pwd_salt/1
         end
 
         put_change(changeset, :password_hash, hash_function.(password))

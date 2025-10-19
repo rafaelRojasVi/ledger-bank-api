@@ -15,6 +15,11 @@ defmodule LedgerBankApiWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
+  # WebSocket for real-time notifications
+  socket "/socket", LedgerBankApiWeb.UserSocket,
+    websocket: true,
+    longpoll: false
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phx.digest
@@ -38,6 +43,9 @@ defmodule LedgerBankApiWeb.Endpoint do
 
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+
+  # Enable gzip compression for API responses
+  # plug Plug.Compression, formats: ["gzip", "deflate"]
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],

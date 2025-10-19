@@ -2,13 +2,10 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankLogin do
   @moduledoc """
   Ecto schema for user bank logins. Represents a user's login credentials for a specific bank branch.
   """
-  use Ecto.Schema
-  import Ecto.Changeset
+  use LedgerBankApi.Core.SchemaHelpers
 
   @derive {Jason.Encoder, only: [:id, :username, :status, :last_sync_at, :sync_frequency, :user_id, :bank_branch_id, :scope, :provider_user_id, :inserted_at, :updated_at]}
 
-  @primary_key {:id, :binary_id, autogenerate: true}
-  @foreign_key_type :binary_id
   schema "user_bank_logins" do
     field :username, :string
     field :status, :string, default: "ACTIVE"
@@ -53,11 +50,11 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankLogin do
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:bank_branch_id)
     |> unique_constraint([:user_id, :bank_branch_id, :username], name: :user_bank_logins_user_branch_username_index)
-    |> validate_username_format()
+    |> validate_username_format(:username)
     |> validate_oauth2_tokens()
     |> validate_oauth2_scope_format()
     |> validate_sync_frequency()
-    |> validate_last_sync_at_not_future()
+    |> validate_not_future(:last_sync_at)
   end
 
   @doc """
@@ -68,11 +65,11 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankLogin do
     |> cast(attrs, [:username, :status, :last_sync_at, :sync_frequency, :access_token, :refresh_token, :token_expires_at, :scope])
     |> validate_required([:username])
     |> validate_inclusion(:status, ["ACTIVE", "INACTIVE", "ERROR"])
-    |> validate_username_format()
+    |> validate_username_format(:username)
     |> validate_oauth2_tokens()
     |> validate_oauth2_scope_format()
     |> validate_sync_frequency()
-    |> validate_last_sync_at_not_future()
+    |> validate_not_future(:last_sync_at)
   end
 
   @doc """
@@ -124,19 +121,6 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankLogin do
     end
   end
 
-  defp validate_username_format(changeset) do
-    username = get_change(changeset, :username)
-    if is_nil(username) do
-      changeset
-    else
-      # Basic username validation (alphanumeric, 3-50 chars)
-      if String.match?(username, ~r/^[A-Za-z0-9]{3,50}$/) do
-        changeset
-      else
-        add_error(changeset, :username, "must be alphanumeric, 3-50 characters")
-      end
-    end
-  end
 
   defp validate_oauth2_scope_format(changeset) do
     scope = get_change(changeset, :scope)
@@ -165,20 +149,6 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankLogin do
       end
     end
   end
-
-  defp validate_last_sync_at_not_future(changeset) do
-    last_sync_at = get_change(changeset, :last_sync_at)
-    if is_nil(last_sync_at) do
-      changeset
-    else
-      if DateTime.compare(last_sync_at, DateTime.utc_now()) == :gt do
-        add_error(changeset, :last_sync_at, "cannot be in the future")
-      else
-        changeset
-      end
-    end
-  end
-
 
   @doc """
   Checks if the OAuth2 access token is valid and not expired.

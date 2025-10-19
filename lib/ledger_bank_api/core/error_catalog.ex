@@ -32,10 +32,29 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
 
   @doc """
   Error reason codes and their categories.
+
+  This is the central mapping that defines how each error reason is categorized.
+  Categories drive HTTP status codes, retry behavior, and telemetry.
+
+  ## Adding New Errors
+
+  1. Add the reason to this map with appropriate category
+  2. Add default message in `default_message_for_reason/1`
+  3. Update tests in `error_catalog_test.exs`
+  4. Document the error in API documentation
+
+  ## Categories Guide
+
+  - `:validation` - Input format/type errors (400) - No retry
+  - `:business_rule` - Domain logic violations (422) - No retry
+  - `:external_dependency` - Third-party service failures (503) - Retry 3x
+  - `:system` - Internal infrastructure errors (500) - Retry 2x
   """
   def reason_codes do
     %{
-      # Validation errors
+      # ========================================================================
+      # VALIDATION ERRORS (400) - Input format/type issues
+      # ========================================================================
       :invalid_amount_format => :validation,
       :missing_fields => :validation,
       :invalid_direction => :validation,
@@ -105,7 +124,12 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       # System errors
       :internal_server_error => :system,
       :database_error => :system,
-      :configuration_error => :system
+      :configuration_error => :system,
+
+      # Additional error reasons for problems endpoint
+      :invalid_reason_format => :validation,
+      :invalid_category => :validation,
+      :invalid_category_format => :validation
     }
   end
 
@@ -247,6 +271,11 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :internal_server_error -> "An unexpected error occurred"
       :database_error -> "Database error"
       :configuration_error -> "Configuration error"
+
+      # Additional error reasons for problems endpoint
+      :invalid_reason_format -> "Invalid error reason format"
+      :invalid_category -> "Invalid error category"
+      :invalid_category_format -> "Invalid error category format"
 
       _ -> "An unexpected error occurred"
     end

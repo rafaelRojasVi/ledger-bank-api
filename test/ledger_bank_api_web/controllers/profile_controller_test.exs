@@ -75,9 +75,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       conn = get(conn, "/api/profile")
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_token"
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to show profile with invalid token", %{conn: conn} do
@@ -86,9 +86,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> get("/api/profile")
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_token"
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to show profile with expired token", %{conn: conn} do
@@ -100,8 +100,8 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> get("/api/profile")
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to show profile with malformed authorization header", %{conn: conn} do
@@ -110,16 +110,16 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> get("/api/profile")
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to show profile with missing authorization header", %{conn: conn} do
       conn = get(conn, "/api/profile")
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
   end
 
@@ -182,8 +182,8 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       conn = put(conn, "/api/profile", update_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to update profile with invalid token", %{conn: conn} do
@@ -194,8 +194,8 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to update profile with empty request body", %{conn: conn, access_token: access_token} do
@@ -204,9 +204,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", %{})
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "missing_fields"
+      assert response["error"]["reason"] == "missing_fields"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "fails to update profile with nil request body", %{conn: conn, access_token: access_token} do
@@ -215,8 +215,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", nil)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert response["error"]["reason"] == "missing_fields"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "fails to update profile with invalid email format", %{conn: conn, access_token: access_token} do
@@ -227,9 +228,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_email_format"
+      assert response["error"]["reason"] == "invalid_email_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "fails to update profile with empty email", %{conn: conn, access_token: access_token} do
@@ -240,9 +241,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "missing_fields"
+      assert response["error"]["reason"] == "missing_fields"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "fails to update profile with nil email", %{conn: conn, access_token: access_token} do
@@ -253,8 +254,8 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "fails to update profile with empty full name", %{conn: conn, access_token: access_token} do
@@ -265,9 +266,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "missing_fields"
+      assert response["error"]["reason"] == "missing_fields"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "fails to update profile with nil full name", %{conn: conn, access_token: access_token} do
@@ -278,8 +279,8 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "fails to update profile with very long full name", %{conn: conn, access_token: access_token} do
@@ -291,9 +292,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_name_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
+      assert response["error"]["reason"] == "invalid_name_format"
     end
 
     # Note: This test is disabled due to schema validation permission issues
@@ -329,9 +330,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 403)
-      assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
-      assert error["reason"] == "insufficient_permissions"
+      assert response["error"]["reason"] == "insufficient_permissions"
+      assert response["error"]["category"] == "authorization"
+      assert response["error"]["status"] == 403
     end
 
     test "fails to update profile with invalid status (users cannot change their status)", %{conn: conn, access_token: access_token} do
@@ -342,9 +343,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile", update_params)
 
       response = json_response(conn, 403)
-      assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
-      assert error["reason"] == "insufficient_permissions"
+      assert response["error"]["reason"] == "insufficient_permissions"
+      assert response["error"]["category"] == "authorization"
+      assert response["error"]["status"] == 403
     end
   end
 
@@ -396,8 +397,8 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       conn = put(conn, "/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to update password with invalid token", %{conn: conn} do
@@ -412,8 +413,8 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "fails to update password with empty request body", %{conn: conn, access_token: access_token} do
@@ -422,9 +423,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", %{})
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with nil request body", %{conn: conn, access_token: access_token} do
@@ -433,9 +434,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", nil)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with missing current password", %{conn: conn, access_token: access_token} do
@@ -449,9 +450,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with missing new password", %{conn: conn, access_token: access_token} do
@@ -465,9 +466,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with missing password confirmation", %{conn: conn, access_token: access_token} do
@@ -481,9 +482,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with incorrect current password", %{conn: conn, access_token: access_token} do
@@ -498,9 +499,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with password mismatch", %{conn: conn, access_token: access_token} do
@@ -515,9 +516,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_password_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
+      assert response["error"]["reason"] == "invalid_password_format"
     end
 
     test "fails to update password with weak new password", %{conn: conn, access_token: access_token} do
@@ -532,9 +533,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_password_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
+      assert response["error"]["reason"] == "invalid_password_format"
     end
 
     test "fails to update password with same password as current", %{conn: conn, access_token: access_token} do
@@ -549,9 +550,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 400)
-      assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
-      assert error["reason"] == "invalid_password_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
+      assert response["error"]["reason"] == "invalid_password_format"
     end
 
     test "fails to update password with empty current password", %{conn: conn, access_token: access_token} do
@@ -566,9 +567,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with empty new password", %{conn: conn, access_token: access_token} do
@@ -583,9 +584,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with nil current password", %{conn: conn, access_token: access_token} do
@@ -600,9 +601,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "fails to update password with nil new password", %{conn: conn, access_token: access_token} do
@@ -617,9 +618,9 @@ defmodule LedgerBankApiWeb.Controllers.ProfileControllerTest do
       |> put("/api/profile/password", password_params)
 
       response = json_response(conn, 401)
-      assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
-      assert error["reason"] == "invalid_credentials"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "successfully updates password for admin user", %{conn: conn} do

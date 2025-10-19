@@ -17,7 +17,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 400
       response = json_response(conn, 400)
-      assert response["error"]["type"] == "validation_error"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert response["error"]["reason"] == "missing_fields"
       assert response["error"]["code"] == 400
     end
@@ -34,7 +34,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "unauthorized"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/invalid_credentials"
       assert response["error"]["reason"] == "invalid_credentials"
     end
 
@@ -51,7 +51,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 403
       response = json_response(conn, 403)
-      assert response["error"]["type"] == "forbidden"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert response["error"]["reason"] == "insufficient_permissions"
     end
 
@@ -68,7 +68,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 404
       response = json_response(conn, 404)
-      assert response["error"]["type"] == "not_found"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/user_not_found"
     end
 
     test "returns 409 for conflict errors", %{conn: conn} do
@@ -84,7 +84,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 409
       response = json_response(conn, 409)
-      assert response["error"]["type"] == "conflict"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/email_already_exists"
     end
 
     test "returns 422 for unprocessable entity errors", %{conn: conn} do
@@ -100,7 +100,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 422
       response = json_response(conn, 422)
-      assert response["error"]["type"] == "unprocessable_entity"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/insufficient_funds"
     end
 
     test "returns 500 for internal server errors", %{conn: conn} do
@@ -115,7 +115,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 500
       response = json_response(conn, 500)
-      assert response["error"]["type"] == "internal_server_error"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/server_error"
     end
 
     test "returns 503 for service unavailable errors", %{conn: conn} do
@@ -131,7 +131,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 503
       response = json_response(conn, 503)
-      assert response["error"]["type"] == "service_unavailable"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/external_service_unavailable"
     end
   end
 
@@ -208,7 +208,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
       # Should return 500 (highest status code)
       assert conn.status == 500
       response = json_response(conn, 500)
-      assert response["error"]["type"] == "internal_server_error"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/server_error"
     end
 
     test "handles single error in list", %{conn: conn} do
@@ -249,7 +249,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 400
       response = json_response(conn, 400)
-      assert response["error"]["type"] == "validation_error"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/missing_fields"
     end
 
     test "includes context in changeset error", %{conn: conn} do
@@ -292,7 +292,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 500
       response = json_response(conn, 500)
-      assert response["error"]["type"] == "internal_server_error"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/internal_server_error"
     end
 
     test "handles changeset", %{conn: conn} do
@@ -316,7 +316,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 500
       response = json_response(conn, 500)
-      assert response["error"]["type"] == "internal_server_error"
+      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/internal_server_error"
     end
 
     test "includes context in generic error handling", %{conn: conn} do
@@ -647,7 +647,7 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
         assert conn.status == 401
         response = json_response(conn, 401)
-        assert response["error"]["type"] == "unauthorized"
+        assert response["error"]["type"] == "https://api.ledgerbank.com/problems/#{reason}"
       end)
     end
   end

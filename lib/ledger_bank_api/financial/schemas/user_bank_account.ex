@@ -2,13 +2,10 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
   @moduledoc """
   Ecto schema for user bank accounts. Represents a user's linked account at a bank branch, including balance and status.
   """
-  use Ecto.Schema
-  import Ecto.Changeset
+  use LedgerBankApi.Core.SchemaHelpers
 
   @derive {Jason.Encoder, only: [:id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id, :user_bank_login_id, :user_id, :inserted_at, :updated_at]}
 
-  @primary_key {:id, :binary_id, autogenerate: true}
-  @foreign_key_type :binary_id
   schema "user_bank_accounts" do
     field :currency, :string
     field :account_type, :string
@@ -45,11 +42,11 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
     |> base_changeset(attrs)
     |> validate_inclusion(:account_type, ["CHECKING", "SAVINGS", "CREDIT", "INVESTMENT"])
     |> validate_inclusion(:status, ["ACTIVE", "INACTIVE", "CLOSED"])
-    |> validate_currency_format()
-    |> validate_balance_format()
-    |> validate_last_four_format()
-    |> validate_account_name_length()
-    |> validate_external_account_id_format()
+    |> validate_currency_field(:currency)
+    |> validate_decimal_format(:balance)
+    |> validate_last_four_format(:last_four)
+    |> validate_account_name_length(:account_name)
+    |> validate_external_account_id_format(:external_account_id)
     |> validate_balance_limits()
     |> foreign_key_constraint(:user_bank_login_id)
     |> foreign_key_constraint(:user_id)
@@ -65,7 +62,7 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
     |> cast(attrs, [:account_name, :status, :last_sync_at])
     |> validate_required([:account_name])
     |> validate_inclusion(:status, ["ACTIVE", "INACTIVE", "CLOSED"])
-    |> validate_account_name_length()
+    |> validate_account_name_length(:account_name)
   end
 
   @doc """
@@ -75,44 +72,8 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
     user_bank_account
     |> cast(attrs, [:balance, :last_sync_at])
     |> validate_required([:balance])
-    |> validate_balance_format()
+    |> validate_decimal_format(:balance)
     |> validate_balance_limits()
-  end
-
-  defp validate_balance_format(changeset) do
-    balance = get_change(changeset, :balance)
-    if is_nil(balance) do
-      changeset
-    else
-      # Basic format validation - check if it's a valid decimal
-      if is_struct(balance, Decimal) do
-        changeset
-      else
-        add_error(changeset, :balance, "must be a valid decimal number")
-      end
-    end
-  end
-
-  defp validate_balance_limits(changeset) do
-    balance = get_change(changeset, :balance)
-    account_type = get_change(changeset, :account_type)
-
-    if is_nil(balance) or is_nil(account_type) do
-      changeset
-    else
-      case account_type do
-        "CREDIT" ->
-          # Credit accounts can have negative balances (debt)
-          changeset
-        _ ->
-          # Other account types should not have negative balances
-          if Decimal.lt?(balance, Decimal.new(0)) do
-            add_error(changeset, :balance, "cannot be negative for #{account_type} accounts")
-          else
-            changeset
-          end
-      end
-    end
   end
 
   defp validate_user_owns_login(changeset) do
@@ -126,53 +87,6 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
       # Comprehensive ownership validation should be done at the application level
       # where proper preloading and joins can be used
       changeset
-    end
-  end
-
-  defp validate_currency_format(changeset) do
-    currency = get_change(changeset, :currency)
-    if is_nil(currency) do
-      changeset
-    else
-      # Basic currency code validation (3 uppercase letters)
-      if String.match?(currency, ~r/^[A-Z]{3}$/) do
-        changeset
-      else
-        add_error(changeset, :currency, "must be a valid currency code (3 uppercase letters)")
-      end
-    end
-  end
-
-  defp validate_last_four_format(changeset) do
-    last_four = get_change(changeset, :last_four)
-    if is_nil(last_four) or last_four == "" do
-      changeset
-    else
-      # Last four digits validation (4 digits)
-      if String.match?(last_four, ~r/^[0-9]{4}$/) do
-        changeset
-      else
-        add_error(changeset, :last_four, "must be 4 digits")
-      end
-    end
-  end
-
-  defp validate_account_name_length(changeset) do
-    changeset
-    |> validate_length(:account_name, min: 1, max: 100)
-  end
-
-  defp validate_external_account_id_format(changeset) do
-    external_account_id = get_change(changeset, :external_account_id)
-    if is_nil(external_account_id) or external_account_id == "" do
-      changeset
-    else
-      # Basic external account ID validation (alphanumeric, 1-50 chars)
-      if String.match?(external_account_id, ~r/^[A-Za-z0-9]{1,50}$/) do
-        changeset
-      else
-        add_error(changeset, :external_account_id, "must be alphanumeric, 1-50 characters")
-      end
     end
   end
 

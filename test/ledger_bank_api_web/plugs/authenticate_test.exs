@@ -44,7 +44,7 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       tasks = Enum.map(users, fn user ->
         Task.async(fn ->
           {:ok, token} = AuthService.generate_access_token(user)
-          
+
           result_conn = conn
           |> put_req_header("authorization", "Bearer #{token}")
           |> LedgerBankApiWeb.Plugs.Authenticate.call([])
@@ -69,8 +69,8 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       assert conn.halted
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "unauthorized"
       assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
     end
 
     test "rejects request with empty Authorization header", %{conn: conn} do
@@ -81,7 +81,8 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       assert conn.halted
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "unauthorized"
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
     end
 
     test "rejects malformed Authorization header (no Bearer prefix)", %{conn: conn} do
@@ -95,7 +96,8 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       assert conn.halted
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "unauthorized"
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
     end
 
     test "rejects malformed Authorization header (wrong prefix)", %{conn: conn} do
@@ -134,8 +136,8 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       assert conn.halted
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "unauthorized"
       assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
     end
 
     test "rejects token with invalid signature", %{conn: conn} do
@@ -237,7 +239,8 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       assert conn.halted
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "unauthorized"
+      assert response["error"]["reason"] == "invalid_token_type"
+      assert response["error"]["category"] == "authentication"
     end
 
     test "rejects token with future nbf (not-before) time", %{conn: conn} do
@@ -281,8 +284,8 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       assert conn.halted
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "unauthorized"
       assert response["error"]["reason"] == "invalid_token_type"
+      assert response["error"]["category"] == "authentication"
     end
 
     test "rejects token with missing type claim", %{conn: conn} do
@@ -453,15 +456,17 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       |> LedgerBankApiWeb.Plugs.Authenticate.call([])
 
       response = json_response(conn, 401)
-      
+
+      # Check RFC 9457 problem details format
       assert Map.has_key?(response, "error")
       assert Map.has_key?(response["error"], "type")
       assert Map.has_key?(response["error"], "reason")
-      assert Map.has_key?(response["error"], "code")
-      assert Map.has_key?(response["error"], "message")
-      
-      assert response["error"]["code"] == 401
-      assert response["error"]["type"] == "unauthorized"
+      assert Map.has_key?(response["error"], "status")
+      assert Map.has_key?(response["error"], "category")
+
+      assert response["error"]["status"] == 401
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
     end
 
     test "includes correlation ID in error response", %{conn: conn} do
@@ -470,10 +475,10 @@ defmodule LedgerBankApiWeb.Plugs.AuthenticateTest do
       |> LedgerBankApiWeb.Plugs.Authenticate.call([])
 
       response = json_response(conn, 401)
-      
+
       # Should have correlation_id if error adapter includes it
-      assert is_map(response["error"])
+      assert is_map(response)
+      assert Map.has_key?(response["error"], "reason")
     end
   end
 end
-

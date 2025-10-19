@@ -131,12 +131,9 @@ defmodule LedgerBankApiWeb.Controllers.SecurityUserCreationTest do
       |> post(~p"/api/users/admin", admin_params)
 
       # Should be blocked with 403 Forbidden
-      assert %{
-        "error" => %{
-          "type" => "forbidden",
-          "reason" => "insufficient_permissions"
-        }
-      } = json_response(conn, 403)
+      response = json_response(conn, 403)
+      assert response["error"]["reason"] == "insufficient_permissions"
+      assert response["error"]["category"] == "authorization"
 
       # Verify user was NOT created
       assert {:error, _} = UserService.get_user_by_email("hacker-admin@evil.com")
@@ -155,11 +152,9 @@ defmodule LedgerBankApiWeb.Controllers.SecurityUserCreationTest do
       conn = post(conn, ~p"/api/users/admin", admin_params)
 
       # Should be blocked with 401 Unauthorized
-      assert %{
-        "error" => %{
-          "type" => "unauthorized"
-        }
-      } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
 
       # Verify user was NOT created
       assert {:error, _} = UserService.get_user_by_email("hacker@evil.com")
@@ -199,11 +194,9 @@ defmodule LedgerBankApiWeb.Controllers.SecurityUserCreationTest do
       |> post(~p"/api/users/admin", params)
 
       # Should fail validation
-      assert %{
-        "error" => %{
-          "type" => "validation_error"
-        }
-      } = json_response(conn, 400)
+      response = json_response(conn, 400)
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["reason"] == "invalid_password_format"
     end
 
     test "ADMIN ENDPOINT: Admin creation succeeds with 15+ character password", %{conn: conn} do
@@ -245,11 +238,9 @@ defmodule LedgerBankApiWeb.Controllers.SecurityUserCreationTest do
       |> put_req_header("authorization", "Bearer #{support_token}")
       |> post(~p"/api/users/admin", params)
 
-      assert %{
-        "error" => %{
-          "type" => "forbidden"
-        }
-      } = json_response(conn, 403)
+      response = json_response(conn, 403)
+      assert response["error"]["reason"] == "insufficient_permissions"
+      assert response["error"]["category"] == "authorization"
     end
   end
 end

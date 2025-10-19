@@ -64,13 +64,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = post(conn, ~p"/api/payments", invalid_params)
 
-      assert %{
-        "error" => %{
-          "type" => "validation_error",
-          "message" => _message,
-          "code" => 400
-        }
-      } = json_response(conn, 400)
+      response = json_response(conn, 400)
+      assert response["error"]["reason"] == "invalid_amount_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
 
     test "creates payment even with insufficient funds (validation happens during processing)", %{conn: conn, account: account} do
@@ -108,13 +105,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = post(conn, ~p"/api/payments", payment_params)
 
-      assert %{
-        "error" => %{
-          "type" => "not_found",
-          "message" => _message,
-          "code" => 404
-        }
-      } = json_response(conn, 404)
+      response = json_response(conn, 404)
+      assert response["error"]["reason"] == "account_not_found"
+      assert response["error"]["category"] == "not_found"
+      assert response["error"]["status"] == 404
     end
   end
 
@@ -235,26 +229,19 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = get(conn, ~p"/api/payments/#{non_existent_id}")
 
-      assert %{
-        "error" => %{
-          "type" => "not_found",
-          "message" => _message,
-          "code" => 404
-        }
-      } = json_response(conn, 404)
+      response = json_response(conn, 404)
+      assert response["error"]["reason"] == "payment_not_found"
+      assert response["error"]["category"] == "not_found"
+      assert response["error"]["status"] == 404
     end
 
     test "returns error for invalid UUID", %{conn: conn} do
       conn = get(conn, ~p"/api/payments/invalid-uuid")
 
-      assert %{
-        "error" => %{
-          "code" => 400,
-          "type" => "validation_error",
-          "message" => _message,
-          "reason" => "invalid_uuid_format"
-        }
-      } = json_response(conn, 400)
+      response = json_response(conn, 400)
+      assert response["error"]["reason"] == "invalid_uuid_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
   end
 
@@ -285,14 +272,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = post(conn, ~p"/api/payments/#{payment.id}/process")
 
-      assert %{
-        "error" => %{
-          "code" => 403,
-          "type" => "forbidden",
-          "message" => _message,
-          "reason" => "insufficient_permissions"
-        }
-      } = json_response(conn, 403)
+      response = json_response(conn, 403)
+      assert response["error"]["reason"] == "insufficient_permissions"
+      assert response["error"]["category"] == "authorization"
+      assert response["error"]["status"] == 403
     end
 
     test "returns error for insufficient funds", %{conn: conn, user: user, account: account} do
@@ -301,13 +284,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = post(conn, ~p"/api/payments/#{payment.id}/process")
 
-      assert %{
-        "error" => %{
-          "type" => "unprocessable_entity",
-          "message" => _message,
-          "code" => 422
-        }
-      } = json_response(conn, 422)
+      response = json_response(conn, 422)
+      assert response["error"]["reason"] == "insufficient_funds"
+      assert response["error"]["category"] == "business_rule"
+      assert response["error"]["status"] == 422
     end
   end
 
@@ -338,13 +318,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = get(conn, ~p"/api/payments/#{non_existent_id}/status")
 
-      assert %{
-        "error" => %{
-          "type" => "not_found",
-          "message" => _message,
-          "code" => 404
-        }
-      } = json_response(conn, 404)
+      response = json_response(conn, 404)
+      assert response["error"]["reason"] == "payment_not_found"
+      assert response["error"]["category"] == "not_found"
+      assert response["error"]["status"] == 404
     end
   end
 
@@ -373,13 +350,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = delete(conn, ~p"/api/payments/#{payment.id}")
 
-      assert %{
-        "error" => %{
-          "type" => "forbidden",
-          "message" => _message,
-          "code" => 403
-        }
-      } = json_response(conn, 403)
+      response = json_response(conn, 403)
+      assert response["error"]["reason"] == "insufficient_permissions"
+      assert response["error"]["category"] == "authorization"
+      assert response["error"]["status"] == 403
     end
   end
 
@@ -497,13 +471,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = post(conn, ~p"/api/payments/validate", invalid_params)
 
-      assert %{
-        "error" => %{
-          "type" => "validation_error",
-          "message" => _message,
-          "code" => 400
-        }
-      } = json_response(conn, 400)
+      response = json_response(conn, 400)
+      assert response["error"]["reason"] == "invalid_amount_format"
+      assert response["error"]["category"] == "validation"
+      assert response["error"]["status"] == 400
     end
   end
 
@@ -514,14 +485,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = get(conn, ~p"/api/payments")
 
-      assert %{
-        "error" => %{
-          "code" => 401,
-          "type" => "unauthorized",
-          "message" => _message,
-          "reason" => "invalid_token"
-        }
-      } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
 
     test "returns error for invalid token", %{conn: conn} do
@@ -530,14 +497,10 @@ defmodule LedgerBankApiWeb.Controllers.PaymentsControllerTest do
 
       conn = get(conn, ~p"/api/payments")
 
-      assert %{
-        "error" => %{
-          "code" => 401,
-          "type" => "unauthorized",
-          "message" => _message,
-          "reason" => "invalid_token"
-        }
-      } = json_response(conn, 401)
+      response = json_response(conn, 401)
+      assert response["error"]["reason"] == "invalid_token"
+      assert response["error"]["category"] == "authentication"
+      assert response["error"]["status"] == 401
     end
   end
 

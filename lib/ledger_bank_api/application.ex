@@ -22,17 +22,26 @@ defmodule LedgerBankApi.Application do
       {Oban, Application.fetch_env!(:ledger_bank_api, Oban)}
     ]
 
-    # Initialize cache table
-    case :ets.new(:ledger_cache, [:set, :public, :named_table]) do
-      :ledger_cache -> :ok
+    # Initialize cache adapter
+    case LedgerBankApi.Core.Cache.init() do
+      :ok -> :ok
       {:error, reason} ->
         require Logger
-        Logger.error("Failed to create cache table: #{inspect(reason)}")
-        raise "Cache table creation failed: #{inspect(reason)}"
+        Logger.error("Failed to initialize cache adapter: #{inspect(reason)}")
+        raise "Cache initialization failed: #{inspect(reason)}"
     end
 
     # Initialize rate limiting table
     LedgerBankApiWeb.Plugs.RateLimit.ensure_table_exists()
+
+    # Initialize circuit breakers (disabled for now due to configuration issues)
+    # case LedgerBankApi.Core.CircuitBreaker.init_default_breakers() do
+    #   :ok -> :ok
+    #   {:error, reason} ->
+    #     require Logger
+    #     Logger.error("Failed to initialize circuit breakers: #{inspect(reason)}")
+    #     raise "Circuit breaker initialization failed: #{inspect(reason)}"
+    # end
 
     http_child =
       if Application.get_env(:ledger_bank_api, LedgerBankApiWeb.Endpoint)[:server] do

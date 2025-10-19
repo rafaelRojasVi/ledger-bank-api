@@ -2,13 +2,10 @@ defmodule LedgerBankApi.Financial.Schemas.Transaction do
   @moduledoc """
   Ecto schema for transactions. Represents a financial transaction on a user account.
   """
-  use Ecto.Schema
-  import Ecto.Changeset
+  use LedgerBankApi.Core.SchemaHelpers
 
   @derive {Jason.Encoder, only: [:id, :description, :amount, :direction, :posted_at, :account_id, :user_id, :inserted_at, :updated_at]}
 
-  @primary_key {:id, :binary_id, autogenerate: true}
-  @foreign_key_type :binary_id
   schema "transactions" do
     field :description, :string
     field :amount, :decimal
@@ -28,10 +25,10 @@ defmodule LedgerBankApi.Financial.Schemas.Transaction do
     struct
     |> cast(attrs, @fields)
     |> validate_required(@required_fields)
-    |> validate_inclusion(:direction, ["CREDIT", "DEBIT"])
-    |> validate_amount_positive()
-    |> validate_description_length()
-    |> validate_posted_at_not_future()
+    |> validate_direction_field(:direction)
+    |> validate_amount_positive(:amount)
+    |> validate_description_length(:description)
+    |> validate_not_future(:posted_at)
   end
 
   def changeset(struct, attrs) do
@@ -41,7 +38,6 @@ defmodule LedgerBankApi.Financial.Schemas.Transaction do
     |> foreign_key_constraint(:user_id)
     |> validate_user_owns_account()
   end
-
 
   defp validate_user_owns_account(changeset) do
     user_id = get_change(changeset, :user_id)
@@ -54,37 +50,6 @@ defmodule LedgerBankApi.Financial.Schemas.Transaction do
       # Comprehensive ownership validation should be done at the application level
       # where proper preloading and joins can be used
       changeset
-    end
-  end
-
-  defp validate_amount_positive(changeset) do
-    amount = get_change(changeset, :amount)
-    if is_nil(amount) do
-      changeset
-    else
-      if Decimal.gt?(amount, Decimal.new(0)) do
-        changeset
-      else
-        add_error(changeset, :amount, "must be greater than zero")
-      end
-    end
-  end
-
-  defp validate_description_length(changeset) do
-    changeset
-    |> validate_length(:description, min: 1, max: 255)
-  end
-
-  defp validate_posted_at_not_future(changeset) do
-    posted_at = get_change(changeset, :posted_at)
-    if is_nil(posted_at) do
-      changeset
-    else
-      if DateTime.compare(posted_at, DateTime.utc_now()) == :gt do
-        add_error(changeset, :posted_at, "cannot be in the future")
-      else
-        changeset
-      end
     end
   end
 end

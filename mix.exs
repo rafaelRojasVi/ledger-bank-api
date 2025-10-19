@@ -59,10 +59,19 @@ defmodule LedgerBankApi.MixProject do
       {:mox, "~> 1.1", only: :test},
       {:bypass, "~> 2.1", only: :test},
       {:req, "~> 0.5.10"},
-      {:argon2_elixir, "~> 3.0"},
+      {:pbkdf2_elixir, "~> 2.0"},
       {:stream_data, "~> 0.6", only: :test},
       {:open_api_spex, "~> 3.18"},
-      {:phoenix_swagger, "~> 0.8.3"}
+      {:phoenix_swagger, "~> 0.8.3"},
+      {:cors_plug, "~> 3.0"},
+      {:prometheus_ex, "~> 3.1"},
+      {:prometheus_plugs, "~> 1.1"},
+      {:fuse, "~> 2.5"},
+      {:absinthe, "~> 1.7"},
+      {:absinthe_plug, "~> 1.5"},
+      {:opentelemetry, "~> 1.3"},
+      {:opentelemetry_exporter, "~> 1.6"},
+      {:opentelemetry_api, "~> 1.2"}
     ]
   end
 

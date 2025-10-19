@@ -2,8 +2,7 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
   @moduledoc """
   Oban worker for processing user payments in the background.
 
-  Uses pure domain error handling with canonical Error structs.
-  All errors are returned as {:error, %Error{}} tuples with proper categorization.
+  Uses WorkerBehavior for standardized error handling, telemetry, and retry logic.
 
   ## Configuration
   - Queue: `:payments`
@@ -12,59 +11,38 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
   - Backoff: Exponential with custom error-based delays
   - Uniqueness: 60 seconds period on payment_id
   """
-  use Oban.Worker,
+  use LedgerBankApi.Core.WorkerBehavior,
     queue: :payments,
     max_attempts: 5,
     priority: 0,
     tags: ["payment", "financial"]
-  require Logger
+
   import Ecto.Query, warn: false
-  alias LedgerBankApi.Core.{Error, ErrorHandler}
   alias LedgerBankApi.Repo
 
-  @impl Oban.Worker
-  @doc """
-  Performs the payment processing for a given payment_id.
-  Returns :ok on success or {:error, %Error{}} on failure.
-  """
-  def perform(%Oban.Job{args: %{"payment_id" => payment_id}} = job) do
-    start_time = System.monotonic_time(:millisecond)
-    correlation_id = Error.generate_correlation_id()
-    context = %{
-      worker: __MODULE__,
-      payment_id: payment_id,
-      job_id: job.id,
-      attempt: job.attempt,
-      max_attempts: job.max_attempts,
-      correlation_id: correlation_id
-    }
-
-    Logger.info("Starting payment processing", context)
-
-    result = with {:ok, _payment} <- fetch_payment(payment_id, context),
-                  {:ok, _result} <- process_payment(payment_id, context) do
-      duration = System.monotonic_time(:millisecond) - start_time
-      Logger.info("Payment processed successfully", Map.put(context, :duration_ms, duration))
-
-      # Emit success telemetry
-      emit_telemetry(:success, duration, context)
-      :ok
-    else
-      {:error, %Error{} = error} ->
-        duration = System.monotonic_time(:millisecond) - start_time
-        log_error(error, Map.put(context, :duration_ms, duration))
-
-        # Emit failure telemetry
-        emit_telemetry(:failure, duration, Map.put(context, :error_reason, error.reason))
-
-        handle_worker_error(error, context)
-    end
-
-    result
-  end
+  @impl LedgerBankApi.Core.WorkerBehavior
+  def worker_name, do: "PaymentWorker"
 
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(5)
+
+  @impl LedgerBankApi.Core.WorkerBehavior
+  @doc """
+  Performs the payment processing for a given payment_id.
+  Returns {:ok, result} or {:error, %Error{}}.
+  """
+  def perform_work(%{"payment_id" => payment_id}, context) do
+    with {:ok, _payment} <- fetch_payment(payment_id, context),
+         {:ok, result} <- process_payment(payment_id, context) do
+      {:ok, result}
+    end
+  end
+
+  # Extract payment_id into context for logging
+  @impl LedgerBankApi.Core.WorkerBehavior
+  def extract_context_from_args(%{"payment_id" => payment_id}) do
+    %{payment_id: payment_id}
+  end
 
   # ============================================================================
   # PRIVATE DOMAIN FUNCTIONS
@@ -105,53 +83,10 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
   end
 
   # ============================================================================
-  # ERROR HANDLING
+  # FINANCIAL-SPECIFIC ERROR HANDLING (Enhanced DLQ Logic)
   # ============================================================================
-
-  defp log_error(%Error{} = error, context) do
-    Logger.error("Payment processing failed",
-      Map.merge(Error.to_log_map(error), context)
-    )
-  end
-
-  defp handle_worker_error(%Error{} = error, context) do
-    # Enhanced financial error handling with specific retry logic
-    retry_decision = determine_retry_strategy(error, context)
-
-    case retry_decision do
-      {:retry, retry_info} ->
-        # Log retry decision with financial-specific details
-        Logger.info("Payment worker will retry", Map.merge(%{
-          error_reason: error.reason,
-          error_category: error.category,
-          retryable: error.retryable,
-          current_attempt: context.attempt,
-          max_job_attempts: context.max_attempts,
-          retry_strategy: retry_info.strategy,
-          retry_delay: retry_info.delay,
-          retry_reason: retry_info.reason
-        }, retry_info.metadata || %{}))
-
-      {:dead_letter, dlq_info} ->
-        # Log non-retryable error with dead letter queue details
-        Logger.warning("Payment worker will not retry - sending to dead letter queue", Map.merge(%{
-          error_reason: error.reason,
-          error_category: error.category,
-          retryable: error.retryable,
-          dlq_reason: dlq_info.reason,
-          dlq_action: dlq_info.action
-        }, dlq_info.metadata || %{}))
-
-        # Handle dead letter queue actions
-        handle_dead_letter_queue(error, context, dlq_info)
-
-        # Emit dead-letter queue telemetry
-        emit_dead_letter_telemetry(error, context)
-    end
-
-    # Return the canonical error - Oban will handle retries based on the error
-    {:error, error}
-  end
+  # Note: Basic retry logic is handled by WorkerBehavior
+  # This section provides financial-specific dead letter queue actions
 
   @doc false
   def backoff(%Oban.Job{attempt: attempt, args: %{"error_reason" => reason}}) do
@@ -305,208 +240,5 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
         errors: job.errors
       }}
     end
-  end
-
-  # ============================================================================
-  # RETRY STRATEGY AND DEAD LETTER QUEUE
-  # ============================================================================
-
-  defp determine_retry_strategy(%Error{} = error, context) do
-    # Financial-specific retry strategy based on error type and context
-    case {error.reason, error.category, context.attempt, context.max_attempts} do
-      # Business rule errors - generally not retryable
-      {reason, :business_rule, _, _} when reason in [
-        :insufficient_funds, :daily_limit_exceeded, :amount_exceeds_limit,
-        :account_inactive, :duplicate_transaction, :already_processed
-      ] ->
-        {:dead_letter, %{
-          reason: "business_rule_violation",
-          action: "mark_payment_failed",
-          metadata: %{error_reason: reason, category: :business_rule}
-        }}
-
-      # Validation errors - not retryable
-      {_, :validation, _, _} ->
-        {:dead_letter, %{
-          reason: "validation_error",
-          action: "mark_payment_failed",
-          metadata: %{category: :validation}
-        }}
-
-      # Conflict errors - not retryable
-      {_, :conflict, _, _} ->
-        {:dead_letter, %{
-          reason: "conflict_error",
-          action: "mark_payment_failed",
-          metadata: %{category: :conflict}
-        }}
-
-      # System errors - retry with exponential backoff
-      {_, :system, attempt, max_attempts} when attempt < max_attempts ->
-        {:retry, %{
-          strategy: "exponential_backoff",
-          delay: calculate_retry_delay(attempt, :system),
-          reason: "system_error_retryable",
-          metadata: %{attempt: attempt, max_attempts: max_attempts}
-        }}
-
-      # External dependency errors - retry with longer delays
-      {_, :external_dependency, attempt, max_attempts} when attempt < max_attempts ->
-        {:retry, %{
-          strategy: "exponential_backoff_with_jitter",
-          delay: calculate_retry_delay(attempt, :external_dependency),
-          reason: "external_dependency_retryable",
-          metadata: %{attempt: attempt, max_attempts: max_attempts}
-        }}
-
-      # Max attempts reached - send to dead letter queue
-      {_, _, attempt, max_attempts} when attempt >= max_attempts ->
-        {:dead_letter, %{
-          reason: "max_attempts_exceeded",
-          action: "mark_payment_failed",
-          metadata: %{attempt: attempt, max_attempts: max_attempts}
-        }}
-
-      # Default case - retry if retryable
-      _ ->
-        if Error.should_retry?(error) do
-          {:retry, %{
-            strategy: "default_exponential_backoff",
-            delay: calculate_retry_delay(context.attempt, :default),
-            reason: "default_retryable_error",
-            metadata: %{attempt: context.attempt}
-          }}
-        else
-          {:dead_letter, %{
-            reason: "non_retryable_error",
-            action: "mark_payment_failed",
-            metadata: %{error_reason: error.reason, category: error.category}
-          }}
-        end
-    end
-  end
-
-  defp calculate_retry_delay(attempt, error_type) do
-    base_delay = case error_type do
-      :system -> 2000
-      :external_dependency -> 3000
-      :default -> 1000
-    end
-
-    # Exponential backoff with jitter
-    jitter = :rand.uniform(trunc(base_delay / 2))
-    trunc(base_delay * :math.pow(2, attempt - 1)) + jitter
-  end
-
-  defp handle_dead_letter_queue(%Error{} = error, context, dlq_info) do
-    # Handle different dead letter queue actions
-    case dlq_info.action do
-      "mark_payment_failed" ->
-        mark_payment_as_failed(context.payment_id, error, context)
-
-      "notify_admin" ->
-        notify_admin_of_failed_payment(context.payment_id, error, context)
-
-      "schedule_manual_review" ->
-        schedule_manual_review(context.payment_id, error, context)
-
-      _ ->
-        Logger.warning("Unknown dead letter queue action", %{
-          action: dlq_info.action,
-          payment_id: context.payment_id,
-          error_reason: error.reason
-        })
-    end
-  end
-
-  defp mark_payment_as_failed(payment_id, error, context) do
-    try do
-      # Update payment status to FAILED with error details
-      _financial_service = Application.get_env(:ledger_bank_api, :financial_service, LedgerBankApi.Financial.FinancialService)
-
-      # This would typically call a method to mark payment as failed
-      # For now, we'll log the action
-      Logger.info("Marking payment as failed", %{
-        payment_id: payment_id,
-        error_reason: error.reason,
-        error_category: error.category,
-        correlation_id: context.correlation_id
-      })
-
-      # In a real implementation, you would call:
-      # financial_service.mark_payment_failed(payment_id, error)
-
-    rescue
-      e ->
-        Logger.error("Failed to mark payment as failed", %{
-          payment_id: payment_id,
-          error: inspect(e),
-          correlation_id: context.correlation_id
-        })
-    end
-  end
-
-  defp notify_admin_of_failed_payment(payment_id, error, context) do
-    # In a real implementation, this would send notifications to admins
-    Logger.warning("Admin notification: Payment failed", %{
-      payment_id: payment_id,
-      error_reason: error.reason,
-      error_category: error.category,
-      correlation_id: context.correlation_id,
-      action: "admin_notification_required"
-    })
-  end
-
-  defp schedule_manual_review(payment_id, error, context) do
-    # In a real implementation, this would create a manual review task
-    Logger.info("Scheduling manual review for payment", %{
-      payment_id: payment_id,
-      error_reason: error.reason,
-      error_category: error.category,
-      correlation_id: context.correlation_id,
-      action: "manual_review_scheduled"
-    })
-  end
-
-  # ============================================================================
-  # TELEMETRY
-  # ============================================================================
-
-  defp emit_telemetry(status, duration, context) do
-    base_metadata = %{
-      worker: "PaymentWorker",
-      payment_id: context.payment_id,
-      job_id: context.job_id,
-      attempt: context.attempt,
-      correlation_id: context.correlation_id
-    }
-
-    # Add error_reason if present in context
-    metadata = if Map.has_key?(context, :error_reason) do
-      Map.put(base_metadata, :error_reason, context.error_reason)
-    else
-      base_metadata
-    end
-
-    :telemetry.execute(
-      [:ledger_bank_api, :worker, :payment, status],
-      %{duration: duration, count: 1},
-      metadata
-    )
-  end
-
-  defp emit_dead_letter_telemetry(error, context) do
-    :telemetry.execute(
-      [:ledger_bank_api, :worker, :dead_letter],
-      %{count: 1},
-      %{
-        worker: "PaymentWorker",
-        payment_id: context.payment_id,
-        job_id: context.job_id,
-        error_reason: error.reason,
-        error_category: error.category,
-        correlation_id: context.correlation_id
-      }
-    )
   end
 end

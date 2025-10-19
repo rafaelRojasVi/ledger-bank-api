@@ -7,6 +7,9 @@
 # General application configuration
 import Config
 
+# Import OpenTelemetry configuration
+import_config "telemetry.exs"
+
 config :ledger_bank_api,
   ecto_repos: [LedgerBankApi.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
@@ -90,6 +93,11 @@ config :ledger_bank_api, :cache,
   default_ttl: 300,
   live_snapshot_ttl: 30,
   account_cache_ttl: 300
+
+# Configure cache adapter (pluggable for horizontal scaling)
+config :ledger_bank_api, :cache_adapter,
+  LedgerBankApi.Core.Cache.EtsAdapter  # Default: ETS (single-node)
+  # Future: LedgerBankApi.Core.Cache.RedisAdapter for distributed caching
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

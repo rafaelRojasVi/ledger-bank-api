@@ -2,13 +2,10 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
   @moduledoc """
   Ecto schema for banks. Represents a financial institution.
   """
-  use Ecto.Schema
-  import Ecto.Changeset
+  use LedgerBankApi.Core.SchemaHelpers
 
   @derive {Jason.Encoder, only: [:id, :name, :country, :logo_url, :api_endpoint, :status, :integration_module, :code, :inserted_at, :updated_at]}
 
-  @primary_key {:id, :binary_id, autogenerate: true}
-  @foreign_key_type :binary_id
   schema "banks" do
     field :name, :string
     field :country, :string
@@ -40,10 +37,10 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
     |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])
     |> validate_format(:code, ~r/^[A-Z0-9_]+$/)
     |> validate_length(:code, min: 3, max: 32)
-    |> validate_country_code()
-    |> validate_name_length()
-    |> validate_logo_url_format()
-    |> validate_api_endpoint_format()
+    |> validate_country_code(:country)
+    |> validate_name_length(:name)
+    |> validate_url_format(:logo_url)
+    |> validate_url_format(:api_endpoint)
     |> validate_integration_module()
     |> validate_name_uniqueness()
   end
@@ -56,9 +53,9 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
     |> cast(attrs, [:name, :logo_url, :api_endpoint, :status, :integration_module])
     |> validate_required([:name])
     |> validate_inclusion(:status, ["ACTIVE", "INACTIVE"])
-    |> validate_name_length()
-    |> validate_logo_url_format()
-    |> validate_api_endpoint_format()
+    |> validate_name_length(:name)
+    |> validate_url_format(:logo_url)
+    |> validate_url_format(:api_endpoint)
     |> validate_integration_module()
     |> validate_name_uniqueness()
   end
@@ -88,51 +85,6 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
         changeset
       else
         add_error(changeset, :name, "contains invalid characters. Only letters, numbers, spaces, and common punctuation are allowed")
-      end
-    end
-  end
-
-  defp validate_country_code(changeset) do
-    country = get_change(changeset, :country)
-    if is_nil(country) do
-      changeset
-    else
-      # Basic country code validation (2-3 letter codes)
-      if String.match?(country, ~r/^[A-Z]{2,3}$/) do
-        changeset
-      else
-        add_error(changeset, :country, "must be a valid country code (2-3 uppercase letters)")
-      end
-    end
-  end
-
-  defp validate_name_length(changeset) do
-    changeset
-    |> validate_length(:name, min: 2, max: 100)
-  end
-
-  defp validate_logo_url_format(changeset) do
-    logo_url = get_change(changeset, :logo_url)
-    if is_nil(logo_url) or logo_url == "" do
-      changeset
-    else
-      if String.match?(logo_url, ~r/^https?:\/\/.+\..+/) do
-        changeset
-      else
-        add_error(changeset, :logo_url, "must be a valid URL")
-      end
-    end
-  end
-
-  defp validate_api_endpoint_format(changeset) do
-    api_endpoint = get_change(changeset, :api_endpoint)
-    if is_nil(api_endpoint) or api_endpoint == "" do
-      changeset
-    else
-      if String.match?(api_endpoint, ~r/^https?:\/\/.+\..+/) do
-        changeset
-      else
-        add_error(changeset, :api_endpoint, "must be a valid URL")
       end
     end
   end

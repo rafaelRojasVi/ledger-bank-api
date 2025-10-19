@@ -11,13 +11,19 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClient do
 
   @impl true
   def fetch_accounts(%{access_token: token}) do
-    headers = [{"Authorization", "Bearer #{token}"}]
-    url = "#{@api_url}/accounts"
-    case Req.get(url, headers: headers) do
-      {:ok, %{status: 200, body: %{"accounts" => accounts}}} -> {:ok, accounts}
-      {:ok, %{status: status, body: body}} -> {:error, {status, body}}
-      error -> error
-    end
+    LedgerBankApi.Core.CircuitBreaker.call_with_fallback(:bank_api,
+      fn ->
+        headers = [{"Authorization", "Bearer #{token}"}]
+        url = "#{@api_url}/accounts"
+        case Req.get(url, headers: headers) do
+          {:ok, %{status: 200, body: %{"accounts" => accounts}}} -> {:ok, accounts}
+          {:ok, %{status: status, body: body}} -> {:error, {status, body}}
+          error -> error
+        end
+      end,
+      fn -> {:ok, []} end,
+      timeout: 30_000
+    )
   end
 
   @impl true

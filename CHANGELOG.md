@@ -8,6 +8,131 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+#### RFC 9457 Problem Details Implementation (2025-10-14)
+- **RFC 9457 Compliance** - Standardized error responses with `application/problem+json`
+  - Added `type`, `title`, `status`, `detail`, and `instance` fields to all error responses
+  - Implemented proper content-type headers for problem details
+  - Added `Retry-After` headers for retryable errors
+  - Sanitized sensitive data in problem detail responses
+
+- **Problem Type Registry** - New `/api/problems` endpoint for error discovery
+  - `GET /api/problems` - List all available problem types with categories
+  - `GET /api/problems/:reason` - Get detailed information for specific error types
+  - `GET /api/problems/category/:category` - List errors by category
+  - Provides descriptions, examples, retry policies, and HTTP status codes
+  - Enables client-side error handling and user-friendly error messages
+
+- **Enhanced Error Handling** - Improved error system with RFC 9457 compliance
+  - Added new error reasons: `:invalid_reason_format`, `:invalid_category`, `:invalid_category_format`
+  - Enhanced `ErrorAdapter` with `to_problem_details/2` function
+  - Added `sanitize_context_for_problem/1` for secure error responses
+  - Maintained backward compatibility with existing error handling
+
+#### Architecture Improvements (2025-10-14)
+- **SchemaHelpers Module** - Reusable changeset validation functions
+  - Added 16 common validation functions for Ecto schemas
+  - `validate_amount_positive/2` - Validates Decimal amounts > 0
+  - `validate_not_future/2` - Validates DateTime fields not in future
+  - `validate_currency_field/2` - Validates 3-letter currency codes (USD, GBP, EUR)
+  - `validate_direction_field/2` - Validates CREDIT/DEBIT enum
+  - `validate_country_code/2` - Validates 2-3 letter country codes
+  - `validate_iban_format/2` - Validates IBAN format
+  - `validate_swift_format/2` - Validates SWIFT code format
+  - `validate_routing_number_format/2` - Validates 9-digit routing numbers
+  - `validate_last_four_format/2` - Validates 4-digit last four
+  - `validate_url_format/2` - Validates HTTP/HTTPS URLs
+  - `validate_decimal_format/2` - Validates Decimal type
+  - `validate_external_account_id_format/2` - Validates alphanumeric IDs
+  - `validate_username_format/2` - Validates username format (3-50 chars)
+  - `validate_description_length/2` - Validates descriptions (1-255 chars)
+  - `validate_account_name_length/2` - Validates account names (1-100 chars)
+  - `validate_name_length/2` - Validates names (2-100 chars)
+  - `validate_balance_limits/1` - Account-type aware balance validation
+  - Eliminates ~220 lines of duplicated validation code
+  - Provides consistent error messages across all schemas
+
+- **WorkerBehavior Module** - Standardized Oban worker infrastructure
+  - Created behaviour for consistent worker patterns
+  - Automatic timing and correlation ID generation
+  - Structured logging (start, success, failure)
+  - Telemetry emission with standard events
+  - Retry logic based on Error.should_retry?/1 policy
+  - Dead letter queue telemetry for non-retryable errors
+  - Customizable context extraction from job args
+  - Eliminates ~280 lines of boilerplate across workers
+
+- **CacheAdapter Behaviour** - Pluggable cache backend support
+  - Created CacheAdapter behaviour with 8 callbacks
+  - Implemented EtsAdapter (preserves existing ETS behavior)
+  - Configuration-driven adapter selection
+  - Ready for Redis/Memcached without code changes
+  - Callbacks: init/0, get/1, put/3, get_or_put/3, delete/1, clear/0, stats/0, cleanup/0
+  - Future-proofs for horizontal scaling
+
+- **Queryable Behaviour** - Standardized query building (optional)
+  - Created behaviour for consistent filtering/sorting/pagination
+  - Explicit field whitelisting for security
+  - Type-aware filtering (:string, :boolean, :integer, :date_range)
+  - Example implementation: UserQueries module
+  - Non-breaking (existing query code still works)
+
+- **Documentation**
+  - Added `docs/ARCHITECTURE_IMPROVEMENTS.md` - Full analysis and rationale (613 lines)
+  - Added `docs/QUICK_REFERENCE_PATTERNS.md` - Developer quick reference (345 lines)
+  - Enhanced inline documentation for all new modules
+
+### Changed
+- **Schema Refactoring** - Migrated 6 schemas to use SchemaHelpers
+  - `UserPayment` - Now uses SchemaHelpers (-30 lines)
+  - `Transaction` - Now uses SchemaHelpers (-30 lines)
+  - `UserBankAccount` - Now uses SchemaHelpers (-60 lines)
+  - `Bank` - Now uses SchemaHelpers (-40 lines)
+  - `BankBranch` - Now uses SchemaHelpers (-50 lines)
+  - `UserBankLogin` - Now uses SchemaHelpers (-12 lines)
+  - All schemas now use `use LedgerBankApi.Core.SchemaHelpers` instead of separate `use Ecto.Schema` + imports
+
+- **Worker Refactoring** - Migrated 2 workers to use WorkerBehavior
+  - `PaymentWorker` - Now uses WorkerBehavior (-180 lines boilerplate)
+  - `BankSyncWorker` - Now uses WorkerBehavior (-100 lines boilerplate)
+  - Workers now implement 3 callbacks: worker_name/0, timeout/1, perform_work/2
+  - Infrastructure code (logging, telemetry, retry) automatically handled
+  - Telemetry events maintained: `[:ledger_bank_api, :worker, :payment | :bank_sync, :success | :failure]`
+
+- **Cache Refactoring** - Migrated to adapter pattern
+  - `Cache` module now delegates to CacheAdapter
+  - ETS implementation extracted to `Cache.EtsAdapter`
+  - Configuration added: `:cache_adapter` setting
+  - Zero breaking changes to cache API
+  - Application initialization updated to use adapter.init()
+
+### Fixed
+- Fixed conflicting `timeout/1` callback between Oban.Worker and WorkerBehavior
+- Fixed worker name consistency for telemetry events (PaymentWorker, BankSyncWorker)
+- Fixed `extract_context_from_args/1` visibility (now properly public callback)
+
+### Performance
+- Reduced codebase by ~500 lines of duplicated logic
+- Added ~600 lines of reusable infrastructure
+- Net change: +100 lines (8% reduction in duplication)
+- Improved maintainability through single source of truth
+- Faster development of new features (less boilerplate)
+
+### Removed
+- Deleted `DASHBOARD_GUIDE.md` (documentation consolidation)
+- Removed duplicated validation functions from individual schemas
+- Removed duplicated worker infrastructure code
+
+### In Progress
+- Planning for Redis cache adapter implementation
+- Considering Queryable adoption for additional services
+- Evaluating GraphQL API endpoint
+
+---
+
+## [Unreleased] - Previous
+
+### Added
 - **Comprehensive Test Suite Expansion** - Added extensive unit and integration tests
   - Added schema-level tests for User and RefreshToken models (2,027 lines)
   - Added Token service tests covering JWT generation, verification, and rotation (639 lines)
@@ -19,12 +144,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added SecurityAudit plug tests for suspicious activity detection (593 lines)
   - Total new test coverage: **6,456 lines** across 8 new test files
   - All 1,448 tests passing successfully ✅
-
-### Removed
-- Deleted `DASHBOARD_GUIDE.md` (documentation consolidation)
-
-### In Progress
-- Planning for future features and improvements
 
 ---
 

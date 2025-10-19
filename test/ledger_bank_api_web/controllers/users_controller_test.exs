@@ -92,7 +92,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
       assert error["details"]["field"] == "email"
     end
@@ -109,7 +109,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
       assert error["details"]["field"] == "full_name"
     end
@@ -126,7 +126,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_credentials"
       assert error["reason"] == "invalid_credentials"
     end
 
@@ -142,7 +142,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_credentials"
       assert error["reason"] == "invalid_credentials"
     end
 
@@ -159,7 +159,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_email_format"
       assert error["reason"] == "invalid_email_format"
     end
 
@@ -176,7 +176,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
     end
 
@@ -193,7 +193,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
     end
 
@@ -210,7 +210,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_password_format"
       assert error["reason"] == "invalid_password_format"
     end
 
@@ -227,7 +227,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_password_format"
       assert error["reason"] == "invalid_password_format"
     end
 
@@ -270,7 +270,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 409)
       assert %{"error" => error} = response
-      assert error["type"] == "conflict"
+      assert error["type"] == "https://api.ledgerbank.com/problems/email_already_exists"
       assert error["reason"] == "email_already_exists"
     end
 
@@ -288,7 +288,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_name_format"
       assert error["reason"] == "invalid_name_format"
     end
 
@@ -305,7 +305,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
     end
 
@@ -322,7 +322,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
     end
 
@@ -331,7 +331,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
     end
 
@@ -340,7 +340,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
     end
   end
 
@@ -445,7 +445,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
       assert error["reason"] == "invalid_token"
     end
 
@@ -456,7 +456,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
       assert error["reason"] == "invalid_token"
     end
 
@@ -470,7 +470,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -484,7 +484,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -580,7 +580,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 404)
       assert %{"error" => error} = response
-      assert error["type"] == "not_found"
+      assert error["type"] == "https://api.ledgerbank.com/problems/user_not_found"
       assert error["reason"] == "user_not_found"
     end
 
@@ -591,7 +591,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_uuid_format"
     end
 
     test "fails to show user without authentication", %{conn: conn} do
@@ -600,7 +600,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
       assert error["reason"] == "invalid_token"
     end
 
@@ -615,7 +615,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -630,7 +630,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
   end
@@ -694,7 +694,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 404)
       assert %{"error" => error} = response
-      assert error["type"] == "not_found"
+      assert error["type"] == "https://api.ledgerbank.com/problems/user_not_found"
       assert error["reason"] == "user_not_found"
     end
 
@@ -707,7 +707,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_uuid_format"
     end
 
     test "fails to update user with invalid email", %{conn: conn, access_token: access_token} do
@@ -720,7 +720,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_email_format"
       assert error["reason"] == "invalid_email_format"
     end
 
@@ -734,7 +734,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_role"
       assert error["reason"] == "invalid_role"
     end
 
@@ -748,7 +748,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_status"
       assert error["reason"] == "invalid_status"
     end
 
@@ -774,7 +774,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
       assert error["reason"] == "invalid_token"
     end
 
@@ -790,7 +790,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -803,7 +803,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/missing_fields"
       assert error["reason"] == "missing_fields"
     end
   end
@@ -852,7 +852,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 404)
       assert %{"error" => error} = response
-      assert error["type"] == "not_found"
+      assert error["type"] == "https://api.ledgerbank.com/problems/user_not_found"
       assert error["reason"] == "user_not_found"
     end
 
@@ -863,7 +863,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_uuid_format"
     end
 
     test "fails to delete user without authentication", %{conn: conn} do
@@ -872,7 +872,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
       assert error["reason"] == "invalid_token"
     end
 
@@ -887,7 +887,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -902,7 +902,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
   end
@@ -958,7 +958,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
       assert error["reason"] == "invalid_token"
     end
 
@@ -972,7 +972,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -986,7 +986,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -997,7 +997,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
       assert error["reason"] == "invalid_token"
     end
   end
@@ -1127,7 +1127,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       # Should return 403 Forbidden
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
       assert error["reason"] == "insufficient_permissions"
     end
 
@@ -1145,7 +1145,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       # Should return 401 Unauthorized
       response = json_response(conn, 401)
       assert %{"error" => error} = response
-      assert error["type"] == "unauthorized"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
     end
 
     test "admin user creation validates password length for admin role", %{conn: conn, admin_token: admin_token} do
@@ -1164,7 +1164,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       # Should fail validation due to password length
       response = json_response(conn, 400)
       assert %{"error" => error} = response
-      assert error["type"] == "validation_error"
+      assert error["type"] == "https://api.ledgerbank.com/problems/invalid_password_format"
     end
 
     test "admin user creation enforces policy checks", %{conn: conn} do
@@ -1187,7 +1187,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       # Support user cannot access admin-only endpoint
       response = json_response(conn, 403)
       assert %{"error" => error} = response
-      assert error["type"] == "forbidden"
+      assert error["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
     end
   end
 end

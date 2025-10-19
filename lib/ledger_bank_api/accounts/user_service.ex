@@ -515,7 +515,7 @@ defmodule LedgerBankApi.Accounts.UserService do
   @dummy_password_hash (if Mix.env() == :test do
     LedgerBankApi.PasswordHelper.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
   else
-    Argon2.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
+    Pbkdf2.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
   end)
 
   @doc """
@@ -550,7 +550,7 @@ defmodule LedgerBankApi.Accounts.UserService do
       verify_function = if Mix.env() == :test do
         &LedgerBankApi.PasswordHelper.verify_pass/2
       else
-        &Argon2.verify_pass/2
+        &Pbkdf2.verify_pass/2
       end
 
       password_valid? = verify_function.(password, password_hash)

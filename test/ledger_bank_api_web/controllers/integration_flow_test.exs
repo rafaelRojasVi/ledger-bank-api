@@ -263,7 +263,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail with insufficient funds error
       assert %{
         "error" => %{
-          "type" => "unprocessable_entity",
+                "type" => "https://api.ledgerbank.com/problems/insufficient_funds",
           "reason" => "insufficient_funds",
           "code" => 422
         }
@@ -441,7 +441,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should be forbidden - User A cannot view User B's payments
       assert %{
         "error" => %{
-          "type" => "forbidden",
+          "type" => "https://api.ledgerbank.com/problems/insufficient_permissions",
           "reason" => "insufficient_permissions",
           "code" => 403
         }
@@ -564,7 +564,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "unauthorized",
+                "type" => "https://api.ledgerbank.com/problems/invalid_credentials",
           "reason" => "invalid_credentials",
           "code" => 401
         }
@@ -775,7 +775,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail with duplicate transaction error
       assert %{
         "error" => %{
-          "type" => "conflict",
+                "type" => "https://api.ledgerbank.com/problems/duplicate_transaction",
           "reason" => "duplicate_transaction",
           "code" => 409
         }
@@ -852,7 +852,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail with 403 because user can only process PENDING payments
       assert %{
         "error" => %{
-          "type" => "forbidden",
+          "type" => "https://api.ledgerbank.com/problems/insufficient_permissions",
           "code" => 403
         }
       } = json_response(conn, 403)
@@ -877,7 +877,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail with 409 because payment is already cancelled (business rule)
       assert %{
         "error" => %{
-          "type" => "conflict",
+                "type" => "https://api.ledgerbank.com/problems/already_processed",
           "reason" => "already_processed",
           "code" => 409
         }
@@ -1150,7 +1150,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/missing_fields",
           "reason" => "missing_fields",
           "code" => 400
         }
@@ -1169,7 +1169,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_email_format",
           "reason" => "invalid_email_format",
           "code" => 400
         }
@@ -1188,7 +1188,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_password_format",
           "code" => 400
         }
       } = json_response(conn, 400)
@@ -1206,7 +1206,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_password_format",
           "code" => 400
         }
       } = json_response(conn, 400)
@@ -1238,7 +1238,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "unauthorized",
+                "type" => "https://api.ledgerbank.com/problems/invalid_credentials",
           "reason" => "invalid_credentials",
           "code" => 401
         }
@@ -1278,7 +1278,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_amount_format",
           "code" => 400
         }
       } = json_response(conn, 400)
@@ -1299,7 +1299,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "unprocessable_entity",
+                "type" => "https://api.ledgerbank.com/problems/negative_amount",
           "reason" => "negative_amount",
           "code" => 422
         }
@@ -1321,7 +1321,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_direction",
           "reason" => "invalid_direction",
           "code" => 400
         }
@@ -1343,7 +1343,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_payment_type",
           "reason" => "invalid_payment_type",
           "code" => 400
         }
@@ -1574,7 +1574,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_description_format",
           "code" => 400
         }
       } = json_response(conn, 400)
@@ -1610,7 +1610,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/missing_fields",
           "code" => 400
         }
       } = json_response(conn, 400)
@@ -1666,7 +1666,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # We'll just check for 500 since that's what actually happens
       assert %{
         "error" => %{
-          "type" => "internal_server_error",
+                "type" => "https://api.ledgerbank.com/problems/internal_server_error",
           "code" => 500
         }
       } = json_response(conn, 500)
@@ -1689,7 +1689,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "not_found",
+                "type" => "https://api.ledgerbank.com/problems/account_not_found",
           "code" => 404
         }
       } = json_response(conn, 404)
@@ -1841,7 +1841,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail validation, not execute SQL
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_email_format",
           "code" => 400
         }
       } = json_response(conn, 400)
@@ -1939,7 +1939,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should reject due to security validation
       assert %{
         "error" => %{
-          "type" => "validation_error",
+                "type" => "https://api.ledgerbank.com/problems/invalid_email_format",
           "code" => 400
         }
       } = json_response(conn, 400)
@@ -2145,7 +2145,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # User cannot cancel completed payment (policy check fails first)
       assert %{
         "error" => %{
-          "type" => "forbidden",
+          "type" => "https://api.ledgerbank.com/problems/insufficient_permissions",
           "code" => 403
         }
       } = json_response(conn, 403)
@@ -2183,7 +2183,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail because users can't change their own role
       assert %{
         "error" => %{
-          "type" => "forbidden",
+          "type" => "https://api.ledgerbank.com/problems/insufficient_permissions",
           "code" => 403
         }
       } = json_response(conn, 403)
@@ -2532,7 +2532,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "unauthorized",
+                "type" => "https://api.ledgerbank.com/problems/invalid_token",
           "code" => 401
         }
       } = json_response(conn, 401)
@@ -2676,7 +2676,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "conflict",
+                "type" => "https://api.ledgerbank.com/problems/email_already_exists",
           "reason" => "email_already_exists",
           "code" => 409
         }
@@ -2766,7 +2766,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail because $800 + $300 = $1100 exceeds $1000 daily limit
       assert %{
         "error" => %{
-          "type" => "unprocessable_entity",
+                "type" => "https://api.ledgerbank.com/problems/daily_limit_exceeded",
           "reason" => "daily_limit_exceeded",
           "code" => 422
         }
@@ -2847,7 +2847,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should fail with business rule error - admin cannot delete themselves
       assert %{
         "error" => %{
-          "type" => "forbidden",
+          "type" => "https://api.ledgerbank.com/problems/insufficient_permissions",
           "reason" => "insufficient_permissions",
           "code" => 403
         }
@@ -2897,7 +2897,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should return 404 because user was deleted
       assert %{
         "error" => %{
-          "type" => "not_found",
+                "type" => "https://api.ledgerbank.com/problems/user_not_found",
           "code" => 404
         }
       } = json_response(conn, 404)
@@ -2927,7 +2927,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "not_found",
+                "type" => "https://api.ledgerbank.com/problems/user_not_found",
           "code" => 404
         }
       } = json_response(conn, 404)
@@ -3044,7 +3044,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Login should fail because user is suspended
       assert %{
         "error" => %{
-          "type" => "unprocessable_entity",
+                "type" => "https://api.ledgerbank.com/problems/account_inactive",
           "reason" => "account_inactive",
           "code" => 422
         }
@@ -3132,7 +3132,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "not_found",
+                "type" => "https://api.ledgerbank.com/problems/user_not_found",
           "code" => 404
         }
       } = json_response(conn, 404)
@@ -3151,7 +3151,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # because user is deleted from DB
       assert %{
         "error" => %{
-          "type" => "not_found",
+                "type" => "https://api.ledgerbank.com/problems/user_not_found",
           "code" => 404
         }
       } = json_response(conn, 404)
@@ -3236,7 +3236,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Payment should be deleted along with user (CASCADE)
       assert %{
         "error" => %{
-          "type" => "not_found",
+                "type" => "https://api.ledgerbank.com/problems/payment_not_found",
           "reason" => "payment_not_found",
           "code" => 404
         }
@@ -3254,7 +3254,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
       # Should return 404 (not 500 server error)
       assert %{
         "error" => %{
-          "type" => "not_found",
+                "type" => "https://api.ledgerbank.com/problems/payment_not_found",
           "code" => 404
         }
       } = json_response(conn, 404)
@@ -3372,7 +3372,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "unauthorized",
+                "type" => "https://api.ledgerbank.com/problems/token_revoked",
           "code" => 401
         }
       } = json_response(conn, 401)
@@ -3565,7 +3565,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "unprocessable_entity",
+                "type" => "https://api.ledgerbank.com/problems/insufficient_funds",
           "reason" => "insufficient_funds",
           "code" => 422
         }
@@ -3737,7 +3737,7 @@ defmodule LedgerBankApiWeb.Controllers.IntegrationFlowTest do
 
       assert %{
         "error" => %{
-          "type" => "unprocessable_entity",
+                "type" => "https://api.ledgerbank.com/problems/daily_limit_exceeded",
           "reason" => "daily_limit_exceeded",
           "code" => 422
         }

@@ -59,7 +59,34 @@ defmodule LedgerBankApiWeb.Telemetry do
 
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
-      summary("vm.total_run_queue_lengths.total")
+      summary("vm.total_run_queue_lengths.total"),
+
+      # HTTP Request Metrics
+      counter("ledger_bank_api.http.requests.total",
+        tags: [:method, :status, :route],
+        description: "Total HTTP requests"
+      ),
+      summary("ledger_bank_api.http.request.duration",
+        unit: {:native, :millisecond},
+        tags: [:method, :status, :route],
+        description: "HTTP request duration"
+      ),
+
+      # Business Metrics
+      counter("ledger_bank_api.payments.created.total",
+        tags: [:status],
+        description: "Total payments created"
+      ),
+      counter("ledger_bank_api.users.created.total",
+        tags: [:role],
+        description: "Total users created"
+      ),
+
+      # Error Metrics
+      counter("ledger_bank_api.errors.total",
+        tags: [:category, :reason],
+        description: "Total errors by category and reason"
+      )
     ]
   end
 

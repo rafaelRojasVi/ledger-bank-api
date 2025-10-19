@@ -2,35 +2,160 @@
 
 <div align="center">
 
-**A Production-Ready Elixir/Phoenix Banking API with Clean Architecture**
+**A Learning Portfolio Project Demonstrating Enterprise Elixir/Phoenix Patterns**
 
 [![Elixir](https://img.shields.io/badge/Elixir-1.18+-purple?style=flat&logo=elixir)](https://elixir-lang.org/)
 [![Phoenix](https://img.shields.io/badge/Phoenix-1.7+-orange?style=flat&logo=phoenix-framework)](https://phoenixframework.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-blue?style=flat&logo=postgresql)](https://www.postgresql.org/)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat&logo=github-actions)](https://github.com/rafaelRojasVi/ledger-bank-api/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-[Features](#-features) •
+[What I Learned](#-what-i-learned) •
+[Quick Demo](#-quick-demo) •
 [Architecture](#️-architecture) •
 [Quick Start](#-quick-start) •
-[API Documentation](#-api-documentation) •
-[Deployment](#-deployment)
+[API Documentation](#-api-documentation)
 
 </div>
 
 ---
 
+## 💡 What I Learned
+
+This project started as "build a simple banking API" and evolved into a deep dive on **professional Elixir architecture**. Here's what makes this portfolio piece unique:
+
+### **Key Achievements**
+
+| **Pattern** | **What I Built** | **Why It Matters** |
+|------------|-----------------|-------------------|
+| 🏗️ **Behaviors for DRY Code** | `WorkerBehavior`, `ServiceBehavior`, `CacheAdapter`, `Queryable` | Eliminated **280+ lines** of boilerplate across workers. Shows I understand abstraction vs premature optimization. |
+| 🎯 **Error Catalog System** | 40+ error reasons → 8 categories → HTTP codes + retry policies | Most APIs have inconsistent errors. Mine has a **single source of truth** that drives retry logic, telemetry, and responses. |
+| 🔒 **Security by Design** | Constant-time auth, JWT rotation, RBAC with policies, audit logging | Banking-grade security: **timing attack prevention**, token revocation, role-based permissions. |
+| 🧪 **Test Quality** | 3,796-line integration test, edge cases (null bytes, timing), performance tests | I test like companies should: integration flows, security vulnerabilities, and performance regression. |
+| 🔄 **Background Jobs Done Right** | Oban + error-aware retry, priority queues, dead letter queue | Workers **know which errors to retry** (external API failures) vs fail fast (business rules). |
+| 📊 **Data Access Patterns** | Keyset pagination, query behaviors, ETS caching | Shows I care about **performance at scale** beyond CRUD. |
+
+### **Architecture Wins**
+
+I learned **when to abstract** and **when not to**:
+
+✅ **Abstracted** because 4+ schemas needed it:
+- `SchemaHelpers` → 220 lines of validation duplication removed
+- `Queryable` → Consistent filtering/sorting across all resources
+- `WorkerBehavior` → Standard telemetry/logging for all workers
+- `CacheAdapter` → Switch ETS → Redis with zero code changes
+
+❌ **Didn't abstract** because it would hurt clarity:
+- Controllers - Each has unique validation/authorization
+- Policies - Domain-specific rules don't generalize well
+- Migrations - Database changes need explicit audit trail
+
+**Lesson:** Abstraction is a trade-off. I chose **clarity first**, then DRY where duplication was painful (4+ instances).
+
+---
+
+## 🎤 Interview Talking Points
+
+When asked about this project, I highlight:
+
+> **"I built a banking API to learn production Elixir patterns. The interesting parts:"**
+>
+> 1. **Error Catalog System** - Instead of scattered `{:error, "some string"}` everywhere, I built an error taxonomy with 8 categories that drives HTTP codes, retry policies, and telemetry. This meant one change to add circuit breaking for all external API calls.
+>
+> 2. **Behaviors for Scale** - When I noticed 180 lines of identical code in two Oban workers, I created `WorkerBehavior`. Now adding a new worker is 30 lines vs 200, and all workers get telemetry for free.
+>
+> 3. **Security Depth** - I implemented constant-time authentication after reading about timing attacks. It's a 10-line change that prevents email enumeration via response time analysis.
+>
+> 4. **Testing Strategy** - My integration test is 3,796 lines that validates entire user flows: register → login → create payment → process payment. I also test edge cases like null byte injection and concurrent balance updates.
+
+---
+
+## 🌐 Live Demo
+
+**Interactive API Documentation:** [https://your-app.onrender.com/api/docs](https://your-app.onrender.com/api/docs)
+
+**Health Check:** [https://your-app.onrender.com/api/health](https://your-app.onrender.com/api/health)
+
+Try it now:
+```bash
+curl https://your-app.onrender.com/api/health
+```
+
+## 🚀 Quick Demo (Local)
+
+Want to run it locally? Here's a 2-minute setup:
+
+### **Step 1: Start the Server**
+
+```bash
+# Clone and setup
+git clone https://github.com/rafaelRojasVi/ledger-bank-api.git
+cd ledger-bank-api
+
+# One-command setup (requires Docker)
+./test_setup.sh
+
+# Start server
+mix phx.server
+```
+
+### **Step 2: Explore Interactive API Docs**
+
+Visit **http://localhost:4000/api/docs** to see:
+
+- 📖 **OpenAPI/Swagger UI** with "Try it out" buttons
+- 🔐 **JWT authentication** built into the UI
+- 📋 **Request/response examples** for every endpoint
+- 🧪 **Test endpoints directly** from your browser
+
+### **Step 3: Try the API**
+
+```bash
+# 1. Health check (no auth required)
+curl http://localhost:4000/api/health
+
+# 2. Login (get JWT token)
+curl -X POST http://localhost:4000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "password": "password123"
+  }'
+
+# Response includes access_token - copy it for next requests
+
+# 3. Get user profile (requires auth)
+curl http://localhost:4000/api/auth/me \
+  -H "Authorization: Bearer <your_access_token>"
+
+# 4. View user statistics (admin only)
+curl http://localhost:4000/api/users/stats \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Default credentials after seeding:**
+- Regular User: `alice@example.com` / `password123`
+- Admin User: `admin@example.com` / `adminpassword123456`
+
+---
+
 ## 📖 Overview
 
-LedgerBank API is a **production-ready financial services platform** built with Elixir and Phoenix, demonstrating enterprise-grade patterns and best practices. It provides secure banking operations, payment processing, OAuth2 integration, and comprehensive financial management capabilities.
+LedgerBank API is a **learning project** that implements **production-grade financial services** patterns in Elixir/Phoenix. It demonstrates clean architecture, sophisticated error handling, security best practices, and background job processing—all the patterns you'd find in a real fintech company.
 
-### Why LedgerBank API?
+**⚠️ Not for Production Use**: This is a portfolio/learning project. It simulates banking operations but does not integrate with real financial institutions or handle actual money.
 
-- 🏗️ **Clean Architecture** - Separation of concerns with distinct core, accounts, and financial contexts
-- 🔒 **Security First** - JWT authentication, role-based access control, constant-time authentication, and security audit logging
-- 🎯 **Error Excellence** - Sophisticated error handling with categorization, retry policies, and circuit breakers
-- 🚀 **Production Ready** - Docker support, comprehensive testing, background jobs, and monitoring
-- 📊 **Domain-Driven Design** - Pure business logic separated from infrastructure concerns
-- ⚡ **High Performance** - Keyset pagination, ETS caching, and optimized database queries
+### Why This Project Exists
+
+I built this to answer: **"How would I architect a complex Elixir API if I had to do it from scratch?"**
+
+The result:
+- 🏗️ **Clean Architecture** - Behaviors, services, policies, and pure functions
+- 🔒 **Security First** - JWT rotation, constant-time auth, RBAC, audit logs
+- 🎯 **Error Excellence** - Error catalog with retry policies and circuit breakers
+- 🚀 **Production Patterns** - Docker, CI/CD, health checks, monitoring
+- 📊 **Domain-Driven Design** - Financial and accounts contexts with clear boundaries
+- ⚡ **Performance** - Keyset pagination, ETS caching, query optimization
 
 ---
 
@@ -74,6 +199,9 @@ LedgerBank API is a **production-ready financial services platform** built with 
 - 🔌 **Circuit breaker pattern** for external services
 - 📊 **Error telemetry** and correlation IDs
 - 🏥 **Health check endpoints**
+- 🌐 **RFC 9457 Problem Details** compliance with `application/problem+json`
+- 📚 **Problem Type Registry** at `/api/problems` for error discovery
+- ⏱️ **Retry-After headers** for retryable errors
 
 ### Background Processing
 - 🔧 **Oban integration** for reliable job processing
@@ -95,12 +223,58 @@ LedgerBank API is a **production-ready financial services platform** built with 
 
 ## 🏗️ Architecture
 
+### Request Flow (What Happens When You Call the API)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. HTTP Request → POST /api/auth/login                     │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+         ┌─────────▼─────────┐
+         │  Router + Plugs   │  ← SecurityHeaders, RateLimit, SecurityAudit
+         └─────────┬─────────┘    Adds correlation ID, checks rate limits
+                   │
+         ┌─────────▼──────────┐
+         │   AuthController   │  ← InputValidator validates email/password
+         └─────────┬──────────┘    Thin HTTP layer, delegates immediately
+                   │
+         ┌─────────▼──────────┐
+         │   AuthService      │  ← Pure business logic, no HTTP concerns
+         │   (login_user)     │    Uses Token.generate_*, UserService.authenticate_user
+         └─────────┬──────────┘
+                   │
+         ┌─────────▼──────────┐
+         │   UserService      │  ← authenticate_user: constant-time validation
+         │   (authenticate)   │    Checks password BEFORE checking user status (security)
+         └─────────┬──────────┘
+                   │
+         ┌─────────▼──────────┐
+         │  User Schema       │  ← Ecto changeset validation
+         │  + Repo.get_by     │    Database constraints enforced
+         └─────────┬──────────┘
+                   │
+         ┌─────────▼──────────┐
+         │   PostgreSQL       │  ← ACID transactions, unique constraints
+         └────────────────────┘
+                   │
+         ┌─────────▼──────────┐
+         │ Response: JWT      │  ← ErrorAdapter maps Error struct → HTTP 200/400/401
+         │ + User object      │    Adds correlation ID to response
+         └────────────────────┘
+```
+
+**Key Insight:** Each layer has **one responsibility** and errors bubble up as `Error` structs, not strings.
+
 ### Clean Architecture Layers
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Web Layer                             │
 │  Controllers • Plugs • Validators • Adapters • Router       │
+│                                                              │
+│  ✅ HTTP concerns only (status codes, headers, JSON)        │
+│  ✅ InputValidator converts params → validated data         │
+│  ✅ ErrorAdapter converts Error structs → HTTP responses    │
 └────────────────────────┬────────────────────────────────────┘
                          │
 ┌────────────────────────┴────────────────────────────────────┐
@@ -115,81 +289,247 @@ LedgerBank API is a **production-ready financial services platform** built with 
 │  │  • Normalize     │  │ • Normalize      │               │
 │  └──────────────────┘  └──────────────────┘               │
 │                                                              │
+│  ✅ Pure business logic, no HTTP knowledge                  │
+│  ✅ Policy functions return true/false (easily testable)    │
+│  ✅ Normalize functions are pure (no DB, no side effects)   │
+│                                                              │
 │  ┌────────────────────────────────────────┐                │
 │  │           Core Layer                    │                │
 │  │  • Error Handling  • Error Catalog     │                │
 │  │  • Service Behavior • Validator        │                │
-│  │  • Cache           • Telemetry         │                │
+│  │  • Worker Behavior • Cache Adapter     │                │
+│  │  • Schema Helpers  • Queryable         │                │
 │  └────────────────────────────────────────┘                │
+│                                                              │
+│  ✅ Shared infrastructure for all contexts                  │
+│  ✅ Behaviors define contracts (swap implementations)       │
+│  ✅ Error catalog is single source of truth                 │
 └────────────────────────┬────────────────────────────────────┘
                          │
 ┌────────────────────────┴────────────────────────────────────┐
 │                      Data Layer                              │
 │  Ecto Schemas • Repo • Migrations • PostgreSQL              │
+│                                                              │
+│  ✅ Database constraints enforced (CHECK, FOREIGN KEY)      │
+│  ✅ Changesets validate before hitting database             │
+│  ✅ Migrations are explicit and auditable                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Skills Demonstrated
+
+This project showcases practical experience with:
+
+**Backend Engineering:**
+- ✅ RESTful API design with OpenAPI/Swagger documentation
+- ✅ Authentication & authorization (JWT, RBAC, OAuth2 simulation)
+- ✅ Database design (PostgreSQL, Ecto migrations, indexes, constraints)
+- ✅ Background job processing (Oban, priority queues, retry logic)
+- ✅ Caching strategies (ETS, adapter pattern for Redis-ready scaling)
+- ✅ Error handling (categorization, retry policies, circuit breakers)
+
+**Software Architecture:**
+- ✅ Clean architecture (web → business → data layer separation)
+- ✅ Domain-driven design (bounded contexts: Accounts, Financial)
+- ✅ Behavior-driven development (contracts via Elixir behaviors)
+- ✅ Policy-driven authorization (pure functions, easily testable)
+- ✅ Adapter pattern (swappable cache/bank clients)
+
+**Testing & Quality:**
+- ✅ Comprehensive test coverage (unit, integration, security, performance)
+- ✅ Test-driven development (TDD) approach
+- ✅ Property-based testing (StreamData)
+- ✅ Mock/stub strategies (Mox, Mimic, Bypass)
+- ✅ CI/CD pipeline (GitHub Actions)
+
+**DevOps & Operations:**
+- ✅ Containerization (Docker, Docker Compose)
+- ✅ Health monitoring (liveness, readiness probes)
+- ✅ Structured logging with correlation IDs
+- ✅ Telemetry & observability
+- ✅ Database migrations in production
+
+**Security:**
+- ✅ OWASP best practices (Argon2, CSRF, XSS prevention)
+- ✅ Timing attack prevention
+- ✅ Rate limiting & abuse prevention
+- ✅ Security audit logging
+- ✅ Input sanitization & validation
+
+---
+
 ### Key Design Patterns
 
-#### 1. **Service Behavior Pattern**
-All services implement a common behavior for consistent error handling, context building, and operation patterns.
+#### 1. **Service Behavior Pattern** - DRY Without Macros
 
+All services implement a common behavior for consistent error handling and database operations.
+
+**Before** (Repeated in every service):
 ```elixir
-defmodule LedgerBankApi.Core.ServiceBehavior do
-  @callback service_name() :: String.t()
-  
-  # Standard operations:
-  # - get_operation/4     - Fetch resources
-  # - create_operation/3  - Create resources
-  # - update_operation/4  - Update resources
-  # - delete_operation/2  - Delete resources
+def get_user(id) do
+  case Repo.get(User, id) do
+    nil -> {:error, ErrorHandler.business_error(:user_not_found, %{id: id})}
+    user -> {:ok, user}
+  end
 end
 ```
 
-#### 2. **Error Catalog System**
-Centralized error taxonomy with categories, HTTP mappings, and retry policies.
-
+**After** (ServiceBehavior provides):
 ```elixir
-Error Categories:
-├── :validation          → 400 Bad Request (not retryable)
-├── :not_found          → 404 Not Found (not retryable)
-├── :authentication     → 401 Unauthorized (not retryable)
-├── :authorization      → 403 Forbidden (not retryable)
-├── :conflict           → 409 Conflict (not retryable)
-├── :business_rule      → 422 Unprocessable Entity (not retryable)
-├── :external_dependency→ 503 Service Unavailable (retryable, 3 attempts)
-└── :system             → 500 Internal Error (retryable, 2 attempts)
+@behaviour ServiceBehavior
+
+def get_user(id) do
+  context = build_context(__MODULE__, :get_user, %{user_id: id})
+  ServiceBehavior.get_operation(User, id, :user_not_found, context)
+end
 ```
 
-#### 3. **Policy-Driven Authorization**
-Pure functions for permission logic, separated from business logic.
+**Result:** Every service gets standard error handling, context building, and correlation IDs for free.
 
+#### 2. **Error Catalog System** - Single Source of Truth
+
+Instead of ad-hoc error handling, all errors go through a catalog that defines category, HTTP code, and retry behavior.
+
+**Code Example:**
 ```elixir
-# Pure, testable permission checks
-Policy.can_update_user?(current_user, target_user, attrs)
-Policy.can_create_payment?(user, payment_attrs)
-Policy.can_process_payment?(user, payment)
+# In ErrorCatalog
+def reason_codes do
+  %{
+    :insufficient_funds => :business_rule,      # → 422, no retry
+    :bank_api_error => :external_dependency,   # → 503, retry 3x
+    :invalid_email_format => :validation       # → 400, no retry
+  }
+end
+
+# In services, just use the reason:
+{:error, ErrorHandler.business_error(:insufficient_funds, context)}
+
+# The catalog automatically:
+# - Maps to HTTP 422
+# - Sets retryable: false
+# - Adds correlation ID
+# - Emits telemetry
 ```
 
-#### 4. **Normalization Layer**
-Data transformation separated from business logic for cleaner services.
-
-```elixir
-# Pure data transformation
-Normalize.user_attrs(params)         # Sanitizes and defaults
-Normalize.payment_attrs(params)      # Normalizes financial data
-Normalize.admin_user_attrs(params)   # Admin-specific normalization
+**The Flow:**
+```
+Error Reason (:insufficient_funds)
+    ↓
+ErrorCatalog.category_for_reason() → :business_rule
+    ↓
+ErrorCatalog.http_status_for_category() → 422
+    ↓
+Error.should_retry?() → false (business rules don't retry)
+    ↓
+WorkerBehavior sees should_retry?() = false → Dead Letter Queue
 ```
 
-#### 5. **Worker Resilience**
-Intelligent retry strategies based on error categories.
+**Why This Matters:** One change to the catalog affects all workers, services, and controllers. Adding circuit breaking took 5 minutes because the categories were already there.
+
+#### 3. **Policy-Driven Authorization** - Pure Functions
+
+Instead of mixing authorization with business logic, I separated all permission checks into `Policy` modules.
+
+**Benefits:**
+```elixir
+# Pure, easily testable (no DB, no mocks needed)
+def can_update_user?(current_user, target_user, attrs) do
+  cond do
+    current_user.role == "admin" -> true
+    current_user.id == target_user.id -> can_update_self?(attrs)
+    current_user.role == "support" -> can_support_update_user?(attrs)
+    true -> false
+  end
+end
+
+# Test with zero setup:
+test "users can update their own name but not role" do
+  user = %User{id: "123", role: "user"}
+  assert Policy.can_update_user?(user, user, %{full_name: "New Name"})
+  refute Policy.can_update_user?(user, user, %{role: "admin"})
+end
+```
+
+**Why:** Permission rules change often. Keeping them in pure functions means:
+- ✅ No database needed for tests
+- ✅ Easy to audit (all rules in one file)
+- ✅ Can be shared with frontend for UI authorization
+
+#### 4. **Normalization Layer** - Data Transformation Isolation
+
+**Problem:** Mixing data cleaning with business logic makes code hard to test.
+
+**Solution:** Pure `Normalize` modules for all contexts.
 
 ```elixir
-# Automatic retry logic
-- External dependency errors → 3 retries with exponential backoff
-- System errors → 2 retries with 500ms base delay
-- Business rule violations → No retry, dead letter queue
+# Input from HTTP
+params = %{"email" => " ALICE@EXAMPLE.COM  ", "role" => "AdMiN"}
+
+# Normalize
+normalized = Normalize.user_attrs(params)
+# => %{"email" => "alice@example.com", "role" => "user"}  # Force role to "user" for security
+
+# Now service just does business logic:
+UserService.create_user(normalized)
 ```
+
+**Security Win:** `Normalize.user_attrs/1` **forces role to "user"** for public registration. Admin creation uses `Normalize.admin_user_attrs/1` which allows role selection but requires admin token.
+
+#### 5. **Worker Behavior** - 280 Lines of Boilerplate Eliminated
+
+**Problem:** Each Oban worker had 180+ lines of identical code (timing, logging, telemetry, retry decisions).
+
+**Solution:** `WorkerBehavior` handles infrastructure, workers implement `perform_work/2` only.
+
+**Before** (PaymentWorker was 245 lines):
+```elixir
+use Oban.Worker
+
+def perform(%Oban.Job{args: args} = job) do
+  start_time = System.monotonic_time(:millisecond)
+  correlation_id = Error.generate_correlation_id()
+  context = %{worker: "PaymentWorker", job_id: job.id, ...}
+  
+  Logger.info("Worker started", context)
+  
+  case process_payment(args["payment_id"]) do
+    {:ok, result} ->
+      duration = System.monotonic_time(:millisecond) - start_time
+      Logger.info("Worker completed", ...)
+      emit_telemetry(:success, duration, ...)
+      :ok
+    {:error, error} ->
+      Logger.error("Worker failed", ...)
+      emit_telemetry(:failure, ...)
+      if Error.should_retry?(error), do: {:error, error}, else: :discard
+  end
+end
+
+defp emit_telemetry(...), do: ...  # 30 more lines
+defp log_error(...), do: ...       # 20 more lines
+# ... (repeat for BankSyncWorker)
+```
+
+**After** (PaymentWorker is 80 lines):
+```elixir
+use LedgerBankApi.Core.WorkerBehavior,
+  queue: :payments,
+  max_attempts: 5,
+  tags: ["payment"]
+
+def worker_name, do: "PaymentWorker"
+
+# WorkerBehavior handles timing, logging, telemetry, retry decisions
+def perform_work(%{"payment_id" => id}, context) do
+  # Just business logic:
+  with {:ok, payment} <- get_payment(id),
+       {:ok, result} <- FinancialService.process_payment(id) do
+    {:ok, result}
+  end
+end
+```
+
+**Result:** Infrastructure is centralized. Adding `NotificationWorker` requires ~40 lines, not 200.
 
 ### Module Organization
 
@@ -273,6 +613,20 @@ lib/
 ### DevOps
 - **Docker & Docker Compose** - Containerization
 - **GitHub Actions** - CI/CD pipeline
+
+---
+
+## 📚 Documentation
+
+Complete documentation is available in the `docs/` folder:
+
+- **[Getting Started](docs/GETTING_STARTED.md)** - Setup and running instructions
+- **[API Reference](docs/API_REFERENCE.md)** - Complete endpoint documentation  
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and patterns
+- **[Developer Guide](docs/DEVELOPER.md)** - Code patterns and workflows
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - Testing strategies and examples
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment options
+- **[Cheatsheet](docs/CHEATSHEET.md)** - Quick reference for developers
 
 ---
 
@@ -715,6 +1069,66 @@ GET /api/health
 GET /api/health/detailed
 ```
 
+#### Error Discovery
+
+##### List All Problem Types
+```http
+GET /api/problems
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "problems": [
+      {
+        "code": "insufficient_funds",
+        "type": "https://api.ledgerbank.com/problems/insufficient_funds",
+        "status": 422,
+        "title": "Insufficient funds for this transaction",
+        "category": "business_rule",
+        "retryable": false
+      }
+    ],
+    "categories": {
+      "validation": 12,
+      "business_rule": 8,
+      "external_dependency": 5
+    }
+  },
+  "success": true
+}
+```
+
+##### Get Problem Details
+```http
+GET /api/problems/insufficient_funds
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "code": "insufficient_funds",
+    "type": "https://api.ledgerbank.com/problems/insufficient_funds",
+    "status": 422,
+    "title": "Insufficient funds for this transaction",
+    "category": "business_rule",
+    "retryable": false,
+    "retry_delay_ms": 0,
+    "max_retry_attempts": 0,
+    "description": "Occurs when attempting to process a payment that exceeds the available account balance",
+    "examples": ["Payment amount: $150, Available balance: $100"]
+  },
+  "success": true
+}
+```
+
+##### List Problems by Category
+```http
+GET /api/problems/category/business_rule
+```
+
 **Response:**
 ```json
 {
@@ -744,22 +1158,29 @@ GET /api/health/live
 
 ### Error Responses
 
-All errors follow a consistent format:
+All errors follow RFC 9457 Problem Details format:
 
 ```json
 {
-  "error": {
-    "type": "validation_error",
-    "message": "Email already exists",
-    "code": 400,
-    "reason": "email_already_exists",
-    "details": {
-      "field": "email"
-    },
-    "timestamp": "2025-10-10T12:00:00Z"
+  "type": "https://api.ledgerbank.com/problems/email_already_exists",
+  "title": "Email already exists",
+  "status": 409,
+  "detail": "A user with this email address already exists",
+  "instance": "req_1234567890abcdef",
+  "code": "email_already_exists",
+  "reason": "email_already_exists",
+  "category": "conflict",
+  "retryable": false,
+  "timestamp": "2025-10-10T12:00:00Z",
+  "details": {
+    "field": "email"
   }
 }
 ```
+
+**Content-Type:** `application/problem+json`
+
+**Retry-After Header:** Included for retryable errors (e.g., `Retry-After: 1000`)
 
 **Common Error Codes:**
 - `400` - Validation error
@@ -1929,9 +2350,66 @@ mix format --check-formatted
 
 ---
 
+## 🔮 What I Would Build Next
+
+Having mastered these patterns, here's my learning roadmap:
+
+### **Immediate Next Steps (1-2 weeks)**
+
+1. **GraphQL API** → Rebuild this with Absinthe
+   - Compare REST vs GraphQL for complex financial queries
+   - Learn N+1 query prevention with Dataloader
+   - Schema stitching for microservices
+
+2. **Real Banking Integration** → Connect to Plaid API
+   - OAuth2 flow for real bank connections
+   - Webhook handling for transaction updates
+   - Error handling for external API failures
+
+3. **Frontend Dashboard** → React + TypeScript
+   - Consume this API with proper JWT handling
+   - Real-time updates via Phoenix Channels/WebSockets
+   - Charts for financial data visualization
+
+### **Medium Term (1-2 months)**
+
+4. **Event Sourcing** → Rebuild with Commanded/EventStore
+   - Learn CQRS pattern for financial audit trails
+   - Compare event-driven vs CRUD
+   - Time-travel debugging for payments
+
+5. **Distributed Systems** → Multi-node Elixir cluster
+   - Replace ETS cache with Redis (my CacheAdapter makes this easy)
+   - Learn clustering with `libcluster`
+   - Distributed Oban with Redis queues
+
+6. **Observability** → Add AppSignal or Datadog
+   - Custom telemetry events
+   - Distributed tracing with correlation IDs
+   - Alerting on business metrics (failed payments, auth failures)
+
+### **Advanced Learning (3-6 months)**
+
+7. **Microservices** → Split into Auth, Payments, Accounts services
+   - Learn service boundaries and API gateways
+   - Distributed transactions / Saga pattern
+   - Service mesh with Istio
+
+8. **Machine Learning Integration** → Fraud detection
+   - Anomaly detection on payment patterns
+   - Real-time scoring with Nx (Elixir ML library)
+   - A/B testing for fraud rules
+
+9. **Mobile API** → Add GraphQL subscriptions
+   - Real-time balance updates
+   - Push notifications for transactions
+   - Offline-first mobile patterns
+
+---
+
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these guidelines:
+This is a learning/portfolio project, but contributions are welcome if you're learning too!
 
 ### Getting Started
 
@@ -1980,19 +2458,83 @@ Built with:
 
 ---
 
-## 📞 Support
+## 📞 Contact & Portfolio
 
-For questions, issues, or contributions:
+### About the Developer
 
-- 🐛 [Report a Bug](https://github.com/rafaelRojasVi/ledger-bank-api/issues)
-- 💡 [Request a Feature](https://github.com/rafaelRojasVi/ledger-bank-api/issues)
+Hi! I'm Rafael, and I built this project to learn production Elixir patterns. If you're:
+
+- 👔 **Hiring for Elixir/backend roles** → Let's talk about what I learned building this
+- 🎓 **Learning Elixir too** → Feel free to ask questions or open issues
+- 🔧 **Want to contribute** → PRs welcome! See patterns you'd do differently? Let's discuss!
+
+**Connect with me:**
 - 📧 Email: rafarojasv6@gmail.com
+- 💼 LinkedIn: [Rafael Rojas](https://linkedin.com/in/rafael-rojas-villegas) *(if applicable)*
+- 🐙 GitHub: [@rafaelRojasVi](https://github.com/rafaelRojasVi)
+- 🌐 Portfolio: [rafaelrojas.dev](https://rafaelrojas.dev) *(if you have one)*
+
+### Other Projects
+
+Check out my other learning projects:
+- 🚧 [Your other Elixir project]
+- 🚧 [Your frontend project]
+- 🚧 [Your infrastructure project]
+
+---
+
+## 📚 Resources & Inspiration
+
+This project was influenced by:
+
+**Books:**
+- *Designing Elixir Systems with OTP* by James Edward Gray II & Bruce A. Tate
+- *Programming Phoenix 1.4* by Chris McCord, Bruce Tate, & José Valim
+
+**Blog Posts & Talks:**
+- [How Stripe Designs Beautiful APIs](https://stripe.com/blog/api-design)
+- [Error Handling in Elixir](https://dockyard.com/blog/2021/07/28/error-handling-in-elixir)
+- [Oban Best Practices](https://getoban.pro/docs/pro/best-practices.html)
+
+**Open Source Projects:**
+- [Phoenix Framework](https://github.com/phoenixframework/phoenix) - Web framework patterns
+- [Oban](https://github.com/sorentwo/oban) - Background job inspiration
+- [Plaid Elixir](https://github.com/wfgilman/plaid-elixir) - Banking integration patterns
+
+---
+
+## 📝 Developer Notes
+
+### Why I Made Certain Choices
+
+**Q: Why not use Phoenix.Token instead of Joken?**  
+A: I wanted to learn JWT internals and implement token rotation myself. Phoenix.Token is great, but building with Joken taught me about claims validation, signers, and security considerations.
+
+**Q: Why ETS instead of Redis for cache?**  
+A: I implemented `CacheAdapter` behavior so switching to Redis is one config change. ETS keeps the project simple to run locally, but the architecture is Redis-ready.
+
+**Q: Why so many test files?**  
+A: I wanted to learn different testing strategies:
+- Integration tests (full user flows)
+- Security tests (timing attacks, injection)
+- Performance tests (N+1 queries, concurrent updates)
+- Edge case tests (null bytes, boundary conditions)
+
+**Q: Is this production-ready?**  
+A: The patterns are production-grade, but you'd need:
+- Real banking integration (Plaid, Stripe)
+- Distributed cache (Redis)
+- Proper secrets management (Vault)
+- APM/monitoring (AppSignal, New Relic)
+- Rate limiting per user (currently per IP)
 
 ---
 
 <div align="center">
 
 **Made with ❤️ using Elixir and Phoenix**
+
+*Built as a learning project • Not for production financial transactions*
 
 [⬆ Back to Top](#ledgerbank-api)
 

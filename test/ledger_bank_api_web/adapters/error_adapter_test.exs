@@ -5,13 +5,14 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
   describe "handle_error/2" do
     test "returns 400 for validation errors", %{conn: conn} do
-      error = Error.new(
-        :validation_error,
-        "Invalid input",
-        400,
-        :missing_fields,
-        %{field: "email"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Invalid input",
+          400,
+          :missing_fields,
+          %{field: "email"}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
@@ -23,46 +24,55 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "returns 401 for unauthorized errors", %{conn: conn} do
-      error = Error.new(
-        :unauthorized,
-        "Invalid credentials",
-        401,
-        :invalid_credentials
-      )
+      error =
+        Error.new(
+          :unauthorized,
+          "Invalid credentials",
+          401,
+          :invalid_credentials
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
       assert conn.status == 401
       response = json_response(conn, 401)
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/invalid_credentials"
+
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/invalid_credentials"
+
       assert response["error"]["reason"] == "invalid_credentials"
     end
 
     test "returns 403 for forbidden errors", %{conn: conn} do
-      error = Error.new(
-        :forbidden,
-        "Insufficient permissions",
-        403,
-        :insufficient_permissions,
-        %{user_role: "user", required_roles: ["admin"]}
-      )
+      error =
+        Error.new(
+          :forbidden,
+          "Insufficient permissions",
+          403,
+          :insufficient_permissions,
+          %{user_role: "user", required_roles: ["admin"]}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
       assert conn.status == 403
       response = json_response(conn, 403)
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/insufficient_permissions"
+
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/insufficient_permissions"
+
       assert response["error"]["reason"] == "insufficient_permissions"
     end
 
     test "returns 404 for not found errors", %{conn: conn} do
-      error = Error.new(
-        :not_found,
-        "User not found",
-        404,
-        :user_not_found,
-        %{user_id: Ecto.UUID.generate()}
-      )
+      error =
+        Error.new(
+          :not_found,
+          "User not found",
+          404,
+          :user_not_found,
+          %{user_id: Ecto.UUID.generate()}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
@@ -72,29 +82,33 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "returns 409 for conflict errors", %{conn: conn} do
-      error = Error.new(
-        :conflict,
-        "Email already exists",
-        409,
-        :email_already_exists,
-        %{email: "test@example.com"}
-      )
+      error =
+        Error.new(
+          :conflict,
+          "Email already exists",
+          409,
+          :email_already_exists,
+          %{email: "test@example.com"}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
       assert conn.status == 409
       response = json_response(conn, 409)
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/email_already_exists"
+
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/email_already_exists"
     end
 
     test "returns 422 for unprocessable entity errors", %{conn: conn} do
-      error = Error.new(
-        :unprocessable_entity,
-        "Insufficient funds",
-        422,
-        :insufficient_funds,
-        %{balance: "100.00", requested: "200.00"}
-      )
+      error =
+        Error.new(
+          :unprocessable_entity,
+          "Insufficient funds",
+          422,
+          :insufficient_funds,
+          %{balance: "100.00", requested: "200.00"}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
@@ -104,12 +118,13 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "returns 500 for internal server errors", %{conn: conn} do
-      error = Error.new(
-        :internal_server_error,
-        "Unexpected error occurred",
-        500,
-        :server_error
-      )
+      error =
+        Error.new(
+          :internal_server_error,
+          "Unexpected error occurred",
+          500,
+          :server_error
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
@@ -119,31 +134,35 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "returns 503 for service unavailable errors", %{conn: conn} do
-      error = Error.new(
-        :service_unavailable,
-        "External service down",
-        503,
-        :external_service_unavailable,
-        %{service: "bank_api"}
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "External service down",
+          503,
+          :external_service_unavailable,
+          %{service: "bank_api"}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
 
       assert conn.status == 503
       response = json_response(conn, 503)
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/external_service_unavailable"
+
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/external_service_unavailable"
     end
   end
 
   describe "handle_error/2 - response format" do
     test "includes all required fields in error response", %{conn: conn} do
-      error = Error.new(
-        :validation_error,
-        "Test error",
-        400,
-        :test_reason,
-        %{field: "test", value: "invalid"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test error",
+          400,
+          :test_reason,
+          %{field: "test", value: "invalid"}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
       response = json_response(conn, 400)
@@ -158,19 +177,20 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "sanitizes sensitive fields from context", %{conn: conn} do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{
-          field: "email",
-          password: "secret123",
-          password_hash: "$argon2...",
-          access_token: "jwt.token",
-          user_id: "safe-to-show"
-        }
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{
+            field: "email",
+            password: "secret123",
+            password_hash: "$argon2...",
+            access_token: "jwt.token",
+            user_id: "safe-to-show"
+          }
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
       response = json_response(conn, 400)
@@ -264,7 +284,8 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
       context = %{operation: "create_user"}
       conn = ErrorAdapter.handle_changeset_error(conn, changeset, context)
 
-      assert conn.status in [400, 409]  # Depends on error handling
+      # Depends on error handling
+      assert conn.status in [400, 409]
       response = json_response(conn, conn.status)
       assert Map.has_key?(response, "error")
     end
@@ -292,7 +313,9 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 500
       response = json_response(conn, 500)
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/internal_server_error"
+
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/internal_server_error"
     end
 
     test "handles changeset", %{conn: conn} do
@@ -316,7 +339,9 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
       assert conn.status == 500
       response = json_response(conn, 500)
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/internal_server_error"
+
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/internal_server_error"
     end
 
     test "includes context in generic error handling", %{conn: conn} do
@@ -343,19 +368,22 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
         nil
       )
 
-      error = Error.new(
-        :validation_error,
-        "Test error",
-        400,
-        :test_reason,
-        %{},
-        [correlation_id: "test-correlation"]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test error",
+          400,
+          :test_reason,
+          %{},
+          correlation_id: "test-correlation"
+        )
 
       ErrorAdapter.handle_error(conn, error)
 
       # Verify telemetry was emitted
-      assert_receive {:telemetry_event, [:ledger_bank_api, :error, :emitted], measurements, metadata}, 1000
+      assert_receive {:telemetry_event, [:ledger_bank_api, :error, :emitted], measurements,
+                      metadata},
+                     1000
 
       assert measurements.count == 1
       assert metadata.error_type == :validation_error
@@ -378,14 +406,15 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
         nil
       )
 
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [retryable: true]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          retryable: true
+        )
 
       ErrorAdapter.handle_error(conn, error)
 
@@ -408,14 +437,15 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
         nil
       )
 
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [circuit_breaker: true]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          circuit_breaker: true
+        )
 
       ErrorAdapter.handle_error(conn, error)
 
@@ -458,13 +488,14 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
   describe "context sanitization" do
     test "removes password from context", %{conn: conn} do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{password: "secret123", field: "email"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{password: "secret123", field: "email"}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
       response = json_response(conn, 400)
@@ -474,13 +505,14 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "removes password_hash from context", %{conn: conn} do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{password_hash: "$argon2...", user_id: "123"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{password_hash: "$argon2...", user_id: "123"}
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
       response = json_response(conn, 400)
@@ -490,17 +522,18 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "removes tokens from context", %{conn: conn} do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{
-          access_token: "jwt.token",
-          refresh_token: "refresh.token",
-          field: "test"
-        }
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{
+            access_token: "jwt.token",
+            refresh_token: "refresh.token",
+            field: "test"
+          }
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
       response = json_response(conn, 400)
@@ -511,18 +544,19 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     end
 
     test "removes API keys and secrets from context", %{conn: conn} do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{
-          secret: "api-secret",
-          private_key: "private-key",
-          api_key: "api-key-123",
-          public_id: "safe-to-show"
-        }
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{
+            secret: "api-secret",
+            private_key: "private-key",
+            api_key: "api-key-123",
+            public_id: "safe-to-show"
+          }
+        )
 
       conn = ErrorAdapter.handle_error(conn, error)
       response = json_response(conn, 400)
@@ -568,19 +602,21 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
       Enum.each(test_cases, fn {category, expected_status} ->
         # Get the correct error type for this category
         type = ErrorCatalog.error_type_for_category(category)
-        error = Error.new(
-          type,
-          "Test error",
-          expected_status,
-          :test_reason,
-          %{},
-          [category: category]
-        )
+
+        error =
+          Error.new(
+            type,
+            "Test error",
+            expected_status,
+            :test_reason,
+            %{},
+            category: category
+          )
 
         conn = ErrorAdapter.handle_error(build_conn(), error)
 
         assert conn.status == expected_status,
-          "Category #{category} should map to status #{expected_status}, got #{conn.status}"
+               "Category #{category} should map to status #{expected_status}, got #{conn.status}"
       end)
     end
   end
@@ -615,14 +651,15 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
       ]
 
       Enum.each(financial_errors, fn reason ->
-        error = Error.new(
-          :unprocessable_entity,
-          "Business rule failed",
-          422,
-          reason,
-          %{},
-          [category: :business_rule]
-        )
+        error =
+          Error.new(
+            :unprocessable_entity,
+            "Business rule failed",
+            422,
+            reason,
+            %{},
+            category: :business_rule
+          )
 
         conn = ErrorAdapter.handle_error(build_conn(), error)
 
@@ -656,14 +693,15 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
     test "correlation ID is preserved internally", %{conn: conn} do
       correlation_id = "test-correlation-#{System.unique_integer()}"
 
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{},
-        [correlation_id: correlation_id]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{},
+          correlation_id: correlation_id
+        )
 
       # Correlation ID should be in error struct
       assert error.correlation_id == correlation_id
@@ -677,21 +715,24 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapterTest do
 
   describe "concurrent error handling" do
     test "handles multiple concurrent errors without race conditions", %{conn: _conn} do
-      tasks = Enum.map(1..50, fn i ->
-        Task.async(fn ->
-          conn = build_conn()
-          error = Error.new(
-            :validation_error,
-            "Error #{i}",
-            400,
-            :test_reason,
-            %{index: i}
-          )
+      tasks =
+        Enum.map(1..50, fn i ->
+          Task.async(fn ->
+            conn = build_conn()
 
-          result_conn = ErrorAdapter.handle_error(conn, error)
-          {i, result_conn.status}
+            error =
+              Error.new(
+                :validation_error,
+                "Error #{i}",
+                400,
+                :test_reason,
+                %{index: i}
+              )
+
+            result_conn = ErrorAdapter.handle_error(conn, error)
+            {i, result_conn.status}
+          end)
         end)
-      end)
 
       results = Task.await_many(tasks)
 

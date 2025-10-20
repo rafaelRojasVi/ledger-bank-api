@@ -21,7 +21,7 @@ defmodule LedgerBankApi.Core.Tracing do
 
   """
   def with_span(name, attributes \\ %{}, fun) do
-    OpenTelemetry.Tracer.with_span(name, %{attributes: attributes}) do
+    OpenTelemetry.Tracer.with_span name, %{attributes: attributes} do
       fun.()
     end
   end
@@ -63,7 +63,9 @@ defmodule LedgerBankApi.Core.Tracing do
   """
   def add_attributes(attributes) when is_map(attributes) do
     case OpenTelemetry.Tracer.current_span_ctx() do
-      nil -> :ok
+      nil ->
+        :ok
+
       span_ctx ->
         Enum.each(attributes, fn {key, value} ->
           OpenTelemetry.Span.set_attribute(span_ctx, key, value)
@@ -76,7 +78,9 @@ defmodule LedgerBankApi.Core.Tracing do
   """
   def add_attribute(key, value) do
     case OpenTelemetry.Tracer.current_span_ctx() do
-      nil -> :ok
+      nil ->
+        :ok
+
       span_ctx ->
         OpenTelemetry.Span.set_attribute(span_ctx, key, value)
     end
@@ -87,7 +91,9 @@ defmodule LedgerBankApi.Core.Tracing do
   """
   def add_event(name, attributes \\ %{}) do
     case OpenTelemetry.Tracer.current_span_ctx() do
-      nil -> :ok
+      nil ->
+        :ok
+
       span_ctx ->
         OpenTelemetry.Span.add_event(span_ctx, name, attributes)
     end
@@ -124,10 +130,11 @@ defmodule LedgerBankApi.Core.Tracing do
   Trace a business logic operation.
   """
   def trace_business_operation(operation_name, context \\ %{}, fun) do
-    attributes = Map.merge(context, %{
-      "operation.type" => "business",
-      "operation.name" => operation_name
-    })
+    attributes =
+      Map.merge(context, %{
+        "operation.type" => "business",
+        "operation.name" => operation_name
+      })
 
     with_span("business_operation", attributes, fun)
   end
@@ -140,11 +147,12 @@ defmodule LedgerBankApi.Core.Tracing do
       "auth.operation" => operation_type
     }
 
-    attributes = if user_id do
-      Map.put(attributes, "user.id", user_id)
-    else
-      attributes
-    end
+    attributes =
+      if user_id do
+        Map.put(attributes, "user.id", user_id)
+      else
+        attributes
+      end
 
     with_span("auth_operation", attributes, fun)
   end
@@ -158,11 +166,12 @@ defmodule LedgerBankApi.Core.Tracing do
       "payment.id" => payment_id
     }
 
-    attributes = if amount do
-      Map.put(attributes, "payment.amount", amount)
-    else
-      attributes
-    end
+    attributes =
+      if amount do
+        Map.put(attributes, "payment.amount", amount)
+      else
+        attributes
+      end
 
     with_span("payment_operation", attributes, fun)
   end

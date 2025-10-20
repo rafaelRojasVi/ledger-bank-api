@@ -11,19 +11,22 @@ config :ledger_bank_api, LedgerBankApi.Repo,
   hostname: System.get_env("DB_HOST", "localhost"),
   database: "ledger_bank_api_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.get_env("MIX_TEST_PARTITION") |> then(fn partition ->
-    case partition do
-      nil -> 10
-      partition -> String.to_integer(partition) * 2 + 10
-    end
-  end),
+  pool_size:
+    System.get_env("MIX_TEST_PARTITION")
+    |> then(fn partition ->
+      case partition do
+        nil -> 10
+        partition -> String.to_integer(partition) * 2 + 10
+      end
+    end),
   port: String.to_integer(System.get_env("DB_PORT", "5432"))
 
 # No server during test. Configure the endpoint so VerifiedRoutes works in tests
 config :ledger_bank_api, LedgerBankApiWeb.Endpoint,
   server: false,
   check_origin: false,
-  secret_key_base: "test_secret_key_base_v1_please_replace_in_real_projects_abcdefghijklmnopqrstuvwxyz012345",
+  secret_key_base:
+    "test_secret_key_base_v1_please_replace_in_real_projects_abcdefghijklmnopqrstuvwxyz012345",
   http: [ip: {127, 0, 0, 1}, port: 4002]
 
 # In test we don't send emails
@@ -45,26 +48,52 @@ config :ledger_bank_api, :bank_client, LedgerBankApi.Banking.BankApiClientMock
 config :ledger_bank_api, :jwt,
   issuer: "ledger-bank-api",
   audience: "ledger-bank-api",
-  access_token_expiry: 900, # 15 minutes for testing
-  refresh_token_expiry: 7 * 24 * 3600, # 7 days
-  secret_key: System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+  # 15 minutes for testing
+  access_token_expiry: 900,
+  # 7 days
+  refresh_token_expiry: 7 * 24 * 3600,
+  secret_key:
+    System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
 
 # JWT secret for testing
-config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+config :ledger_bank_api,
+       :jwt_secret,
+       System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
 
 # Joken configuration for testing
-config :joken, default_signer: System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+config :joken,
+  default_signer:
+    System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
 
-# Configure Oban for testing - use inline mode for faster tests
+# ============================================================================
+# OBAN CONFIGURATION (Testing)
+# ============================================================================
+# Test-specific Oban overrides
+# - Inline mode for faster, synchronous testing
+# - Higher concurrency for test performance
+# - Simplified plugin configuration
 config :ledger_bank_api, Oban,
-  repo: LedgerBankApi.Repo,
-  testing: :inline,  # Run jobs immediately for faster testing
+  # Run jobs immediately for faster testing
+  testing: :inline,
   queues: [banking: 5, payments: 3, notifications: 2, default: 1],
   plugins: [
-    Oban.Plugins.Pruner  # Keep pruner for cleanup
+    # Keep pruner for cleanup
+    Oban.Plugins.Pruner
   ]
 
-# Configure password hashing for testing - use a simpler algorithm
+# ============================================================================
+# PASSWORD HASHING CONFIGURATION (Testing)
+# ============================================================================
+# Test-specific password hashing configuration
+# Uses simple hashing for faster test execution
+config :ledger_bank_api, :password_hashing,
+  algorithm: :simple,
+  options: [
+    # Simple hashing for testing (faster than PBKDF2)
+    salt: "test_salt"
+  ]
+
+# Legacy Argon2 configuration (commented out - not used)
 # config :argon2_elixir,
 #   t_cost: 1,
 #   m_cost: 8,

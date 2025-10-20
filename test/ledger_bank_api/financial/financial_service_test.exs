@@ -53,6 +53,7 @@ defmodule LedgerBankApi.Financial.FinancialServiceTest do
       user = user_fixture()
       login = login_fixture(user)
       account = account_fixture(login)
+
       attrs = %{
         amount: Decimal.new("100.50"),
         direction: "CREDIT",
@@ -74,11 +75,14 @@ defmodule LedgerBankApi.Financial.FinancialServiceTest do
 
     test "returns error with invalid attributes" do
       attrs = %{
-        amount: Decimal.new("-100.50"),  # Invalid negative amount
-        direction: "INVALID",            # Invalid direction
+        # Invalid negative amount
+        amount: Decimal.new("-100.50"),
+        # Invalid direction
+        direction: "INVALID",
         payment_type: "TRANSFER",
         description: "Test payment",
-        user_bank_account_id: 999,       # Non-existent account
+        # Non-existent account
+        user_bank_account_id: 999,
         user_id: 999
       }
 

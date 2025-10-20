@@ -5,7 +5,8 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
 
   describe "Edge Cases and Boundary Conditions" do
     test "SECURITY: handles very long email addresses (100 chars, returns :invalid_credentials)" do
-      long_email = String.duplicate("a", 100) <> "@example.com"  # ~115 chars total
+      # ~115 chars total
+      long_email = String.duplicate("a", 100) <> "@example.com"
 
       {:error, error} = UserService.authenticate_user(long_email, "password123!")
       # Email passes format validation but doesn't exist
@@ -15,7 +16,8 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
     end
 
     test "SECURITY: handles extremely long email addresses (>255 chars, returns :user_not_found)" do
-      long_email = String.duplicate("a", 300) <> "@example.com"  # >255 chars
+      # >255 chars
+      long_email = String.duplicate("a", 300) <> "@example.com"
 
       {:error, error} = UserService.authenticate_user(long_email, "password123!")
       # Email exceeds max length, fails validation before hashing
@@ -92,9 +94,10 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
       user = UsersFixtures.user_fixture()
 
       # Generate multiple tokens concurrently
-      tasks = for _ <- 1..10 do
-        Task.async(fn -> AuthService.generate_access_token(user) end)
-      end
+      tasks =
+        for _ <- 1..10 do
+          Task.async(fn -> AuthService.generate_access_token(user) end)
+        end
 
       results = Task.await_many(tasks)
 
@@ -114,9 +117,10 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
       user = UsersFixtures.user_fixture()
 
       # Create multiple refresh tokens concurrently
-      tasks = for _ <- 1..5 do
-        Task.async(fn -> AuthService.generate_refresh_token(user) end)
-      end
+      tasks =
+        for _ <- 1..5 do
+          Task.async(fn -> AuthService.generate_refresh_token(user) end)
+        end
 
       results = Task.await_many(tasks)
 
@@ -161,7 +165,8 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
 
       # For this test, we'll test that expired tokens are properly rejected
       # by creating a token with a past expiration time
-      past_time = System.system_time(:second) - 3600  # 1 hour ago
+      # 1 hour ago
+      past_time = System.system_time(:second) - 3600
 
       payload = %{
         "sub" => to_string(user.id),
@@ -177,7 +182,10 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
       }
 
       # Use the same JWT secret and configuration as the Token module
-      jwt_secret = Application.get_env(:ledger_bank_api, :jwt_secret) || System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+      jwt_secret =
+        Application.get_env(:ledger_bank_api, :jwt_secret) ||
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+
       signer = Joken.Signer.create("HS256", jwt_secret)
       expired_token = Joken.generate_and_sign!(payload, signer)
 
@@ -194,6 +202,7 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
         case AuthService.verify_access_token(expired_token) do
           {:ok, claims} ->
             IO.puts("DEBUG: Expired token verification succeeded, claims: #{inspect(claims)}")
+
           {:error, error} ->
             IO.puts("DEBUG: Expired token verification failed: #{error.type} - #{error.reason}")
             IO.puts("DEBUG: Error context: #{inspect(error.context)}")
@@ -239,7 +248,12 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
       }
 
       # Use wrong algorithm
-      signer = Joken.Signer.create("HS512", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS512",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       assert AuthService.authenticated?(token) == false
@@ -288,7 +302,12 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
         "nbf" => System.system_time(:second)
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       assert AuthService.authenticated?(token) == false
@@ -313,7 +332,12 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
         "nbf" => System.system_time(:second)
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       assert AuthService.authenticated?(token) == false
@@ -338,7 +362,12 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
         "nbf" => System.system_time(:second)
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       assert AuthService.authenticated?(token) == false
@@ -360,10 +389,16 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
         "jti" => Ecto.UUID.generate(),
-        "nbf" => System.system_time(:second) + 3600  # 1 hour in the future
+        # 1 hour in the future
+        "nbf" => System.system_time(:second) + 3600
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       assert AuthService.authenticated?(token) == false
@@ -387,10 +422,11 @@ defmodule LedgerBankApi.Accounts.EdgeCaseTest do
       user = UsersFixtures.user_fixture()
 
       # Generate many tokens to test memory handling
-      tokens = for _ <- 1..100 do
-        {:ok, token} = AuthService.generate_access_token(user)
-        token
-      end
+      tokens =
+        for _ <- 1..100 do
+          {:ok, token} = AuthService.generate_access_token(user)
+          token
+        end
 
       # All tokens should be valid
       Enum.each(tokens, fn token ->

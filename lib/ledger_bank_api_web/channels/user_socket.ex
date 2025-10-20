@@ -11,7 +11,7 @@ defmodule LedgerBankApiWeb.UserSocket do
   alias LedgerBankApi.Accounts.Token
 
   ## Channels
-  channel "payment:*", LedgerBankApiWeb.PaymentChannel
+  channel("payment:*", LedgerBankApiWeb.PaymentChannel)
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After

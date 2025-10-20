@@ -10,15 +10,16 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshToken do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @derive {Jason.Encoder, only: [:id, :jti, :expires_at, :revoked_at, :user_id, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder,
+           only: [:id, :jti, :expires_at, :revoked_at, :user_id, :inserted_at, :updated_at]}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "refresh_tokens" do
-    field :jti, :string
-    field :expires_at, :utc_datetime
-    field :revoked_at, :utc_datetime
-    belongs_to :user, LedgerBankApi.Accounts.Schemas.User, type: :binary_id
+    field(:jti, :string)
+    field(:expires_at, :utc_datetime)
+    field(:revoked_at, :utc_datetime)
+    belongs_to(:user, LedgerBankApi.Accounts.Schemas.User, type: :binary_id)
 
     timestamps(type: :utc_datetime)
   end

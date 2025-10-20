@@ -4,18 +4,30 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
   """
   use LedgerBankApi.Core.SchemaHelpers
 
-  @derive {Jason.Encoder, only: [:id, :name, :country, :logo_url, :api_endpoint, :status, :integration_module, :code, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :name,
+             :country,
+             :logo_url,
+             :api_endpoint,
+             :status,
+             :integration_module,
+             :code,
+             :inserted_at,
+             :updated_at
+           ]}
 
   schema "banks" do
-    field :name, :string
-    field :country, :string
-    field :logo_url, :string
-    field :api_endpoint, :string
-    field :status, :string, default: "ACTIVE"
-    field :integration_module, :string
-    field :code, :string
+    field(:name, :string)
+    field(:country, :string)
+    field(:logo_url, :string)
+    field(:api_endpoint, :string)
+    field(:status, :string, default: "ACTIVE")
+    field(:integration_module, :string)
+    field(:code, :string)
 
-    has_many :bank_branches, LedgerBankApi.Financial.Schemas.BankBranch
+    has_many(:bank_branches, LedgerBankApi.Financial.Schemas.BankBranch)
 
     timestamps(type: :utc_datetime)
   end
@@ -60,9 +72,9 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
     |> validate_name_uniqueness()
   end
 
-
   defp validate_integration_module(changeset) do
     integration_module = get_change(changeset, :integration_module)
+
     if is_nil(integration_module) or integration_module == "" do
       changeset
     else
@@ -70,13 +82,18 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
       if String.match?(integration_module, ~r/^[A-Z][a-zA-Z0-9_]*(\.[A-Z][a-zA-Z0-9_]*)*$/) do
         changeset
       else
-        add_error(changeset, :integration_module, "must be a valid Elixir module name (e.g., MyApp.Module)")
+        add_error(
+          changeset,
+          :integration_module,
+          "must be a valid Elixir module name (e.g., MyApp.Module)"
+        )
       end
     end
   end
 
   defp validate_name_uniqueness(changeset) do
     name = get_change(changeset, :name)
+
     if is_nil(name) do
       changeset
     else
@@ -84,7 +101,11 @@ defmodule LedgerBankApi.Financial.Schemas.Bank do
       if String.match?(name, ~r/^[a-zA-Z0-9\s\-&.,()]+$/) do
         changeset
       else
-        add_error(changeset, :name, "contains invalid characters. Only letters, numbers, spaces, and common punctuation are allowed")
+        add_error(
+          changeset,
+          :name,
+          "contains invalid characters. Only letters, numbers, spaces, and common punctuation are allowed"
+        )
       end
     end
   end

@@ -22,11 +22,12 @@ defmodule LedgerBankApiWeb.FallbackController do
 
   def call(conn, {:error, %Error{} = error}) do
     # Add correlation ID to error context if not present
-    error_with_correlation = if is_nil(error.correlation_id) do
-      %{error | correlation_id: conn.assigns[:correlation_id]}
-    else
-      error
-    end
+    error_with_correlation =
+      if is_nil(error.correlation_id) do
+        %{error | correlation_id: conn.assigns[:correlation_id]}
+      else
+        error
+      end
 
     ErrorAdapter.handle_error(conn, error_with_correlation)
   end
@@ -66,6 +67,7 @@ defmodule LedgerBankApiWeb.FallbackController do
 
   def call(conn, result) do
     require Logger
+
     Logger.warning("FallbackController called with non-error result", %{
       result: inspect(result),
       correlation_id: conn.assigns[:correlation_id]

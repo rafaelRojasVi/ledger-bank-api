@@ -25,17 +25,20 @@ defmodule LedgerBankApi.Accounts.Normalize do
   """
   def user_attrs(attrs) when is_map(attrs) do
     # Convert atom keys to string keys for consistency
-    string_attrs = for {k, v} <- attrs, into: %{} do
-      {to_string(k), v}
-    end
+    string_attrs =
+      for {k, v} <- attrs, into: %{} do
+        {to_string(k), v}
+      end
 
     string_attrs
     |> Map.take(["email", "full_name", "password", "password_confirmation"])
     |> normalize_email()
     |> normalize_full_name()
     |> add_defaults()
-    |> force_user_role()  # SECURITY: Always set role to "user" for public registration
+    # SECURITY: Always set role to "user" for public registration
+    |> force_user_role()
   end
+
   def user_attrs(nil), do: %{}
   def user_attrs(_), do: %{}
 
@@ -47,9 +50,10 @@ defmodule LedgerBankApi.Accounts.Normalize do
   """
   def admin_user_attrs(attrs) when is_map(attrs) do
     # Convert atom keys to string keys for consistency
-    string_attrs = for {k, v} <- attrs, into: %{} do
-      {to_string(k), v}
-    end
+    string_attrs =
+      for {k, v} <- attrs, into: %{} do
+        {to_string(k), v}
+      end
 
     string_attrs
     |> Map.take(["email", "full_name", "role", "password", "password_confirmation"])
@@ -58,6 +62,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
     |> normalize_role()
     |> add_defaults()
   end
+
   def admin_user_attrs(nil), do: %{}
   def admin_user_attrs(_), do: %{}
 
@@ -68,9 +73,10 @@ defmodule LedgerBankApi.Accounts.Normalize do
   """
   def user_update_attrs(attrs) when is_map(attrs) do
     # Convert atom keys to string keys for consistency
-    string_attrs = for {k, v} <- attrs, into: %{} do
-      {to_string(k), v}
-    end
+    string_attrs =
+      for {k, v} <- attrs, into: %{} do
+        {to_string(k), v}
+      end
 
     string_attrs
     |> Map.take(["email", "full_name", "role", "status"])
@@ -80,6 +86,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
     |> normalize_status()
     |> add_update_timestamp()
   end
+
   def user_update_attrs(nil), do: %{}
   def user_update_attrs(_), do: %{}
 
@@ -137,13 +144,17 @@ defmodule LedgerBankApi.Accounts.Normalize do
   """
   def sort_attrs(attrs) do
     case attrs["sort"] do
-      nil -> []
+      nil ->
+        []
+
       sort_string when is_binary(sort_string) ->
         sort_string
         |> String.split(",")
         |> Enum.map(&parse_sort_field/1)
         |> Enum.reject(&is_nil/1)
-      _ -> []
+
+      _ ->
+        []
     end
   end
 
@@ -170,6 +181,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
     case attrs["email"] do
       email when is_binary(email) ->
         Map.put(attrs, "email", String.downcase(String.trim(email)))
+
       _ ->
         attrs
     end
@@ -179,6 +191,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
     case attrs["full_name"] do
       name when is_binary(name) ->
         Map.put(attrs, "full_name", String.trim(name))
+
       _ ->
         attrs
     end
@@ -188,12 +201,14 @@ defmodule LedgerBankApi.Accounts.Normalize do
     case attrs["role"] do
       role when is_binary(role) ->
         normalized_role = String.downcase(String.trim(role))
+
         if normalized_role in ["user", "admin", "support"] do
           Map.put(attrs, "role", normalized_role)
         else
           # Remove invalid role
           Map.delete(attrs, "role")
         end
+
       _ ->
         attrs
     end
@@ -203,12 +218,14 @@ defmodule LedgerBankApi.Accounts.Normalize do
     case attrs["status"] do
       status when is_binary(status) ->
         normalized_status = String.upcase(String.trim(status))
+
         if normalized_status in ["ACTIVE", "SUSPENDED", "DELETED"] do
           Map.put(attrs, "status", normalized_status)
         else
           # Remove invalid status
           Map.delete(attrs, "status")
         end
+
       _ ->
         attrs
     end
@@ -218,6 +235,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
     case attrs[field] do
       password when is_binary(password) ->
         Map.put(attrs, field, String.trim(password))
+
       _ ->
         attrs
     end
@@ -227,6 +245,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
     case attrs["refresh_token"] do
       token when is_binary(token) ->
         Map.put(attrs, "refresh_token", String.trim(token))
+
       _ ->
         attrs
     end
@@ -238,6 +257,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
       _ -> 1
     end
   end
+
   defp normalize_page(_), do: 1
 
   defp normalize_page_size(page_size) when is_binary(page_size) do
@@ -247,14 +267,19 @@ defmodule LedgerBankApi.Accounts.Normalize do
       _ -> 20
     end
   end
+
   defp normalize_page_size(_), do: 20
 
   defp parse_sort_field(field_string) do
     case String.split(field_string, ":") do
-      [field] -> {String.to_atom(String.trim(field)), :asc}
+      [field] ->
+        {String.to_atom(String.trim(field)), :asc}
+
       [field, direction] when direction in ["asc", "desc"] ->
         {String.to_atom(String.trim(field)), String.to_atom(String.trim(direction))}
-      _ -> nil
+
+      _ ->
+        nil
     end
   end
 

@@ -404,6 +404,10 @@ sequenceDiagram
 
 ### **Environment-Based Configuration**
 
+> **📝 Example Configuration Structure**
+> 
+> The following shows the configuration pattern used in this project:
+
 ```elixir
 # config/config.exs - Base configuration
 config :ledger_bank_api, :jwt,
@@ -421,6 +425,10 @@ config :ledger_bank_api, :jwt_secret,
 ```
 
 ### **Runtime Configuration**
+
+> **📝 Example Runtime Configuration**
+> 
+> This demonstrates how environment variables drive configuration:
 
 ```elixir
 # config/runtime.exs - Environment-driven settings

@@ -8,8 +8,16 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
     setup do
       user = user_fixture()
       login = login_fixture(user)
-      account = account_fixture(login, %{balance: Decimal.new("1000.00"), account_type: "CHECKING"})
-      payment = payment_fixture(account, %{user_id: user.id, amount: Decimal.new("100.00"), direction: "DEBIT"})
+
+      account =
+        account_fixture(login, %{balance: Decimal.new("1000.00"), account_type: "CHECKING"})
+
+      payment =
+        payment_fixture(account, %{
+          user_id: user.id,
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT"
+        })
 
       %{user: user, login: login, account: account, payment: payment}
     end
@@ -23,27 +31,37 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
     test "returns error when account is inactive", %{user: user, login: login} do
       # Create inactive account
       inactive_account = account_fixture(login, %{status: "INACTIVE"})
-      payment = payment_fixture(inactive_account, %{user_id: user.id, amount: Decimal.new("100.00"), direction: "DEBIT"})
+
+      payment =
+        payment_fixture(inactive_account, %{
+          user_id: user.id,
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT"
+        })
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :account_inactive}} =
-        FinancialService.process_payment(payment.id)
+               FinancialService.process_payment(payment.id)
     end
 
     test "returns error when insufficient funds for DEBIT payment", %{account: account} do
       # Create payment that exceeds account balance
-      payment = payment_fixture(account, %{
-        amount: Decimal.new("1500.00"),  # More than account balance of 1000.00
-        direction: "DEBIT"
-      })
+      payment =
+        payment_fixture(account, %{
+          # More than account balance of 1000.00
+          amount: Decimal.new("1500.00"),
+          direction: "DEBIT"
+        })
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :insufficient_funds}} =
-        FinancialService.process_payment(payment.id)
+               FinancialService.process_payment(payment.id)
     end
 
     test "allows CREDIT payment even with zero balance", %{account: account} do
       # Set account balance to zero
       account
-      |> LedgerBankApi.Financial.Schemas.UserBankAccount.balance_changeset(%{balance: Decimal.new("0")})
+      |> LedgerBankApi.Financial.Schemas.UserBankAccount.balance_changeset(%{
+        balance: Decimal.new("0")
+      })
       |> LedgerBankApi.Repo.update!()
 
       payment = payment_fixture(account, %{amount: Decimal.new("100.00"), direction: "CREDIT"})
@@ -55,7 +73,9 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
     test "returns error when daily limit exceeded", %{account: account} do
       # Increase account balance to ensure sufficient funds for both payments
       account
-      |> LedgerBankApi.Financial.Schemas.UserBankAccount.balance_changeset(%{balance: Decimal.new("2000.00")})
+      |> LedgerBankApi.Financial.Schemas.UserBankAccount.balance_changeset(%{
+        balance: Decimal.new("2000.00")
+      })
       |> LedgerBankApi.Repo.update!()
 
       # Create multiple payments that exceed daily limit (1000.00 for CHECKING)
@@ -67,56 +87,68 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
 
       # Second payment should fail due to daily limit (600 + 500 = 1100 > 1000)
       assert {:error, %LedgerBankApi.Core.Error{reason: :daily_limit_exceeded}} =
-        FinancialService.process_payment(payment2.id)
+               FinancialService.process_payment(payment2.id)
     end
 
     test "returns error when single transaction amount exceeds limit", %{account: account} do
       # Create payment that exceeds single transaction limit (10000.00)
       # But not so much that it fails insufficient funds first
-      payment = payment_fixture(account, %{
-        amount: Decimal.new("15000.00"),  # More than single transaction limit
-        direction: "DEBIT"
-      })
+      payment =
+        payment_fixture(account, %{
+          # More than single transaction limit
+          amount: Decimal.new("15000.00"),
+          direction: "DEBIT"
+        })
 
       # This will fail with insufficient funds because amount limit check happens after
       # Let's test with a smaller amount that exceeds limit but not account balance
       # First, let's set a higher account balance
       account
-      |> LedgerBankApi.Financial.Schemas.UserBankAccount.balance_changeset(%{balance: Decimal.new("20000.00")})
+      |> LedgerBankApi.Financial.Schemas.UserBankAccount.balance_changeset(%{
+        balance: Decimal.new("20000.00")
+      })
       |> LedgerBankApi.Repo.update!()
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :amount_exceeds_limit}} =
-        FinancialService.process_payment(payment.id)
+               FinancialService.process_payment(payment.id)
     end
 
     test "returns error when duplicate transaction detected", %{account: account} do
       # Create two identical payments
-      payment1 = payment_fixture(account, %{
-        amount: Decimal.new("100.00"),
-        direction: "DEBIT",
-        description: "Duplicate test payment"
-      })
-      payment2 = payment_fixture(account, %{
-        amount: Decimal.new("100.00"),
-        direction: "DEBIT",
-        description: "Duplicate test payment"
-      })
+      payment1 =
+        payment_fixture(account, %{
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT",
+          description: "Duplicate test payment"
+        })
+
+      payment2 =
+        payment_fixture(account, %{
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT",
+          description: "Duplicate test payment"
+        })
 
       # Process first payment successfully
       assert {:ok, _} = FinancialService.process_payment(payment1.id)
 
       # Second payment should fail due to duplicate detection
       assert {:error, %LedgerBankApi.Core.Error{reason: :duplicate_transaction}} =
-        FinancialService.process_payment(payment2.id)
+               FinancialService.process_payment(payment2.id)
     end
 
-    test "updates account balance correctly for DEBIT payment", %{account: account, payment: payment} do
+    test "updates account balance correctly for DEBIT payment", %{
+      account: account,
+      payment: payment
+    } do
       initial_balance = account.balance
 
       assert {:ok, _} = FinancialService.process_payment(payment.id)
 
       # Reload account to get updated balance
-      updated_account = LedgerBankApi.Repo.get(LedgerBankApi.Financial.Schemas.UserBankAccount, account.id)
+      updated_account =
+        LedgerBankApi.Repo.get(LedgerBankApi.Financial.Schemas.UserBankAccount, account.id)
+
       expected_balance = Decimal.sub(initial_balance, payment.amount)
 
       assert Decimal.eq?(updated_account.balance, expected_balance)
@@ -129,7 +161,9 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
       assert {:ok, _} = FinancialService.process_payment(payment.id)
 
       # Reload account to get updated balance
-      updated_account = LedgerBankApi.Repo.get(LedgerBankApi.Financial.Schemas.UserBankAccount, account.id)
+      updated_account =
+        LedgerBankApi.Repo.get(LedgerBankApi.Financial.Schemas.UserBankAccount, account.id)
+
       expected_balance = Decimal.add(initial_balance, payment.amount)
 
       assert Decimal.eq?(updated_account.balance, expected_balance)
@@ -139,13 +173,15 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
       assert {:ok, _} = FinancialService.process_payment(payment.id)
 
       # Check that transaction record was created
-      transaction = LedgerBankApi.Repo.one(
-        from t in LedgerBankApi.Financial.Schemas.Transaction,
-        where: t.amount == ^payment.amount,
-        where: t.direction == ^payment.direction,
-        where: t.description == ^payment.description,
-        where: t.user_id == ^payment.user_id
-      )
+      transaction =
+        LedgerBankApi.Repo.one(
+          from(t in LedgerBankApi.Financial.Schemas.Transaction,
+            where: t.amount == ^payment.amount,
+            where: t.direction == ^payment.direction,
+            where: t.description == ^payment.description,
+            where: t.user_id == ^payment.user_id
+          )
+        )
 
       assert transaction != nil
       assert Decimal.eq?(transaction.amount, payment.amount)
@@ -158,7 +194,9 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
     setup do
       user = user_fixture()
       login = login_fixture(user)
-      account = account_fixture(login, %{balance: Decimal.new("1000.00"), account_type: "CHECKING"})
+
+      account =
+        account_fixture(login, %{balance: Decimal.new("1000.00"), account_type: "CHECKING"})
 
       %{user: user, login: login, account: account}
     end
@@ -194,12 +232,16 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
       }
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :account_inactive}} =
-        FinancialService.create_user_payment(attrs)
+               FinancialService.create_user_payment(attrs)
     end
 
-    test "returns error when amount exceeds single transaction limit during creation", %{user: user, account: account} do
+    test "returns error when amount exceeds single transaction limit during creation", %{
+      user: user,
+      account: account
+    } do
       attrs = %{
-        amount: Decimal.new("15000.00"),  # More than single transaction limit
+        # More than single transaction limit
+        amount: Decimal.new("15000.00"),
         direction: "DEBIT",
         payment_type: "PAYMENT",
         description: "Test payment",
@@ -208,7 +250,7 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
       }
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :amount_exceeds_limit}} =
-        FinancialService.create_user_payment(attrs)
+               FinancialService.create_user_payment(attrs)
     end
   end
 
@@ -216,25 +258,29 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
     test "CHECKING account has 1000.00 daily limit" do
       user = user_fixture()
       login = login_fixture(user)
-      account = account_fixture(login, %{account_type: "CHECKING", balance: Decimal.new("2000.00")})
+
+      account =
+        account_fixture(login, %{account_type: "CHECKING", balance: Decimal.new("2000.00")})
 
       # Create payment that would exceed daily limit
       payment = payment_fixture(account, %{amount: Decimal.new("1100.00"), direction: "DEBIT"})
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :daily_limit_exceeded}} =
-        FinancialService.process_payment(payment.id)
+               FinancialService.process_payment(payment.id)
     end
 
     test "SAVINGS account has 500.00 daily limit" do
       user = user_fixture()
       login = login_fixture(user)
-      account = account_fixture(login, %{account_type: "SAVINGS", balance: Decimal.new("1000.00")})
+
+      account =
+        account_fixture(login, %{account_type: "SAVINGS", balance: Decimal.new("1000.00")})
 
       # Create payment that would exceed daily limit
       payment = payment_fixture(account, %{amount: Decimal.new("600.00"), direction: "DEBIT"})
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :daily_limit_exceeded}} =
-        FinancialService.process_payment(payment.id)
+               FinancialService.process_payment(payment.id)
     end
 
     test "CREDIT account has 2000.00 daily limit" do
@@ -246,19 +292,21 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
       payment = payment_fixture(account, %{amount: Decimal.new("2100.00"), direction: "DEBIT"})
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :daily_limit_exceeded}} =
-        FinancialService.process_payment(payment.id)
+               FinancialService.process_payment(payment.id)
     end
 
     test "INVESTMENT account has 5000.00 daily limit" do
       user = user_fixture()
       login = login_fixture(user)
-      account = account_fixture(login, %{account_type: "INVESTMENT", balance: Decimal.new("6000.00")})
+
+      account =
+        account_fixture(login, %{account_type: "INVESTMENT", balance: Decimal.new("6000.00")})
 
       # Create payment that would exceed daily limit
       payment = payment_fixture(account, %{amount: Decimal.new("5100.00"), direction: "DEBIT"})
 
       assert {:error, %LedgerBankApi.Core.Error{reason: :daily_limit_exceeded}} =
-        FinancialService.process_payment(payment.id)
+               FinancialService.process_payment(payment.id)
     end
   end
 
@@ -266,43 +314,52 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
     setup do
       user = user_fixture()
       login = login_fixture(user)
-      account = account_fixture(login, %{balance: Decimal.new("1000.00"), account_type: "CHECKING"})
+
+      account =
+        account_fixture(login, %{balance: Decimal.new("1000.00"), account_type: "CHECKING"})
 
       %{user: user, login: login, account: account}
     end
 
     test "detects duplicates within 5 minute window", %{account: account} do
       # Create two identical payments
-      payment1 = payment_fixture(account, %{
-        amount: Decimal.new("100.00"),
-        direction: "DEBIT",
-        description: "Duplicate test"
-      })
-      payment2 = payment_fixture(account, %{
-        amount: Decimal.new("100.00"),
-        direction: "DEBIT",
-        description: "Duplicate test"
-      })
+      payment1 =
+        payment_fixture(account, %{
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT",
+          description: "Duplicate test"
+        })
+
+      payment2 =
+        payment_fixture(account, %{
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT",
+          description: "Duplicate test"
+        })
 
       # Process first payment
       assert {:ok, _} = FinancialService.process_payment(payment1.id)
 
       # Second payment should be detected as duplicate
       assert {:error, %LedgerBankApi.Core.Error{reason: :duplicate_transaction}} =
-        FinancialService.process_payment(payment2.id)
+               FinancialService.process_payment(payment2.id)
     end
 
     test "allows similar payments with different amounts", %{account: account} do
-      payment1 = payment_fixture(account, %{
-        amount: Decimal.new("100.00"),
-        direction: "DEBIT",
-        description: "Test payment"
-      })
-      payment2 = payment_fixture(account, %{
-        amount: Decimal.new("200.00"),  # Different amount
-        direction: "DEBIT",
-        description: "Test payment"
-      })
+      payment1 =
+        payment_fixture(account, %{
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT",
+          description: "Test payment"
+        })
+
+      payment2 =
+        payment_fixture(account, %{
+          # Different amount
+          amount: Decimal.new("200.00"),
+          direction: "DEBIT",
+          description: "Test payment"
+        })
 
       # Both payments should process successfully
       assert {:ok, _} = FinancialService.process_payment(payment1.id)
@@ -310,16 +367,20 @@ defmodule LedgerBankApi.Financial.PaymentBusinessRulesTest do
     end
 
     test "allows similar payments with different descriptions", %{account: account} do
-      payment1 = payment_fixture(account, %{
-        amount: Decimal.new("100.00"),
-        direction: "DEBIT",
-        description: "Payment 1"
-      })
-      payment2 = payment_fixture(account, %{
-        amount: Decimal.new("100.00"),
-        direction: "DEBIT",
-        description: "Payment 2"  # Different description
-      })
+      payment1 =
+        payment_fixture(account, %{
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT",
+          description: "Payment 1"
+        })
+
+      payment2 =
+        payment_fixture(account, %{
+          amount: Decimal.new("100.00"),
+          direction: "DEBIT",
+          # Different description
+          description: "Payment 2"
+        })
 
       # Both payments should process successfully
       assert {:ok, _} = FinancialService.process_payment(payment1.id)

@@ -8,7 +8,8 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
       attrs = %{
         email: "test@example.com",
         full_name: "Test User",
-        role: "admin",  # Use non-default role to see it in changes
+        # Use non-default role to see it in changes
+        role: "admin",
         password: "password123",
         password_confirmation: "password123"
       }
@@ -167,26 +168,29 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
     test "rejects duplicate email" do
       # Create first user
-      _user = %User{}
-      |> User.changeset(%{
-        email: "duplicate@example.com",
-        full_name: "First User",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      _user =
+        %User{}
+        |> User.changeset(%{
+          email: "duplicate@example.com",
+          full_name: "First User",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       # Try to create second user with same email
-      changeset = User.changeset(%User{}, %{
-        email: "duplicate@example.com",
-        full_name: "Second User",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
+      changeset =
+        User.changeset(%User{}, %{
+          email: "duplicate@example.com",
+          full_name: "Second User",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
 
-      assert changeset.valid?  # Changeset is valid before DB constraint
+      # Changeset is valid before DB constraint
+      assert changeset.valid?
 
       # Should fail on insert due to unique constraint
       assert {:error, changeset} = Repo.insert(changeset)
@@ -243,6 +247,7 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
     test "accepts password up to 255 characters" do
       long_password = String.duplicate("a", 255)
+
       attrs = %{
         email: "test@example.com",
         full_name: "Test",
@@ -258,6 +263,7 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
     test "rejects password exceeding 255 characters" do
       too_long_password = String.duplicate("a", 256)
+
       attrs = %{
         email: "test@example.com",
         full_name: "Test",
@@ -328,7 +334,8 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
       attrs = %{
         email: "test@example.com",
         full_name: "Test",
-        role: "superadmin",  # Invalid role
+        # Invalid role
+        role: "superadmin",
         password: "password123",
         password_confirmation: "password123"
       }
@@ -458,15 +465,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
   describe "update_changeset/2" do
     test "updates user without password" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "original@example.com",
-        full_name: "Original Name",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "original@example.com",
+          full_name: "Original Name",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       update_attrs = %{
         email: "updated@example.com",
@@ -482,15 +490,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     end
 
     test "validates email format in updates" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "original@example.com",
-        full_name: "Original",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "original@example.com",
+          full_name: "Original",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       update_attrs = %{email: "invalid-email"}
 
@@ -501,15 +510,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     end
 
     test "validates role in updates" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "test@example.com",
-        full_name: "Test",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "test@example.com",
+          full_name: "Test",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       update_attrs = %{role: "invalid_role"}
 
@@ -520,15 +530,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     end
 
     test "validates status in updates" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "test@example.com",
-        full_name: "Test",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "test@example.com",
+          full_name: "Test",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       update_attrs = %{status: "INVALID"}
 
@@ -539,15 +550,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     end
 
     test "allows updating boolean fields" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "test@example.com",
-        full_name: "Test",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "test@example.com",
+          full_name: "Test",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       update_attrs = %{
         active: false,
@@ -567,15 +579,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
   describe "password_changeset/2" do
     test "creates valid password changeset" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "test@example.com",
-        full_name: "Test",
-        role: "user",
-        password: "oldpassword123",
-        password_confirmation: "oldpassword123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "test@example.com",
+          full_name: "Test",
+          role: "user",
+          password: "oldpassword123",
+          password_confirmation: "oldpassword123"
+        })
+        |> Repo.insert!()
 
       password_attrs = %{
         password: "newpassword123",
@@ -600,10 +613,11 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     test "validates password length" do
       user = %User{id: Ecto.UUID.generate()}
 
-      changeset = User.password_changeset(user, %{
-        password: "short",
-        password_confirmation: "short"
-      })
+      changeset =
+        User.password_changeset(user, %{
+          password: "short",
+          password_confirmation: "short"
+        })
 
       refute changeset.valid?
       assert "must be at least 8 characters long" in errors_on(changeset).password
@@ -612,10 +626,11 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     test "validates password confirmation match" do
       user = %User{id: Ecto.UUID.generate()}
 
-      changeset = User.password_changeset(user, %{
-        password: "password123",
-        password_confirmation: "different123"
-      })
+      changeset =
+        User.password_changeset(user, %{
+          password: "password123",
+          password_confirmation: "different123"
+        })
 
       refute changeset.valid?
       assert "does not match password" in errors_on(changeset).password_confirmation
@@ -624,10 +639,11 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     test "hashes new password" do
       user = %User{id: Ecto.UUID.generate()}
 
-      changeset = User.password_changeset(user, %{
-        password: "newpassword123",
-        password_confirmation: "newpassword123"
-      })
+      changeset =
+        User.password_changeset(user, %{
+          password: "newpassword123",
+          password_confirmation: "newpassword123"
+        })
 
       assert changeset.valid?
       hashed = get_change(changeset, :password_hash)
@@ -641,12 +657,15 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
       attrs = %{
         email: "test@example.com",
         full_name: "Test User",
-        status: "SUSPENDED",  # Use non-default to see change
+        # Use non-default to see change
+        status: "SUSPENDED",
         role: "admin",
         password: "password123",
         password_confirmation: "password123",
-        active: false,  # Use non-default
-        verified: true,  # Use non-default
+        # Use non-default
+        active: false,
+        # Use non-default
+        verified: true,
         suspended: false,
         deleted: false
       }
@@ -731,15 +750,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
   describe "schema defaults" do
     test "sets default values correctly" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "defaults@example.com",
-        full_name: "Defaults Test",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "defaults@example.com",
+          full_name: "Defaults Test",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       assert user.status == "ACTIVE"
       assert user.active == true
@@ -751,15 +771,16 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
   describe "virtual fields" do
     test "password is virtual and not persisted" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "virtual@example.com",
-        full_name: "Virtual Test",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "virtual@example.com",
+          full_name: "Virtual Test",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       # Reload from DB
       reloaded_user = Repo.get(User, user.id)
@@ -823,49 +844,53 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
     end
 
     test "different passwords produce different hashes" do
-      user1 = %User{}
-      |> User.changeset(%{
-        email: "user1@example.com",
-        full_name: "User 1",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user1 =
+        %User{}
+        |> User.changeset(%{
+          email: "user1@example.com",
+          full_name: "User 1",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
-      user2 = %User{}
-      |> User.changeset(%{
-        email: "user2@example.com",
-        full_name: "User 2",
-        role: "user",
-        password: "different456",
-        password_confirmation: "different456"
-      })
-      |> Repo.insert!()
+      user2 =
+        %User{}
+        |> User.changeset(%{
+          email: "user2@example.com",
+          full_name: "User 2",
+          role: "user",
+          password: "different456",
+          password_confirmation: "different456"
+        })
+        |> Repo.insert!()
 
       assert user1.password_hash != user2.password_hash
     end
 
     test "same password for different users produces different hashes" do
-      user1 = %User{}
-      |> User.changeset(%{
-        email: "user1@example.com",
-        full_name: "User 1",
-        role: "user",
-        password: "samepassword123",
-        password_confirmation: "samepassword123"
-      })
-      |> Repo.insert!()
+      user1 =
+        %User{}
+        |> User.changeset(%{
+          email: "user1@example.com",
+          full_name: "User 1",
+          role: "user",
+          password: "samepassword123",
+          password_confirmation: "samepassword123"
+        })
+        |> Repo.insert!()
 
-      user2 = %User{}
-      |> User.changeset(%{
-        email: "user2@example.com",
-        full_name: "User 2",
-        role: "user",
-        password: "samepassword123",
-        password_confirmation: "samepassword123"
-      })
-      |> Repo.insert!()
+      user2 =
+        %User{}
+        |> User.changeset(%{
+          email: "user2@example.com",
+          full_name: "User 2",
+          role: "user",
+          password: "samepassword123",
+          password_confirmation: "samepassword123"
+        })
+        |> Repo.insert!()
 
       # Note: In test env, PasswordHelper may produce same hash for same password
       # In production, Argon2 with salt would produce different hashes
@@ -892,7 +917,8 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
       # Test that it either fails validation or uses default
       if changeset.valid? do
         user = Repo.insert!(changeset)
-        assert user.status == "ACTIVE"  # Should default
+        # Should default
+        assert user.status == "ACTIVE"
       else
         assert "is invalid" in errors_on(changeset).status
       end
@@ -947,39 +973,42 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
 
   describe "timestamps" do
     test "sets inserted_at on creation" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "timestamp@example.com",
-        full_name: "Timestamp Test",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "timestamp@example.com",
+          full_name: "Timestamp Test",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       assert user.inserted_at != nil
       assert user.updated_at != nil
     end
 
     test "updates updated_at on modification" do
-      user = %User{}
-      |> User.changeset(%{
-        email: "update@example.com",
-        full_name: "Original",
-        role: "user",
-        password: "password123",
-        password_confirmation: "password123"
-      })
-      |> Repo.insert!()
+      user =
+        %User{}
+        |> User.changeset(%{
+          email: "update@example.com",
+          full_name: "Original",
+          role: "user",
+          password: "password123",
+          password_confirmation: "password123"
+        })
+        |> Repo.insert!()
 
       original_updated_at = user.updated_at
 
       # Wait a moment and update
       Process.sleep(100)
 
-      updated_user = user
-      |> User.update_changeset(%{full_name: "Updated"})
-      |> Repo.update!()
+      updated_user =
+        user
+        |> User.update_changeset(%{full_name: "Updated"})
+        |> Repo.update!()
 
       # updated_at should be newer (or equal due to precision)
       assert DateTime.compare(updated_user.updated_at, original_updated_at) in [:gt, :eq]

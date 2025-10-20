@@ -3,6 +3,7 @@ defmodule LedgerBankApi.Application do
   The main application module for LedgerBankApi.
   Starts the supervision tree, including Repo, Endpoint, Oban, and other core services.
   """
+
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
 
@@ -24,7 +25,9 @@ defmodule LedgerBankApi.Application do
 
     # Initialize cache adapter
     case LedgerBankApi.Core.Cache.init() do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, reason} ->
         require Logger
         Logger.error("Failed to initialize cache adapter: #{inspect(reason)}")

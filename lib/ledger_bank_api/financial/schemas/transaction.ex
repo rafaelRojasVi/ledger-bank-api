@@ -4,16 +4,32 @@ defmodule LedgerBankApi.Financial.Schemas.Transaction do
   """
   use LedgerBankApi.Core.SchemaHelpers
 
-  @derive {Jason.Encoder, only: [:id, :description, :amount, :direction, :posted_at, :account_id, :user_id, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :description,
+             :amount,
+             :direction,
+             :posted_at,
+             :account_id,
+             :user_id,
+             :inserted_at,
+             :updated_at
+           ]}
 
   schema "transactions" do
-    field :description, :string
-    field :amount, :decimal
-    field :direction, :string # "CREDIT" or "DEBIT"
-    field :posted_at, :utc_datetime
+    field(:description, :string)
+    field(:amount, :decimal)
+    # "CREDIT" or "DEBIT"
+    field(:direction, :string)
+    field(:posted_at, :utc_datetime)
 
-    belongs_to :user_bank_account, LedgerBankApi.Financial.Schemas.UserBankAccount, foreign_key: :account_id, type: :binary_id
-    belongs_to :user, LedgerBankApi.Accounts.Schemas.User
+    belongs_to(:user_bank_account, LedgerBankApi.Financial.Schemas.UserBankAccount,
+      foreign_key: :account_id,
+      type: :binary_id
+    )
+
+    belongs_to(:user, LedgerBankApi.Accounts.Schemas.User)
 
     timestamps(type: :utc_datetime)
   end

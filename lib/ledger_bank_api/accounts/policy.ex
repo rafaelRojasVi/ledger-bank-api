@@ -52,7 +52,9 @@ defmodule LedgerBankApi.Accounts.Policy do
   """
   def can_change_password?(_user, attrs) do
     current_password = attrs[:current_password] || attrs["current_password"]
-    new_password = attrs[:password] || attrs["password"] || attrs[:new_password] || attrs["new_password"]
+
+    new_password =
+      attrs[:password] || attrs["password"] || attrs[:new_password] || attrs["new_password"]
 
     cond do
       is_nil(current_password) ->
@@ -162,5 +164,190 @@ defmodule LedgerBankApi.Accounts.Policy do
     attrs_keys = Map.keys(attrs) |> Enum.map(&to_string/1)
 
     not Enum.any?(attrs_keys, &(&1 in restricted_fields))
+  end
+
+  # ============================================================================
+  # POLICY COMBINATORS
+  # ============================================================================
+  # These functions allow for complex authorization composition using
+  # logical operators (AND, OR, NOT) and role-based policies.
+
+  @doc """
+  Policy combinator for AND logic.
+
+  All policies must return true for the result to be true.
+
+  ## Examples
+
+      # User must be admin AND target must not be themselves
+      Policy.all([
+        fn -> Policy.is_admin?(user) end,
+        fn -> user.id != target_user.id end
+      ])
+  """
+  def all(policies) when is_list(policies) do
+    Enum.all?(policies, fn policy ->
+      case policy do
+        fun when is_function(fun, 0) -> fun.()
+        result when is_boolean(result) -> result
+        _ -> false
+      end
+    end)
+  end
+
+  @doc """
+  Policy combinator for OR logic.
+
+  At least one policy must return true for the result to be true.
+
+  ## Examples
+
+      # User must be admin OR support OR viewing themselves
+      Policy.any([
+        fn -> Policy.is_admin?(user) end,
+        fn -> Policy.is_support?(user) end,
+        fn -> user.id == target_user.id end
+      ])
+  """
+  def any(policies) when is_list(policies) do
+    Enum.any?(policies, fn policy ->
+      case policy do
+        fun when is_function(fun, 0) -> fun.()
+        result when is_boolean(result) -> result
+        _ -> false
+      end
+    end)
+  end
+
+  @doc """
+  Policy combinator for NOT logic.
+
+  Inverts the result of a policy.
+
+  ## Examples
+
+      # User must NOT be the target user
+      Policy.negate(fn -> user.id == target_user.id end)
+  """
+  def negate(policy) do
+    case policy do
+      fun when is_function(fun, 0) -> not fun.()
+      result when is_boolean(result) -> not result
+      _ -> true
+    end
+  end
+
+  @doc """
+  Role-based policy checker.
+
+  ## Examples
+
+      # User must have admin role
+      Policy.has_role?(user, "admin")
+
+      # User must have any of the specified roles
+      Policy.has_any_role?(user, ["admin", "support"])
+  """
+  def has_role?(user, role) do
+    user.role == role
+  end
+
+  @doc """
+  Check if user has any of the specified roles.
+  """
+  def has_any_role?(user, roles) when is_list(roles) do
+    user.role in roles
+  end
+
+  @doc """
+  Check if user is an admin.
+  """
+  def is_admin?(user) do
+    has_role?(user, "admin")
+  end
+
+  @doc """
+  Check if user is support staff.
+  """
+  def is_support?(user) do
+    has_role?(user, "support")
+  end
+
+  @doc """
+  Check if user is a regular user.
+  """
+  def is_user?(user) do
+    has_role?(user, "user")
+  end
+
+  @doc """
+  Check if user is acting on themselves.
+  """
+  def is_self_action?(actor, target) do
+    actor.id == target.id
+  end
+
+  @doc """
+  Check if user is acting on a different user.
+  """
+  def is_other_user_action?(actor, target) do
+    actor.id != target.id
+  end
+
+  @doc """
+  Field-based policy checker.
+
+  ## Examples
+
+      # Check if attributes contain only allowed fields
+      Policy.has_only_allowed_fields?(attrs, ["name", "email"])
+
+      # Check if attributes contain any restricted fields
+      Policy.has_restricted_fields?(attrs, ["role", "status"])
+  """
+  def has_only_allowed_fields?(attrs, allowed_fields) do
+    attrs_keys = Map.keys(attrs) |> Enum.map(&to_string/1)
+    Enum.all?(attrs_keys, &(&1 in allowed_fields))
+  end
+
+  @doc """
+  Check if attributes contain any restricted fields.
+  """
+  def has_restricted_fields?(attrs, restricted_fields) do
+    attrs_keys = Map.keys(attrs) |> Enum.map(&to_string/1)
+    Enum.any?(attrs_keys, &(&1 in restricted_fields))
+  end
+
+  @doc """
+  Complex policy composition example.
+
+  This demonstrates how to use combinators for complex authorization logic.
+  """
+  def can_perform_sensitive_operation?(actor, target, attrs) do
+    # Complex policy: (admin OR (support AND not_self)) AND no_restricted_fields
+    all([
+      # Either admin OR (support AND not acting on themselves)
+      fn ->
+        any([
+          fn -> is_admin?(actor) end,
+          fn ->
+            all([fn -> is_support?(actor) end, fn -> is_other_user_action?(actor, target) end])
+          end
+        ])
+      end,
+      # No restricted fields in attributes
+      fn ->
+        negate(
+          has_restricted_fields?(attrs, [
+            "role",
+            "status",
+            "active",
+            "verified",
+            "suspended",
+            "deleted"
+          ])
+        )
+      end
+    ])
   end
 end

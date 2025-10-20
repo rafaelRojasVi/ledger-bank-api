@@ -35,6 +35,7 @@ defmodule LedgerBankApi.Financial.PaymentNotifications do
 
     # Also broadcast to specific payment channel for subscribers
     payment_topic = "payment:#{payment.id}"
+
     Phoenix.PubSub.broadcast(LedgerBankApi.PubSub, payment_topic, %Phoenix.Socket.Broadcast{
       topic: payment_topic,
       event: "payment_updated",
@@ -113,7 +114,9 @@ defmodule LedgerBankApi.Financial.PaymentNotifications do
       event_type: "payment_failed"
     }
 
-    Logger.warning("Broadcasting payment failure for payment #{payment.id} to user #{user_id}: #{error_reason}")
+    Logger.warning(
+      "Broadcasting payment failure for payment #{payment.id} to user #{user_id}: #{error_reason}"
+    )
 
     Phoenix.PubSub.broadcast(LedgerBankApi.PubSub, topic, %Phoenix.Socket.Broadcast{
       topic: topic,
@@ -136,11 +139,15 @@ defmodule LedgerBankApi.Financial.PaymentNotifications do
     Logger.info("Broadcasting system maintenance notification: #{message}")
 
     # Broadcast to all users (in a real system, you might want to target specific user groups)
-    Phoenix.PubSub.broadcast(LedgerBankApi.PubSub, "system_notifications", %Phoenix.Socket.Broadcast{
-      topic: "system_notifications",
-      event: "maintenance_notification",
-      payload: payload
-    })
+    Phoenix.PubSub.broadcast(
+      LedgerBankApi.PubSub,
+      "system_notifications",
+      %Phoenix.Socket.Broadcast{
+        topic: "system_notifications",
+        event: "maintenance_notification",
+        payload: payload
+      }
+    )
   end
 
   @doc """
@@ -156,7 +163,9 @@ defmodule LedgerBankApi.Financial.PaymentNotifications do
       event_type: "account_sync_completed"
     }
 
-    Logger.info("Broadcasting account sync completion for user #{user_id}: #{accounts_synced} accounts synced")
+    Logger.info(
+      "Broadcasting account sync completion for user #{user_id}: #{accounts_synced} accounts synced"
+    )
 
     Phoenix.PubSub.broadcast(LedgerBankApi.PubSub, topic, %Phoenix.Socket.Broadcast{
       topic: topic,

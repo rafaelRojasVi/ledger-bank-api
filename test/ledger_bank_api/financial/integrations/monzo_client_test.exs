@@ -39,7 +39,8 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
           flunk("Expected an error for invalid token: #{inspect(token)}")
         rescue
           FunctionClauseError -> :ok
-          CaseClauseError -> :ok  # Circuit breaker issue
+          # Circuit breaker issue
+          CaseClauseError -> :ok
         end
       end
     end
@@ -50,7 +51,8 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       params = %{access_token: "valid_token", since: "2024-01-01"}
 
       # Will fail with real API calls, but testing the interface
-      result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_transactions(account_id, params)
+      result =
+        LedgerBankApi.Financial.Integrations.MonzoClient.fetch_transactions(account_id, params)
 
       # Accept either success or error - we're testing the interface, not the API
       assert is_tuple(result)
@@ -65,7 +67,12 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       for account_id <- invalid_account_ids do
         # Should fail with protocol errors or function clause errors
         try do
-          result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_transactions(account_id, params)
+          result =
+            LedgerBankApi.Financial.Integrations.MonzoClient.fetch_transactions(
+              account_id,
+              params
+            )
+
           # If it doesn't raise an error, it should still return an error due to invalid token
           assert match?({:error, _}, result)
         rescue
@@ -95,10 +102,14 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
     test "create_payment/1 rejects invalid payment data" do
       # Test that the function rejects invalid payment data formats
       invalid_payments = [
-        %{access_token: "token", amount: 1000, description: "Test"},  # Missing account_id
-        %{access_token: "token", account_id: "acc_123", description: "Test"},  # Missing amount
-        %{access_token: "token", account_id: "acc_123", amount: 1000},  # Missing description
-        %{account_id: "acc_123", amount: 1000, description: "Test"}  # Missing access_token
+        # Missing account_id
+        %{access_token: "token", amount: 1000, description: "Test"},
+        # Missing amount
+        %{access_token: "token", account_id: "acc_123", description: "Test"},
+        # Missing description
+        %{access_token: "token", account_id: "acc_123", amount: 1000},
+        # Missing access_token
+        %{account_id: "acc_123", amount: 1000, description: "Test"}
       ]
 
       for payment_data <- invalid_payments do
@@ -130,7 +141,9 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       for account_id <- invalid_account_ids do
         # These should fail with protocol errors
         try do
-          result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_balance(account_id, token)
+          result =
+            LedgerBankApi.Financial.Integrations.MonzoClient.fetch_balance(account_id, token)
+
           # If it doesn't raise an error, it should still return an error due to invalid token
           assert match?({:error, _}, result)
         rescue
@@ -263,7 +276,8 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       large_payment = %{
         access_token: "test_token",
         account_id: "acc_456",
-        amount: 100_000_000,  # Very large amount
+        # Very large amount
+        amount: 100_000_000,
         description: "Large payment"
       }
 
@@ -309,21 +323,23 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       token = %{access_token: "concurrent_test_token"}
 
       # Create multiple concurrent requests
-      tasks = for _i <- 1..3 do
-        Task.async(fn ->
-          try do
-            LedgerBankApi.Financial.Integrations.MonzoClient.fetch_accounts(token)
-          rescue
-            CaseClauseError -> {:error, :not_found}
-          end
-        end)
-      end
+      tasks =
+        for _i <- 1..3 do
+          Task.async(fn ->
+            try do
+              LedgerBankApi.Financial.Integrations.MonzoClient.fetch_accounts(token)
+            rescue
+              CaseClauseError -> {:error, :not_found}
+            end
+          end)
+        end
 
       # Wait for all tasks to complete
       results = Task.await_many(tasks, 5000)
 
       # Requests should complete without crashing
       assert length(results) == 3
+
       for result <- results do
         assert match?({:error, _}, result)
       end

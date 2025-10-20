@@ -6,8 +6,9 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
     admin_user = UsersFixtures.user_fixture(%{role: "admin"})
     {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(admin_user)
 
-    conn = conn
-    |> put_req_header("authorization", "Bearer #{access_token}")
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer #{access_token}")
 
     %{conn: conn, admin_user: admin_user, access_token: access_token}
   end
@@ -119,17 +120,19 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerKeysetTest do
       user = UsersFixtures.user_fixture(%{role: "user"})
       {:ok, user_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{user_token}")
-      |> get("/api/users/keyset")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{user_token}")
+        |> get("/api/users/keyset")
 
       assert json_response(conn, 403)
     end
 
     test "requires authentication", %{conn: conn} do
-      conn = conn
-      |> delete_req_header("authorization")
-      |> get("/api/users/keyset")
+      conn =
+        conn
+        |> delete_req_header("authorization")
+        |> get("/api/users/keyset")
 
       assert json_response(conn, 401)
     end

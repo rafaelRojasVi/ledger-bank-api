@@ -81,24 +81,36 @@ defmodule LedgerBankApi.Core.ErrorHandler do
       {:error, ErrorHandler.business_error(:timeout, %{service: "payment_provider", timeout_ms: 30000})}
   """
   def business_error(reason, context \\ %{}) when is_atom(reason) and is_map(context) do
-    error = case get_error_mapping(reason) do
-      {type, code, message} ->
-        # Use ErrorCatalog for category inference
-        category = ErrorCatalog.category_for_reason(reason)
-        Error.new(type, message, code, reason, context, [
-          category: category,
-          correlation_id: Error.generate_correlation_id(),
-          source: context[:source] || "error_handler"
-        ])
-      nil ->
-        # Fallback for unknown business errors
-        Logger.warning("Unknown business error reason: #{reason}", %{reason: reason, context: context})
-        Error.new(:internal_server_error, "Unknown business error: #{reason}", 500, reason, context, [
-          category: :system,
-          correlation_id: Error.generate_correlation_id(),
-          source: context[:source] || "error_handler"
-        ])
-    end
+    error =
+      case get_error_mapping(reason) do
+        {type, code, message} ->
+          # Use ErrorCatalog for category inference
+          category = ErrorCatalog.category_for_reason(reason)
+
+          Error.new(type, message, code, reason, context,
+            category: category,
+            correlation_id: Error.generate_correlation_id(),
+            source: context[:source] || "error_handler"
+          )
+
+        nil ->
+          # Fallback for unknown business errors
+          Logger.warning("Unknown business error reason: #{reason}", %{
+            reason: reason,
+            context: context
+          })
+
+          Error.new(
+            :internal_server_error,
+            "Unknown business error: #{reason}",
+            500,
+            reason,
+            context,
+            category: :system,
+            correlation_id: Error.generate_correlation_id(),
+            source: context[:source] || "error_handler"
+          )
+      end
 
     # Emit telemetry for error tracking
     Error.emit_telemetry(error)
@@ -117,11 +129,12 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   Handles Ecto changeset errors with intelligent error detection.
   """
   def handle_changeset_error(changeset, context) do
-    errors = Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Enum.reduce(opts, msg, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
+    errors =
+      Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+        Enum.reduce(opts, msg, fn {key, value}, acc ->
+          String.replace(acc, "%{#{key}}", to_string(value))
+        end)
       end)
-    end)
 
     # Analyze changeset to determine the most appropriate error reason
     error_reason = analyze_changeset_errors(changeset, errors)
@@ -172,7 +185,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
     Enum.any?(errors, fn {_field, field_errors} ->
       Enum.any?(field_errors, fn error ->
         String.contains?(error, "has already been taken") or
-        String.contains?(error, "already exists")
+          String.contains?(error, "already exists")
       end)
     end)
   end
@@ -195,7 +208,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
     Enum.any?(errors, fn {_field, field_errors} ->
       Enum.any?(field_errors, fn error ->
         String.contains?(error, "format") or
-        String.contains?(error, "invalid")
+          String.contains?(error, "invalid")
       end)
     end)
   end
@@ -223,7 +236,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
     Enum.any?(errors, fn {_field, field_errors} ->
       Enum.any?(field_errors, fn error ->
         String.contains?(error, "should be") and
-        (String.contains?(error, "character") or String.contains?(error, "at least"))
+          (String.contains?(error, "character") or String.contains?(error, "at least"))
       end)
     end)
   end
@@ -247,7 +260,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
     Enum.any?(errors, fn {_field, field_errors} ->
       Enum.any?(field_errors, fn error ->
         String.contains?(error, "can't be blank") or
-        String.contains?(error, "is required")
+          String.contains?(error, "is required")
       end)
     end)
   end
@@ -280,7 +293,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
     Enum.any?(errors, fn {_field, field_errors} ->
       Enum.any?(field_errors, fn error ->
         String.contains?(error, "cannot be changed") or
-        String.contains?(error, "business rule")
+          String.contains?(error, "business rule")
       end)
     end)
   end
@@ -308,8 +321,14 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   @doc """
   Handles Ecto constraint errors.
   """
-  def handle_constraint_error(%Ecto.ConstraintError{constraint: constraint, message: message}, context) do
-    business_error(:already_processed, Map.put(Map.put(context, :constraint_message, message), :constraint, constraint))
+  def handle_constraint_error(
+        %Ecto.ConstraintError{constraint: constraint, message: message},
+        context
+      ) do
+    business_error(
+      :already_processed,
+      Map.put(Map.put(context, :constraint_message, message), :constraint, constraint)
+    )
   end
 
   @doc """
@@ -325,23 +344,33 @@ defmodule LedgerBankApi.Core.ErrorHandler do
           else
             {:ok, result}
           end
+
         {:error, %LedgerBankApi.Core.Error{} = error_response} ->
           # Already a proper Error, return as is
           {:error, error_response}
+
         {:error, %Ecto.Changeset{} = changeset} ->
           {:error, handle_changeset_error(changeset, context)}
+
         {:error, %Ecto.ConstraintError{} = constraint_error} ->
           {:error, handle_constraint_error(constraint_error, context)}
+
         {:error, reason} when is_atom(reason) ->
           # Convert atom reason to Error
           {:error, business_error(reason, context)}
+
         {:error, reason} when is_binary(reason) ->
           # Convert string reason to Error
-          {:error, business_error(:internal_server_error, Map.put(context, :original_message, reason))}
+          {:error,
+           business_error(:internal_server_error, Map.put(context, :original_message, reason))}
+
         {:error, reason} when is_map(reason) ->
           # Convert map reason to Error
-          {:error, business_error(:internal_server_error, Map.put(context, :original_error, reason))}
-        result -> {:ok, result}
+          {:error,
+           business_error(:internal_server_error, Map.put(context, :original_error, reason))}
+
+        result ->
+          {:ok, result}
       end
     rescue
       error ->
@@ -355,14 +384,24 @@ defmodule LedgerBankApi.Core.ErrorHandler do
         case error do
           %Ecto.ConstraintError{} ->
             {:error, handle_constraint_error(error, context)}
+
           %Ecto.NoResultsError{} ->
             {:error, business_error(:not_found, context)}
+
           %RuntimeError{message: message} ->
-            {:error, business_error(:internal_server_error, Map.put(context, :original_message, message))}
+            {:error,
+             business_error(:internal_server_error, Map.put(context, :original_message, message))}
+
           error when is_binary(error) ->
-            {:error, business_error(:internal_server_error, Map.put(context, :original_message, error))}
+            {:error,
+             business_error(:internal_server_error, Map.put(context, :original_message, error))}
+
           _ ->
-            {:error, business_error(:internal_server_error, Map.put(context, :original_error, inspect(error)))}
+            {:error,
+             business_error(
+               :internal_server_error,
+               Map.put(context, :original_error, inspect(error))
+             )}
         end
     end
   end
@@ -372,9 +411,10 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   """
   def get_error_code(type) do
     # Find the category that maps to this error type
-    category = Enum.find(ErrorCatalog.categories(), fn cat ->
-      ErrorCatalog.error_type_for_category(cat) == type
-    end)
+    category =
+      Enum.find(ErrorCatalog.categories(), fn cat ->
+        ErrorCatalog.error_type_for_category(cat) == type
+      end)
 
     case category do
       nil -> 500
@@ -417,23 +457,27 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   """
   def with_retry(fun, context \\ %{}, opts \\ []) do
     max_retries = Keyword.get(opts, :max_retries, 3)
-    base_delay = Keyword.get(opts, :base_delay, 100) # milliseconds
+    # milliseconds
+    base_delay = Keyword.get(opts, :base_delay, 100)
     backoff_multiplier = Keyword.get(opts, :backoff_multiplier, 2)
 
     do_with_retry(fun, context, max_retries, base_delay, backoff_multiplier, 0)
   end
 
-  defp do_with_retry(fun, _context, max_retries, _base_delay, _backoff_multiplier, attempt) when attempt >= max_retries do
+  defp do_with_retry(fun, _context, max_retries, _base_delay, _backoff_multiplier, attempt)
+       when attempt >= max_retries do
     # Final attempt failed
     fun.()
   end
 
   defp do_with_retry(fun, context, max_retries, base_delay, backoff_multiplier, attempt) do
     case fun.() do
-      {:ok, result} -> {:ok, result}
+      {:ok, result} ->
+        {:ok, result}
+
       {:error, %Error{reason: reason} = error} ->
         if retryable_error?(reason) do
-          delay = base_delay * :math.pow(backoff_multiplier, attempt) |> round()
+          delay = (base_delay * :math.pow(backoff_multiplier, attempt)) |> round()
 
           Logger.info("Retrying operation after #{delay}ms", %{
             attempt: attempt + 1,
@@ -447,6 +491,7 @@ defmodule LedgerBankApi.Core.ErrorHandler do
         else
           {:error, error}
         end
+
       {:error, error} ->
         # Non-Error error, don't retry
         {:error, error}
@@ -458,8 +503,10 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   """
   def with_circuit_breaker(fun, context \\ %{}, opts \\ []) do
     _failure_threshold = Keyword.get(opts, :failure_threshold, 5)
-    timeout = Keyword.get(opts, :timeout, 30000) # 30 seconds
-    _reset_timeout = Keyword.get(opts, :reset_timeout, 60000) # 1 minute
+    # 30 seconds
+    timeout = Keyword.get(opts, :timeout, 30000)
+    # 1 minute
+    _reset_timeout = Keyword.get(opts, :reset_timeout, 60000)
 
     # For now, implement a simple version - in production, you'd use a proper circuit breaker library
     try do
@@ -473,7 +520,8 @@ defmodule LedgerBankApi.Core.ErrorHandler do
         })
 
         # In a real implementation, you'd track failures and implement the circuit breaker logic
-        {:error, retryable_error(:service_unavailable, Map.put(context, :circuit_breaker_failure, true))}
+        {:error,
+         retryable_error(:service_unavailable, Map.put(context, :circuit_breaker_failure, true))}
     end
   end
 
@@ -496,19 +544,21 @@ defmodule LedgerBankApi.Core.ErrorHandler do
       # Error with context
       ErrorHandler.create_error_response(:validation_error, "Invalid input", %{field: "email"})
   """
-  def create_error_response(type, message, context \\ %{}) when is_atom(type) and is_binary(message) and is_map(context) do
+  def create_error_response(type, message, context \\ %{})
+      when is_atom(type) and is_binary(message) and is_map(context) do
     # Convert type to a reason for business_error
-    reason = case type do
-      :validation_error -> :missing_fields
-      :not_found -> :user_not_found
-      :unauthorized -> :invalid_token
-      :forbidden -> :forbidden
-      :conflict -> :already_processed
-      :unprocessable_entity -> :internal_server_error
-      :service_unavailable -> :service_unavailable
-      :internal_server_error -> :internal_server_error
-      _ -> :internal_server_error
-    end
+    reason =
+      case type do
+        :validation_error -> :missing_fields
+        :not_found -> :user_not_found
+        :unauthorized -> :invalid_token
+        :forbidden -> :forbidden
+        :conflict -> :already_processed
+        :unprocessable_entity -> :internal_server_error
+        :service_unavailable -> :service_unavailable
+        :internal_server_error -> :internal_server_error
+        _ -> :internal_server_error
+      end
 
     # Create the error using business_error for consistency
     error = business_error(reason, Map.put(context, :custom_message, message))
@@ -540,18 +590,27 @@ defmodule LedgerBankApi.Core.ErrorHandler do
   # Private helper to sanitize context for logging (removes sensitive data)
   defp sanitize_log_context(context) when is_map(context) do
     context
-    |> Map.drop([:password, :password_hash, :access_token, :refresh_token, :secret, :private_key, :api_key])
+    |> Map.drop([
+      :password,
+      :password_hash,
+      :access_token,
+      :refresh_token,
+      :secret,
+      :private_key,
+      :api_key
+    ])
     |> Enum.reduce(%{}, fn {key, value}, acc ->
       # Convert atom keys to strings and sanitize values
       string_key = if is_atom(key), do: Atom.to_string(key), else: key
 
       # Sanitize potentially sensitive values
-      sanitized_value = case value do
-        %{password: _} -> "[REDACTED: contains password]"
-        %{access_token: _} -> "[REDACTED: contains token]"
-        %{secret: _} -> "[REDACTED: contains secret]"
-        _ -> value
-      end
+      sanitized_value =
+        case value do
+          %{password: _} -> "[REDACTED: contains password]"
+          %{access_token: _} -> "[REDACTED: contains token]"
+          %{secret: _} -> "[REDACTED: contains secret]"
+          _ -> value
+        end
 
       Map.put(acc, string_key, sanitized_value)
     end)

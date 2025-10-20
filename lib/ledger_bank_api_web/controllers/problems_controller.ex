@@ -16,20 +16,21 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsController do
   This endpoint allows clients to discover all possible error types and their metadata.
   """
   def index(conn, _params) do
-    problems = ErrorCatalog.reason_codes()
-    |> Enum.map(fn {reason, category} ->
-      %{
-        code: reason,
-        type: "https://api.ledgerbank.com/problems/#{reason}",
-        status: ErrorCatalog.http_status_for_category(category),
-        title: ErrorCatalog.default_message_for_reason(reason),
-        category: category,
-        retryable: should_retry_for_category?(category),
-        retry_delay_ms: retry_delay_for_category(category),
-        max_retry_attempts: max_retry_attempts_for_category(category)
-      }
-    end)
-    |> Enum.sort_by(fn problem -> problem.code end)
+    problems =
+      ErrorCatalog.reason_codes()
+      |> Enum.map(fn {reason, category} ->
+        %{
+          code: reason,
+          type: "https://api.ledgerbank.com/problems/#{reason}",
+          status: ErrorCatalog.http_status_for_category(category),
+          title: ErrorCatalog.default_message_for_reason(reason),
+          category: category,
+          retryable: should_retry_for_category?(category),
+          retry_delay_ms: retry_delay_for_category(category),
+          max_retry_attempts: max_retry_attempts_for_category(category)
+        }
+      end)
+      |> Enum.sort_by(fn problem -> problem.code end)
 
     # Add metadata about the catalog
     metadata = %{
@@ -93,20 +94,21 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsController do
       if category_atom in ErrorCatalog.categories() do
         reasons = ErrorCatalog.reasons_for_category(category_atom)
 
-        problems = reasons
-        |> Enum.map(fn reason ->
-          %{
-            code: reason,
-            type: "https://api.ledgerbank.com/problems/#{reason}",
-            status: ErrorCatalog.http_status_for_category(category_atom),
-            title: ErrorCatalog.default_message_for_reason(reason),
-            category: category_atom,
-            retryable: should_retry_for_category?(category_atom),
-            retry_delay_ms: retry_delay_for_category(category_atom),
-            max_retry_attempts: max_retry_attempts_for_category(category_atom)
-          }
-        end)
-        |> Enum.sort_by(fn problem -> problem.code end)
+        problems =
+          reasons
+          |> Enum.map(fn reason ->
+            %{
+              code: reason,
+              type: "https://api.ledgerbank.com/problems/#{reason}",
+              status: ErrorCatalog.http_status_for_category(category_atom),
+              title: ErrorCatalog.default_message_for_reason(reason),
+              category: category_atom,
+              retryable: should_retry_for_category?(category_atom),
+              retry_delay_ms: retry_delay_for_category(category_atom),
+              max_retry_attempts: max_retry_attempts_for_category(category_atom)
+            }
+          end)
+          |> Enum.sort_by(fn problem -> problem.code end)
 
         metadata = %{
           category: category_atom,

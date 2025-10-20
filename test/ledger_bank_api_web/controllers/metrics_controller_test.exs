@@ -10,7 +10,8 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
       response_text = response(conn, 200)
 
       # Check for Prometheus format indicators
-      assert String.contains?(response_text, "# HELP") || String.contains?(response_text, "phoenix_")
+      assert String.contains?(response_text, "# HELP") ||
+               String.contains?(response_text, "phoenix_")
     end
 
     test "includes system metrics data", %{conn: conn} do
@@ -19,8 +20,8 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
       response_text = response(conn, 200)
       # Check for common metric prefixes
       assert String.contains?(response_text, "phoenix_") ||
-             String.contains?(response_text, "ecto_") ||
-             String.contains?(response_text, "vm_")
+               String.contains?(response_text, "ecto_") ||
+               String.contains?(response_text, "vm_")
     end
   end
 
@@ -54,13 +55,16 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
           assert %{"data" => data} = json_response(conn, 200)
           assert is_map(data["response_times"])
           assert is_map(data["throughput"])
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         :status ->
           # Phoenix routing issue - status is set to atom instead of integer
           # This is a known issue with missing routes in test environment
           assert true
+
         _ ->
           # Other status codes are unexpected
           flunk("Unexpected status code: #{conn.status}")
@@ -77,13 +81,16 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
           assert %{"data" => data} = json_response(conn, 200)
           assert is_map(data["users"])
           assert data["users"]["total_count"] >= 0
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         :status ->
           # Phoenix routing issue - status is set to atom instead of integer
           # This is a known issue with missing routes in test environment
           assert true
+
         _ ->
           flunk("Unexpected status code: #{conn.status}")
       end
@@ -102,9 +109,11 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
 
           # Business metrics should be consistent
           assert data1["users"]["total_count"] == data2["users"]["total_count"]
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         _ ->
           flunk("Unexpected status code: #{conn1.status}")
       end
@@ -120,13 +129,16 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
           assert %{"data" => data} = json_response(conn, 200)
           assert data["system"]["uptime_seconds"] > 0
           assert data["system"]["memory_usage_mb"] > 0
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         :status ->
           # Phoenix routing issue - status is set to atom instead of integer
           # This is a known issue with missing routes in test environment
           assert true
+
         _ ->
           flunk("Unexpected status code: #{conn.status}")
       end
@@ -141,13 +153,16 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
         200 ->
           assert %{"data" => data} = json_response(conn, 200)
           assert is_map(data["error_counts"])
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         :status ->
           # Phoenix routing issue - status is set to atom instead of integer
           # This is a known issue with missing routes in test environment
           assert true
+
         _ ->
           flunk("Unexpected status code: #{conn.status}")
       end
@@ -164,13 +179,16 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
           assert is_map(data["cache_stats"])
           assert data["cache_stats"]["hit_rate"] >= 0.0
           assert data["cache_stats"]["hit_rate"] <= 1.0
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         :status ->
           # Phoenix routing issue - status is set to atom instead of integer
           # This is a known issue with missing routes in test environment
           assert true
+
         _ ->
           flunk("Unexpected status code: #{conn.status}")
       end
@@ -186,13 +204,16 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
           assert %{"data" => data} = json_response(conn, 200)
           assert is_map(data["request_stats"])
           assert data["request_stats"]["total_requests"] >= 0
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         :status ->
           # Phoenix routing issue - status is set to atom instead of integer
           # This is a known issue with missing routes in test environment
           assert true
+
         _ ->
           flunk("Unexpected status code: #{conn.status}")
       end
@@ -213,9 +234,11 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
             assert %{"data" => data} = json_response(conn, 200)
             assert data["timestamp"] != nil
             assert {:ok, _datetime, _offset} = DateTime.from_iso8601(data["timestamp"])
+
           404 ->
             # Endpoint doesn't exist, which is fine for testing
             assert true
+
           _ ->
             flunk("Unexpected status code for #{endpoint}: #{conn.status}")
         end
@@ -224,20 +247,23 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
 
     test "metrics endpoints handle concurrent requests", %{conn: conn} do
       # Test concurrent access to metrics endpoints
-      tasks = for i <- 1..3 do
-        Task.async(fn ->
-          conn = build_conn()
-          conn = get(conn, ~p"/api/metrics/health")
-          conn.status
-        end)
-      end
+      tasks =
+        for i <- 1..3 do
+          Task.async(fn ->
+            conn = build_conn()
+            conn = get(conn, ~p"/api/metrics/health")
+            conn.status
+          end)
+        end
 
       results = Task.await_many(tasks, 5000)
 
       # Requests should succeed
       assert length(results) == 3
+
       for status <- results do
-        assert status in [200, 404]  # 200 for success, 404 if endpoint doesn't exist
+        # 200 for success, 404 if endpoint doesn't exist
+        assert status in [200, 404]
       end
     end
   end
@@ -254,14 +280,18 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
           assert {:ok, timestamp, _} = DateTime.from_iso8601(data["timestamp"])
           now = DateTime.utc_now()
           diff_seconds = DateTime.diff(now, timestamp, :second)
-          assert diff_seconds < 3600  # Within last hour
+          # Within last hour
+          assert diff_seconds < 3600
+
         404 ->
           # Endpoint doesn't exist, which is fine for testing
           assert true
+
         :status ->
           # Phoenix routing issue - status is set to atom instead of integer
           # This is a known issue with missing routes in test environment
           assert true
+
         _ ->
           flunk("Unexpected status code: #{conn.status}")
       end

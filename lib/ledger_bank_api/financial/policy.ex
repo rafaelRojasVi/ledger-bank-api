@@ -32,10 +32,8 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Payment must have required fields
       is_nil(payment_attrs[:user_bank_account_id]) -> false
-
       # For now, allow all authenticated users to create payments
       # In a real implementation, you might want to check account ownership
       true -> true
@@ -54,13 +52,10 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Admins and support can view any account
       user.role in ["admin", "support"] -> true
-
       # Users can only view their own accounts
       user.id == account.user_id -> true
-
       true -> false
     end
   end
@@ -77,13 +72,10 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Admins and support can view any payment
       user.role in ["admin", "support"] -> true
-
       # Users can only view their own payments
       user.id == payment.user_id -> true
-
       true -> false
     end
   end
@@ -100,13 +92,10 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # System processing (no user context)
       is_nil(user) -> true
-
       # Admins can process any payment
       user.role == "admin" -> true
-
       # Users can process their own pending payments
       user.id == payment.user_id and payment.status == "PENDING" -> true
-
       # Users cannot process other users' payments or already processed payments
       true -> false
     end
@@ -125,13 +114,10 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # System sync (no user context)
       is_nil(user) -> true
-
       # Admins and support can sync any account
       user.role in ["admin", "support"] -> true
-
       # Users can sync their own accounts
       user.id == account.user_id -> true
-
       true -> false
     end
   end
@@ -147,10 +133,8 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Account must have required fields
       is_nil(account_attrs[:user_bank_login_id]) -> false
-
       # For now, allow all authenticated users to create accounts
       # In a real implementation, you might want to check login ownership
       true -> true
@@ -180,10 +164,8 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Admins and support can list all payments
       user.role in ["admin", "support"] -> true
-
       # Users can list their own payments
       true -> true
     end
@@ -200,10 +182,8 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Admins and support can list all accounts
       user.role in ["admin", "support"] -> true
-
       # Users can list their own accounts
       true -> true
     end
@@ -239,16 +219,12 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Payment must be in a cancellable state
       payment.status != "PENDING" -> false
-
       # Admins and support can cancel any pending payment
       user.role in ["admin", "support"] -> true
-
       # Users can cancel their own pending payments
       user.id == payment.user_id -> true
-
       true -> false
     end
   end
@@ -265,16 +241,12 @@ defmodule LedgerBankApi.Financial.Policy do
     cond do
       # User must be authenticated
       is_nil(user) -> false
-
       # Admins can update any account
       user.role == "admin" -> true
-
       # Support users can update any account
       user.role == "support" -> true
-
       # Users can update their own accounts (with restrictions)
       user.id == account.user_id -> can_user_update_own_account?(attrs)
-
       true -> false
     end
   end

@@ -50,26 +50,50 @@ defmodule LedgerBankApi.Core.ErrorCatalogFinancialTest do
 
   describe "financial error messages" do
     test "provides appropriate messages for financial business rule errors" do
-      assert ErrorCatalog.default_message_for_reason(:insufficient_funds) == "Insufficient funds for this transaction"
+      assert ErrorCatalog.default_message_for_reason(:insufficient_funds) ==
+               "Insufficient funds for this transaction"
+
       assert ErrorCatalog.default_message_for_reason(:account_inactive) == "Account is inactive"
-      assert ErrorCatalog.default_message_for_reason(:daily_limit_exceeded) == "Daily payment limit exceeded"
-      assert ErrorCatalog.default_message_for_reason(:amount_exceeds_limit) == "Payment amount exceeds single transaction limit"
-      assert ErrorCatalog.default_message_for_reason(:negative_amount) == "Payment amount cannot be negative"
-      assert ErrorCatalog.default_message_for_reason(:negative_balance) == "Account balance cannot be negative"
-      assert ErrorCatalog.default_message_for_reason(:currency_mismatch) == "Payment currency does not match account currency"
+
+      assert ErrorCatalog.default_message_for_reason(:daily_limit_exceeded) ==
+               "Daily payment limit exceeded"
+
+      assert ErrorCatalog.default_message_for_reason(:amount_exceeds_limit) ==
+               "Payment amount exceeds single transaction limit"
+
+      assert ErrorCatalog.default_message_for_reason(:negative_amount) ==
+               "Payment amount cannot be negative"
+
+      assert ErrorCatalog.default_message_for_reason(:negative_balance) ==
+               "Account balance cannot be negative"
+
+      assert ErrorCatalog.default_message_for_reason(:currency_mismatch) ==
+               "Payment currency does not match account currency"
     end
 
     test "provides appropriate messages for financial conflict errors" do
-      assert ErrorCatalog.default_message_for_reason(:already_processed) == "Resource has already been processed"
-      assert ErrorCatalog.default_message_for_reason(:duplicate_transaction) == "Duplicate transaction"
+      assert ErrorCatalog.default_message_for_reason(:already_processed) ==
+               "Resource has already been processed"
+
+      assert ErrorCatalog.default_message_for_reason(:duplicate_transaction) ==
+               "Duplicate transaction"
     end
 
     test "provides appropriate messages for financial validation errors" do
-      assert ErrorCatalog.default_message_for_reason(:invalid_payment_type) == "Invalid payment type"
-      assert ErrorCatalog.default_message_for_reason(:invalid_currency_format) == "Invalid currency format"
-      assert ErrorCatalog.default_message_for_reason(:invalid_account_type) == "Invalid account type"
-      assert ErrorCatalog.default_message_for_reason(:invalid_description_format) == "Invalid description format"
-      assert ErrorCatalog.default_message_for_reason(:invalid_account_name_format) == "Invalid account name format"
+      assert ErrorCatalog.default_message_for_reason(:invalid_payment_type) ==
+               "Invalid payment type"
+
+      assert ErrorCatalog.default_message_for_reason(:invalid_currency_format) ==
+               "Invalid currency format"
+
+      assert ErrorCatalog.default_message_for_reason(:invalid_account_type) ==
+               "Invalid account type"
+
+      assert ErrorCatalog.default_message_for_reason(:invalid_description_format) ==
+               "Invalid description format"
+
+      assert ErrorCatalog.default_message_for_reason(:invalid_account_name_format) ==
+               "Invalid account name format"
     end
   end
 

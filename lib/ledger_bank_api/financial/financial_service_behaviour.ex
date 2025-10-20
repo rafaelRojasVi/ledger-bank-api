@@ -10,23 +10,23 @@ defmodule LedgerBankApi.Financial.FinancialServiceBehaviour do
   Synchronizes bank login data with external bank API.
   """
   @callback sync_login(login_id :: String.t()) ::
-    {:ok, map()} | {:error, term()}
+              {:ok, map()} | {:error, term()}
 
   @doc """
   Processes a user payment.
   """
   @callback process_payment(payment_id :: String.t()) ::
-    {:ok, map()} | {:error, term()}
+              {:ok, map()} | {:error, term()}
 
   @doc """
   Gets a user payment by ID.
   """
   @callback get_user_payment(payment_id :: String.t()) ::
-    {:ok, map()} | {:error, term()}
+              {:ok, map()} | {:error, term()}
 
   @doc """
   Gets a user bank login by ID.
   """
   @callback get_user_bank_login(login_id :: String.t()) ::
-    {:ok, map()} | {:error, term()}
+              {:ok, map()} | {:error, term()}
 end

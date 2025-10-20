@@ -1,11 +1,21 @@
 defmodule LedgerBankApi.BankingFixtures do
   alias LedgerBankApi.Repo
-  alias LedgerBankApi.Financial.Schemas.{UserBankLogin, UserBankAccount, UserPayment, Transaction, Bank, BankBranch}
+
+  alias LedgerBankApi.Financial.Schemas.{
+    UserBankLogin,
+    UserBankAccount,
+    UserPayment,
+    Transaction,
+    Bank,
+    BankBranch
+  }
 
   def bank_fixture(attrs \\ %{}) do
     base = %{
-      name: "TestBank#{abs(System.unique_integer())}",  # Use absolute value to avoid negative signs
-      code: "TB#{abs(System.unique_integer())}",        # Use absolute value to avoid negative signs
+      # Use absolute value to avoid negative signs
+      name: "TestBank#{abs(System.unique_integer())}",
+      # Use absolute value to avoid negative signs
+      code: "TB#{abs(System.unique_integer())}",
       country: "GB",
       status: "ACTIVE"
     }
@@ -16,8 +26,10 @@ defmodule LedgerBankApi.BankingFixtures do
 
   def bank_branch_fixture(bank, attrs \\ %{}) do
     base = %{
-      name: "TestBranch#{abs(System.unique_integer())}",  # Use absolute value to avoid negative signs
-      country: "GB",                                      # Required field - 2-letter country code
+      # Use absolute value to avoid negative signs
+      name: "TestBranch#{abs(System.unique_integer())}",
+      # Required field - 2-letter country code
+      country: "GB",
       bank_id: bank.id
     }
 
@@ -40,7 +52,9 @@ defmodule LedgerBankApi.BankingFixtures do
       encrypted_password: "encrypted_password_#{System.unique_integer()}"
     }
 
-    {:ok, login} = %UserBankLogin{} |> UserBankLogin.changeset(Map.merge(base, attrs)) |> Repo.insert()
+    {:ok, login} =
+      %UserBankLogin{} |> UserBankLogin.changeset(Map.merge(base, attrs)) |> Repo.insert()
+
     login
   end
 
@@ -66,12 +80,15 @@ defmodule LedgerBankApi.BankingFixtures do
       direction: "DEBIT",
       description: "Test Payment",
       status: "PENDING",
-      payment_type: "PAYMENT",  # Required field
+      # Required field
+      payment_type: "PAYMENT",
       user_bank_account_id: account.id,
       user_id: account.user_id
     }
 
-    {:ok, payment} = %UserPayment{} |> UserPayment.changeset(Map.merge(base, attrs)) |> Repo.insert()
+    {:ok, payment} =
+      %UserPayment{} |> UserPayment.changeset(Map.merge(base, attrs)) |> Repo.insert()
+
     payment
   end
 
@@ -86,7 +103,9 @@ defmodule LedgerBankApi.BankingFixtures do
       user_id: account.user_id
     }
 
-    {:ok, transaction} = %Transaction{} |> Transaction.changeset(Map.merge(base, attrs)) |> Repo.insert()
+    {:ok, transaction} =
+      %Transaction{} |> Transaction.changeset(Map.merge(base, attrs)) |> Repo.insert()
+
     transaction
   end
 end

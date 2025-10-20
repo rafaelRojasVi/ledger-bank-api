@@ -10,11 +10,16 @@ defmodule LedgerBankApiWeb.Plugs.Cors do
   require Logger
 
   @allowed_origins [
-    "http://localhost:3000",    # React development server
-    "http://localhost:3001",    # Alternative frontend port
-    "http://localhost:5173",    # Vite development server
-    "http://localhost:8080",    # Vue development server
-    "https://ledgerbank.com",   # Production frontend
+    # React development server
+    "http://localhost:3000",
+    # Alternative frontend port
+    "http://localhost:3001",
+    # Vite development server
+    "http://localhost:5173",
+    # Vue development server
+    "http://localhost:8080",
+    # Production frontend
+    "https://ledgerbank.com",
     "https://www.ledgerbank.com"
   ]
 

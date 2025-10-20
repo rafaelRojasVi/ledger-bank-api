@@ -16,16 +16,24 @@ defmodule LedgerBankApi.ObanCase do
         args = Keyword.get(opts, :args)
         priority = Keyword.get(opts, :priority)
 
-        query = from j in Oban.Job,
-          where: j.worker == ^to_string(worker),
-          where: j.state in ["available", "scheduled"]
+        query =
+          from(j in Oban.Job,
+            where: j.worker == ^to_string(worker),
+            where: j.state in ["available", "scheduled"]
+          )
 
         query = if queue, do: from(j in query, where: j.queue == ^to_string(queue)), else: query
-        query = if args, do: from(j in query, where: fragment("? @> ?", j.args, ^args)), else: query
+
+        query =
+          if args, do: from(j in query, where: fragment("? @> ?", j.args, ^args)), else: query
+
         query = if priority, do: from(j in query, where: j.priority == ^priority), else: query
 
         jobs = Repo.all(query)
-        assert length(jobs) > 0, "Expected job to be enqueued for #{worker} with opts: #{inspect(opts)}"
+
+        assert length(jobs) > 0,
+               "Expected job to be enqueued for #{worker} with opts: #{inspect(opts)}"
+
         List.first(jobs)
       end
 
@@ -34,15 +42,21 @@ defmodule LedgerBankApi.ObanCase do
         queue = Keyword.get(opts, :queue)
         args = Keyword.get(opts, :args)
 
-        query = from j in Oban.Job,
-          where: j.worker == ^to_string(worker),
-          where: j.state in ["available", "scheduled"]
+        query =
+          from(j in Oban.Job,
+            where: j.worker == ^to_string(worker),
+            where: j.state in ["available", "scheduled"]
+          )
 
         query = if queue, do: from(j in query, where: j.queue == ^to_string(queue)), else: query
-        query = if args, do: from(j in query, where: fragment("? @> ?", j.args, ^args)), else: query
+
+        query =
+          if args, do: from(j in query, where: fragment("? @> ?", j.args, ^args)), else: query
 
         jobs = Repo.all(query)
-        assert length(jobs) == 0, "Expected no job to be enqueued for #{worker} with opts: #{inspect(opts)}"
+
+        assert length(jobs) == 0,
+               "Expected no job to be enqueued for #{worker} with opts: #{inspect(opts)}"
       end
 
       def get_job_count(opts) do
@@ -50,8 +64,10 @@ defmodule LedgerBankApi.ObanCase do
         queue = Keyword.get(opts, :queue)
         state = Keyword.get(opts, :state)
 
-        query = from j in Oban.Job,
-          where: j.worker == ^to_string(worker)
+        query =
+          from(j in Oban.Job,
+            where: j.worker == ^to_string(worker)
+          )
 
         query = if queue, do: from(j in query, where: j.queue == ^to_string(queue)), else: query
         query = if state, do: from(j in query, where: j.state == ^state), else: query
@@ -66,6 +82,7 @@ defmodule LedgerBankApi.ObanCase do
       # Telemetry helpers for testing job execution order
       def with_telemetry_handler(event_name, handler_fun, fun) do
         ref = make_ref()
+
         :telemetry.attach(
           {event_name, ref},
           [:oban, :job, :start],

@@ -12,10 +12,19 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolverTest do
         email: user.email,
         password: "ValidPassword123!"
       }
+
       context = %{}
 
       result = AuthResolver.login(args, context)
-      assert {:ok, %{success: true, access_token: access_token, refresh_token: refresh_token, user: returned_user}} = result
+
+      assert {:ok,
+              %{
+                success: true,
+                access_token: access_token,
+                refresh_token: refresh_token,
+                user: returned_user
+              }} = result
+
       assert returned_user.id == user.id
       assert returned_user.email == user.email
       assert access_token != nil
@@ -27,9 +36,13 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolverTest do
         email: "nonexistent@example.com",
         password: "password123"
       }
+
       context = %{}
 
-      assert {:ok, %{success: false, access_token: nil, refresh_token: nil, user: nil, errors: errors}} = AuthResolver.login(args, context)
+      assert {:ok,
+              %{success: false, access_token: nil, refresh_token: nil, user: nil, errors: errors}} =
+               AuthResolver.login(args, context)
+
       assert length(errors) > 0
     end
 
@@ -40,9 +53,13 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolverTest do
         email: user.email,
         password: "wrong_password"
       }
+
       context = %{}
 
-      assert {:ok, %{success: false, access_token: nil, refresh_token: nil, user: nil, errors: errors}} = AuthResolver.login(args, context)
+      assert {:ok,
+              %{success: false, access_token: nil, refresh_token: nil, user: nil, errors: errors}} =
+               AuthResolver.login(args, context)
+
       assert length(errors) > 0
     end
   end
@@ -57,9 +74,12 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolverTest do
       args = %{
         refresh_token: refresh_token
       }
+
       context = %{}
 
-      assert {:ok, %{success: true, access_token: access_token, refresh_token: new_refresh_token}} = AuthResolver.refresh(args, context)
+      assert {:ok, %{success: true, access_token: access_token, refresh_token: new_refresh_token}} =
+               AuthResolver.refresh(args, context)
+
       assert access_token != nil
       assert new_refresh_token != nil
     end
@@ -68,9 +88,13 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolverTest do
       args = %{
         refresh_token: "invalid_refresh_token"
       }
+
       context = %{}
 
-      assert {:ok, %{success: false, access_token: nil, refresh_token: nil, user: nil, errors: errors}} = AuthResolver.refresh(args, context)
+      assert {:ok,
+              %{success: false, access_token: nil, refresh_token: nil, user: nil, errors: errors}} =
+               AuthResolver.refresh(args, context)
+
       assert length(errors) > 0
     end
   end

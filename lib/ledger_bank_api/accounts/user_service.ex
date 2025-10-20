@@ -45,6 +45,7 @@ defmodule LedgerBankApi.Accounts.UserService do
         case Cache.get(cache_key) do
           {:ok, user} ->
             {:ok, user}
+
           :not_found ->
             # Not in cache, fetch from database
             case ServiceBehavior.get_operation(User, id, :user_not_found, context) do
@@ -52,9 +53,12 @@ defmodule LedgerBankApi.Accounts.UserService do
                 # Cache the user for 5 minutes
                 Cache.put(cache_key, user, ttl: 300)
                 {:ok, user}
-              error -> error
+
+              error ->
+                error
             end
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, context)}
     end
@@ -90,45 +94,52 @@ defmodule LedgerBankApi.Accounts.UserService do
     limit = min(opts[:limit] || 20, 100)
     filters = opts[:filters] || %{}
 
-    base_query = User
-    |> apply_user_filters(filters)
+    base_query =
+      User
+      |> apply_user_filters(filters)
 
-    query = case cursor do
-      nil ->
-        # Initial page
-        base_query
-        |> order_by([u], desc: u.inserted_at, desc: u.id)
-        |> limit(^limit)
+    query =
+      case cursor do
+        nil ->
+          # Initial page
+          base_query
+          |> order_by([u], desc: u.inserted_at, desc: u.id)
+          |> limit(^limit)
 
-      %{inserted_at: cursor_time, id: cursor_id} when is_struct(cursor_time, DateTime) ->
-        # Subsequent pages
-        base_query
-        |> where([u],
-          u.inserted_at < ^cursor_time or
-          (u.inserted_at == ^cursor_time and u.id < ^cursor_id))
-        |> order_by([u], desc: u.inserted_at, desc: u.id)
-        |> limit(^limit)
+        %{inserted_at: cursor_time, id: cursor_id} when is_struct(cursor_time, DateTime) ->
+          # Subsequent pages
+          base_query
+          |> where(
+            [u],
+            u.inserted_at < ^cursor_time or
+              (u.inserted_at == ^cursor_time and u.id < ^cursor_id)
+          )
+          |> order_by([u], desc: u.inserted_at, desc: u.id)
+          |> limit(^limit)
 
-      _ ->
-        # Invalid cursor, treat as first page
-        base_query
-        |> order_by([u], desc: u.inserted_at, desc: u.id)
-        |> limit(^limit)
-    end
+        _ ->
+          # Invalid cursor, treat as first page
+          base_query
+          |> order_by([u], desc: u.inserted_at, desc: u.id)
+          |> limit(^limit)
+      end
 
     users = Repo.all(query)
 
     # Build next cursor if we have results and there might be more
     has_more = length(users) == limit
-    next_cursor = if has_more and length(users) > 0 do
-      last_user = List.last(users)
-      %{
-        inserted_at: last_user.inserted_at,
-        id: last_user.id
-      }
-    else
-      nil
-    end
+
+    next_cursor =
+      if has_more and length(users) > 0 do
+        last_user = List.last(users)
+
+        %{
+          inserted_at: last_user.inserted_at,
+          id: last_user.id
+        }
+      else
+        nil
+      end
 
     %{
       data: users,
@@ -148,12 +159,15 @@ defmodule LedgerBankApi.Accounts.UserService do
       case get_user_by_email(attrs[:email]) do
         {:ok, _user} ->
           {:error, ErrorHandler.business_error(:email_already_exists, context)}
+
         {:error, %LedgerBankApi.Core.Error{} = _error} ->
           # User not found, safe to create
           # Validate role-based password requirements
           role = attrs[:role] || "user"
+
           with :ok <- validate_password_requirements(attrs, role),
-               {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), attrs, context) do
+               {:ok, user} <-
+                 ServiceBehavior.create_operation(&User.changeset(%User{}, &1), attrs, context) do
             # Log business event
             AppLogger.log_business_event("user_created", %{
               user_id: user.id,
@@ -176,19 +190,28 @@ defmodule LedgerBankApi.Accounts.UserService do
   """
   def create_user_with_normalization(attrs) do
     normalized_attrs = Normalize.user_attrs(attrs)
-    context = ServiceBehavior.build_context(__MODULE__, :create_user, %{email: normalized_attrs["email"]})
+
+    context =
+      ServiceBehavior.build_context(__MODULE__, :create_user, %{email: normalized_attrs["email"]})
 
     ServiceBehavior.with_error_handling(context, fn ->
       # Check if email already exists
       case get_user_by_email(normalized_attrs["email"]) do
         {:ok, _user} ->
           {:error, ErrorHandler.business_error(:email_already_exists, context)}
+
         {:error, %LedgerBankApi.Core.Error{} = _error} ->
           # User not found, safe to create
           # Validate role-based password requirements
           role = normalized_attrs["role"]
+
           with :ok <- validate_password_requirements(normalized_attrs, role),
-               {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), normalized_attrs, context) do
+               {:ok, user} <-
+                 ServiceBehavior.create_operation(
+                   &User.changeset(%User{}, &1),
+                   normalized_attrs,
+                   context
+                 ) do
             # Log business event
             AppLogger.log_business_event("user_created", %{
               user_id: user.id,
@@ -214,11 +237,12 @@ defmodule LedgerBankApi.Accounts.UserService do
     # Check if current user has permission to create users with this role
     requested_role = attrs["role"] || attrs[:role] || "user"
 
-    context = ServiceBehavior.build_context(__MODULE__, :create_user_as_admin, %{
-      email: attrs["email"] || attrs[:email],
-      requested_role: requested_role,
-      admin_id: current_user.id
-    })
+    context =
+      ServiceBehavior.build_context(__MODULE__, :create_user_as_admin, %{
+        email: attrs["email"] || attrs[:email],
+        requested_role: requested_role,
+        admin_id: current_user.id
+      })
 
     ServiceBehavior.with_error_handling(context, fn ->
       # Check policy: Can this admin create a user with the requested role?
@@ -226,7 +250,12 @@ defmodule LedgerBankApi.Accounts.UserService do
            normalized_attrs <- Normalize.admin_user_attrs(attrs),
            {:ok, _user} <- validate_email_not_exists(normalized_attrs["email"]),
            :ok <- validate_password_requirements(normalized_attrs, normalized_attrs["role"]),
-           {:ok, user} <- ServiceBehavior.create_operation(&User.changeset(%User{}, &1), normalized_attrs, context) do
+           {:ok, user} <-
+             ServiceBehavior.create_operation(
+               &User.changeset(%User{}, &1),
+               normalized_attrs,
+               context
+             ) do
         # Log business event with admin context
         AppLogger.log_business_event("user_created_by_admin", %{
           user_id: user.id,
@@ -246,6 +275,7 @@ defmodule LedgerBankApi.Accounts.UserService do
     case get_user_by_email(email) do
       {:ok, _user} ->
         {:error, ErrorHandler.business_error(:email_already_exists, %{email: email})}
+
       {:error, %LedgerBankApi.Core.Error{} = _error} ->
         {:ok, :email_available}
     end
@@ -256,9 +286,10 @@ defmodule LedgerBankApi.Accounts.UserService do
     if Policy.can_create_user?(current_user, attrs) do
       :ok
     else
-      {:error, ErrorHandler.business_error(:insufficient_permissions, %{
-        message: "Only admins can create users with admin or support roles"
-      })}
+      {:error,
+       ErrorHandler.business_error(:insufficient_permissions, %{
+         message: "Only admins can create users with admin or support roles"
+       })}
     end
   end
 
@@ -284,7 +315,9 @@ defmodule LedgerBankApi.Accounts.UserService do
           })
 
           {:ok, updated_user}
-        error -> error
+
+        error ->
+          error
       end
     end)
   end
@@ -303,7 +336,11 @@ defmodule LedgerBankApi.Accounts.UserService do
   Update a user with normalized attributes and policy validation (new approach).
   """
   def update_user_with_normalization_and_policy(user, attrs, current_user) do
-    context = ServiceBehavior.build_context(__MODULE__, :update_user_with_permissions, %{user_id: user.id, current_user_id: current_user.id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :update_user_with_permissions, %{
+        user_id: user.id,
+        current_user_id: current_user.id
+      })
 
     ServiceBehavior.with_error_handling(context, fn ->
       # Validate permissions using Policy module
@@ -318,7 +355,11 @@ defmodule LedgerBankApi.Accounts.UserService do
   Update a user with permission validation.
   """
   def update_user_with_permissions(user, attrs, current_user) do
-    context = ServiceBehavior.build_context(__MODULE__, :update_user_with_permissions, %{user_id: user.id, current_user_id: current_user.id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :update_user_with_permissions, %{
+        user_id: user.id,
+        current_user_id: current_user.id
+      })
 
     ServiceBehavior.with_error_handling(context, fn ->
       # Validate permissions before updating
@@ -349,7 +390,9 @@ defmodule LedgerBankApi.Accounts.UserService do
         })
 
         {:ok, deleted_user}
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -357,20 +400,23 @@ defmodule LedgerBankApi.Accounts.UserService do
   Update user password.
   """
   def update_user_password(user, attrs) do
-    context = ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
 
     ServiceBehavior.with_error_handling(context, fn ->
       # Handle nil attributes
       if is_nil(attrs) do
-        {:error, ErrorHandler.business_error(:missing_fields, %{
-          message: "Password update attributes are required"
-        })}
+        {:error,
+         ErrorHandler.business_error(:missing_fields, %{
+           message: "Password update attributes are required"
+         })}
       else
         # Validate current password first
         with :ok <- validate_current_password(user, attrs[:current_password]),
              :ok <- validate_password_change(user, attrs),
              :ok <- validate_password_requirements(attrs, user.role),
-             {:ok, updated_user} <- ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
+             {:ok, updated_user} <-
+               ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
           {:ok, updated_user}
         end
       end
@@ -381,18 +427,21 @@ defmodule LedgerBankApi.Accounts.UserService do
   Update user password for unit tests (bypasses current password validation).
   """
   def update_user_password_for_test(user, attrs) do
-    context = ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
 
     ServiceBehavior.with_error_handling(context, fn ->
       # Handle nil attributes
       if is_nil(attrs) do
-        {:error, ErrorHandler.business_error(:missing_fields, %{
-          message: "Password update attributes are required"
-        })}
+        {:error,
+         ErrorHandler.business_error(:missing_fields, %{
+           message: "Password update attributes are required"
+         })}
       else
         # Skip current password validation for unit tests
         with :ok <- validate_password_requirements(attrs, user.role),
-             {:ok, updated_user} <- ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
+             {:ok, updated_user} <-
+               ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
           {:ok, updated_user}
         end
       end
@@ -407,13 +456,18 @@ defmodule LedgerBankApi.Accounts.UserService do
   Create a refresh token.
   """
   def create_refresh_token(attrs) do
-    context = ServiceBehavior.build_context(__MODULE__, :create_refresh_token, %{user_id: attrs[:user_id]})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :create_refresh_token, %{user_id: attrs[:user_id]})
 
     # Validate user_id, jti, and expires_at format before creating
     with :ok <- Validator.validate_uuid(attrs[:user_id]),
          :ok <- Validator.validate_uuid(attrs[:jti]),
          :ok <- Validator.validate_future_datetime(attrs[:expires_at]) do
-      ServiceBehavior.create_operation(&RefreshToken.changeset(%RefreshToken{}, &1), attrs, context)
+      ServiceBehavior.create_operation(
+        &RefreshToken.changeset(%RefreshToken{}, &1),
+        attrs,
+        context
+      )
     else
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, context)}
@@ -430,6 +484,7 @@ defmodule LedgerBankApi.Accounts.UserService do
     case Validator.validate_uuid(jti) do
       :ok ->
         ServiceBehavior.get_by_operation(RefreshToken, [jti: jti], :token_not_found, context)
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, context)}
     end
@@ -453,14 +508,22 @@ defmodule LedgerBankApi.Accounts.UserService do
               case refresh_token
                    |> RefreshToken.changeset(%{revoked_at: DateTime.utc_now()})
                    |> Repo.update() do
-                {:ok, updated_token} -> {:ok, updated_token}
+                {:ok, updated_token} ->
+                  {:ok, updated_token}
+
                 {:error, changeset} ->
-                  {:error, ErrorHandler.handle_changeset_error(changeset, %{jti: jti, source: "user_service"})}
+                  {:error,
+                   ErrorHandler.handle_changeset_error(changeset, %{
+                     jti: jti,
+                     source: "user_service"
+                   })}
               end
             end
+
           {:error, %LedgerBankApi.Core.Error{} = error} ->
             {:error, error}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, context)}
     end
@@ -470,16 +533,20 @@ defmodule LedgerBankApi.Accounts.UserService do
   Revoke all refresh tokens for a user.
   """
   def revoke_all_refresh_tokens(user_id) do
-    context = ServiceBehavior.build_context(__MODULE__, :revoke_all_refresh_tokens, %{user_id: user_id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :revoke_all_refresh_tokens, %{user_id: user_id})
 
     # Validate user_id format before querying
     case Validator.validate_uuid(user_id) do
       :ok ->
-        {count, _} = Repo.update_all(
-          from(t in RefreshToken, where: t.user_id == ^user_id and is_nil(t.revoked_at)),
-          set: [revoked_at: DateTime.utc_now()]
-        )
+        {count, _} =
+          Repo.update_all(
+            from(t in RefreshToken, where: t.user_id == ^user_id and is_nil(t.revoked_at)),
+            set: [revoked_at: DateTime.utc_now()]
+          )
+
         {:ok, count}
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, context)}
     end
@@ -490,7 +557,10 @@ defmodule LedgerBankApi.Accounts.UserService do
   """
   def list_active_refresh_tokens(user_id) do
     RefreshToken
-    |> where([t], t.user_id == ^user_id and is_nil(t.revoked_at) and t.expires_at > ^DateTime.utc_now())
+    |> where(
+      [t],
+      t.user_id == ^user_id and is_nil(t.revoked_at) and t.expires_at > ^DateTime.utc_now()
+    )
     |> order_by([t], desc: t.inserted_at)
     |> Repo.all()
   end
@@ -499,9 +569,7 @@ defmodule LedgerBankApi.Accounts.UserService do
   Clean up expired refresh tokens.
   """
   def cleanup_expired_refresh_tokens do
-    Repo.delete_all(
-      from(t in RefreshToken, where: t.expires_at <= ^DateTime.utc_now())
-    )
+    Repo.delete_all(from(t in RefreshToken, where: t.expires_at <= ^DateTime.utc_now()))
     |> then(fn {count, _} -> {:ok, count} end)
   end
 
@@ -513,10 +581,12 @@ defmodule LedgerBankApi.Accounts.UserService do
   # Used when a user doesn't exist to prevent email enumeration via timing attacks.
   # The hash is computed once at module load time for the dummy password.
   @dummy_password_hash (if Mix.env() == :test do
-    LedgerBankApi.PasswordHelper.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
-  else
-    Pbkdf2.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
-  end)
+                          LedgerBankApi.PasswordHelper.hash_pwd_salt(
+                            "dummy_password_for_timing_attack_prevention"
+                          )
+                        else
+                          Pbkdf2.hash_pwd_salt("dummy_password_for_timing_attack_prevention")
+                        end)
 
   @doc """
   Authenticate user with email and password.
@@ -536,24 +606,20 @@ defmodule LedgerBankApi.Accounts.UserService do
     # Validate email and password format before querying
     with :ok <- Validator.validate_email_secure(email),
          :ok <- Validator.validate_password(password) do
-
       # Get user by email (or nil if not found)
-      user = case get_user_by_email(email) do
-        {:ok, user} -> user
-        {:error, %LedgerBankApi.Core.Error{}} -> nil
-      end
+      user =
+        case get_user_by_email(email) do
+          {:ok, user} -> user
+          {:error, %LedgerBankApi.Core.Error{}} -> nil
+        end
 
       # SECURITY: Always verify password, even if user doesn't exist
       # This prevents timing attacks that could reveal which emails are registered
       password_hash = if user, do: user.password_hash, else: @dummy_password_hash
 
-      verify_function = if Mix.env() == :test do
-        &LedgerBankApi.PasswordHelper.verify_pass/2
-      else
-        &Pbkdf2.verify_pass/2
-      end
-
-      password_valid? = verify_function.(password, password_hash)
+      # Use configuration-based password verification instead of Mix.env()
+      password_valid? =
+        LedgerBankApi.Accounts.PasswordService.verify_password(password, password_hash)
 
       # SECURITY: Check password validity BEFORE checking user status
       # This maintains constant time regardless of account state
@@ -568,7 +634,8 @@ defmodule LedgerBankApi.Accounts.UserService do
 
         # User exists and password is valid, but account is not active
         not is_user_active?(user) ->
-          {:error, ErrorHandler.business_error(:account_inactive, %{email: email, source: "user_service"})}
+          {:error,
+           ErrorHandler.business_error(:account_inactive, %{email: email, source: "user_service"})}
 
         # User exists, password is valid, and account is active - success!
         true ->
@@ -583,7 +650,9 @@ defmodule LedgerBankApi.Accounts.UserService do
   @doc """
   Check if user is active.
   """
-  def is_user_active?(%User{status: "ACTIVE", active: true, suspended: false, deleted: false}), do: true
+  def is_user_active?(%User{status: "ACTIVE", active: true, suspended: false, deleted: false}),
+    do: true
+
   def is_user_active?(_), do: false
 
   @doc """
@@ -612,6 +681,7 @@ defmodule LedgerBankApi.Accounts.UserService do
       case Cache.get(cache_key) do
         {:ok, stats} ->
           {:ok, stats}
+
         :not_found ->
           # Not in cache, compute statistics
           stats = compute_user_stats()
@@ -649,8 +719,12 @@ defmodule LedgerBankApi.Accounts.UserService do
 
     ServiceBehavior.with_error_handling(context, fn ->
       case BankSyncWorker.schedule_sync(user_id, opts) do
-        {:ok, job} -> {:ok, job}
-        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+        {:ok, job} ->
+          {:ok, job}
+
+        {:error, reason} ->
+          {:error,
+           ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
       end
     end)
   end
@@ -659,12 +733,20 @@ defmodule LedgerBankApi.Accounts.UserService do
   Schedule bank sync with delay.
   """
   def schedule_bank_sync_with_delay(user_id, delay_seconds, opts \\ []) do
-    context = ServiceBehavior.build_context(__MODULE__, :schedule_bank_sync_with_delay, %{user_id: user_id, delay_seconds: delay_seconds})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :schedule_bank_sync_with_delay, %{
+        user_id: user_id,
+        delay_seconds: delay_seconds
+      })
 
     ServiceBehavior.with_error_handling(context, fn ->
       case BankSyncWorker.schedule_sync_with_delay(user_id, delay_seconds, opts) do
-        {:ok, job} -> {:ok, job}
-        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+        {:ok, job} ->
+          {:ok, job}
+
+        {:error, reason} ->
+          {:error,
+           ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
       end
     end)
   end
@@ -673,12 +755,19 @@ defmodule LedgerBankApi.Accounts.UserService do
   Schedule payment processing for a user.
   """
   def schedule_payment_processing(payment_id, opts \\ []) do
-    context = ServiceBehavior.build_context(__MODULE__, :schedule_payment_processing, %{payment_id: payment_id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :schedule_payment_processing, %{
+        payment_id: payment_id
+      })
 
     ServiceBehavior.with_error_handling(context, fn ->
       case PaymentWorker.schedule_payment(payment_id, opts) do
-        {:ok, job} -> {:ok, job}
-        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+        {:ok, job} ->
+          {:ok, job}
+
+        {:error, reason} ->
+          {:error,
+           ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
       end
     end)
   end
@@ -687,12 +776,20 @@ defmodule LedgerBankApi.Accounts.UserService do
   Schedule payment processing with priority.
   """
   def schedule_payment_processing_with_priority(payment_id, priority, opts \\ []) do
-    context = ServiceBehavior.build_context(__MODULE__, :schedule_payment_processing_with_priority, %{payment_id: payment_id, priority: priority})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :schedule_payment_processing_with_priority, %{
+        payment_id: payment_id,
+        priority: priority
+      })
 
     ServiceBehavior.with_error_handling(context, fn ->
       case PaymentWorker.schedule_payment_with_priority(payment_id, priority, opts) do
-        {:ok, job} -> {:ok, job}
-        {:error, reason} -> {:error, ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
+        {:ok, job} ->
+          {:ok, job}
+
+        {:error, reason} ->
+          {:error,
+           ErrorHandler.business_error(:internal_server_error, Map.put(context, :reason, reason))}
       end
     end)
   end
@@ -707,20 +804,28 @@ defmodule LedgerBankApi.Accounts.UserService do
   def validate_update_permissions(user, attrs, current_user) do
     # Check if user is trying to change role
     new_role = attrs["role"] || attrs[:role]
+
     if new_role && new_role != user.role do
       if current_user.role == "admin" do
         :ok
       else
-        {:error, ErrorHandler.business_error(:insufficient_permissions, %{message: "Only admins can change user roles"})}
+        {:error,
+         ErrorHandler.business_error(:insufficient_permissions, %{
+           message: "Only admins can change user roles"
+         })}
       end
     else
       # Check if user is trying to change status
       new_status = attrs["status"] || attrs[:status]
+
       if new_status && new_status != user.status do
         if current_user.role == "admin" do
           :ok
         else
-          {:error, ErrorHandler.business_error(:insufficient_permissions, %{message: "Only admins can change user status"})}
+          {:error,
+           ErrorHandler.business_error(:insufficient_permissions, %{
+             message: "Only admins can change user status"
+           })}
         end
       else
         :ok
@@ -735,7 +840,10 @@ defmodule LedgerBankApi.Accounts.UserService do
     if Policy.can_update_user?(current_user, user, attrs) do
       :ok
     else
-      {:error, ErrorHandler.business_error(:insufficient_permissions, %{message: "Insufficient permissions to update user"})}
+      {:error,
+       ErrorHandler.business_error(:insufficient_permissions, %{
+         message: "Insufficient permissions to update user"
+       })}
     end
   end
 
@@ -745,16 +853,20 @@ defmodule LedgerBankApi.Accounts.UserService do
   def validate_current_password(user, current_password) do
     if current_password do
       case authenticate_user(user.email, current_password) do
-        {:ok, _user} -> :ok
+        {:ok, _user} ->
+          :ok
+
         {:error, _error} ->
-          {:error, ErrorHandler.business_error(:invalid_credentials, %{
-            message: "Current password is incorrect"
-          })}
+          {:error,
+           ErrorHandler.business_error(:invalid_credentials, %{
+             message: "Current password is incorrect"
+           })}
       end
     else
-      {:error, ErrorHandler.business_error(:missing_fields, %{
-        message: "Current password is required"
-      })}
+      {:error,
+       ErrorHandler.business_error(:missing_fields, %{
+         message: "Current password is required"
+       })}
     end
   end
 
@@ -765,9 +877,10 @@ defmodule LedgerBankApi.Accounts.UserService do
     if Policy.can_change_password?(user, attrs) do
       :ok
     else
-      {:error, ErrorHandler.business_error(:invalid_password_format, %{
-        message: "Invalid password change request"
-      })}
+      {:error,
+       ErrorHandler.business_error(:invalid_password_format, %{
+         message: "Invalid password change request"
+       })}
     end
   end
 
@@ -775,20 +888,23 @@ defmodule LedgerBankApi.Accounts.UserService do
   Update user password with policy validation (new approach).
   """
   def update_user_password_with_policy(user, attrs) do
-    context = ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :update_user_password, %{user_id: user.id})
 
     ServiceBehavior.with_error_handling(context, fn ->
       # Handle nil attributes
       if is_nil(attrs) do
-        {:error, ErrorHandler.business_error(:missing_fields, %{
-          message: "Password update attributes are required"
-        })}
+        {:error,
+         ErrorHandler.business_error(:missing_fields, %{
+           message: "Password update attributes are required"
+         })}
       else
         # Validate using Policy module
         with :ok <- validate_password_change_with_policy(user, attrs),
              :ok <- validate_current_password(user, attrs[:current_password]),
              :ok <- validate_password_requirements(attrs, user.role),
-             {:ok, updated_user} <- ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
+             {:ok, updated_user} <-
+               ServiceBehavior.update_operation(&User.password_changeset/2, user, attrs, context) do
           {:ok, updated_user}
         end
       end
@@ -803,9 +919,10 @@ defmodule LedgerBankApi.Accounts.UserService do
     current_password = attrs[:current_password]
 
     if new_password && current_password && new_password == current_password do
-      {:error, ErrorHandler.business_error(:invalid_password_format, %{
-        message: "New password must be different from current password"
-      })}
+      {:error,
+       ErrorHandler.business_error(:invalid_password_format, %{
+         message: "New password must be different from current password"
+       })}
     else
       :ok
     end
@@ -815,15 +932,18 @@ defmodule LedgerBankApi.Accounts.UserService do
   Validate password requirements based on user role.
   """
   def validate_password_requirements(attrs, user_role) do
-    password = attrs["password"] || attrs[:password] || attrs["new_password"] || attrs[:new_password]
+    password =
+      attrs["password"] || attrs[:password] || attrs["new_password"] || attrs[:new_password]
 
     if password do
       min_length = if user_role in ["admin", "support"], do: 15, else: 8
 
       if String.length(password) < min_length do
-        {:error, ErrorHandler.business_error(:invalid_password_format, %{
-          message: "Password must be at least #{min_length} characters long for #{user_role} users"
-        })}
+        {:error,
+         ErrorHandler.business_error(:invalid_password_format, %{
+           message:
+             "Password must be at least #{min_length} characters long for #{user_role} users"
+         })}
       else
         :ok
       end
@@ -838,21 +958,28 @@ defmodule LedgerBankApi.Accounts.UserService do
 
   defp apply_user_filters(query, nil), do: query
   defp apply_user_filters(query, []), do: query
+
   defp apply_user_filters(query, filters) when is_map(filters) do
     Enum.reduce(filters, query, fn {field, value}, acc ->
       case field do
         :status when is_binary(value) ->
           where(acc, [u], u.status == ^value)
+
         :role when is_binary(value) ->
           where(acc, [u], u.role == ^value)
+
         :active when is_boolean(value) ->
           where(acc, [u], u.active == ^value)
+
         :verified when is_boolean(value) ->
           where(acc, [u], u.verified == ^value)
+
         :suspended when is_boolean(value) ->
           where(acc, [u], u.suspended == ^value)
+
         :deleted when is_boolean(value) ->
           where(acc, [u], u.deleted == ^value)
+
         _ ->
           acc
       end
@@ -861,6 +988,7 @@ defmodule LedgerBankApi.Accounts.UserService do
 
   defp apply_user_sorting(query, nil), do: query
   defp apply_user_sorting(query, []), do: query
+
   defp apply_user_sorting(query, sort) when is_list(sort) do
     Enum.reduce(sort, query, fn {field, direction}, acc ->
       case direction do
@@ -872,8 +1000,10 @@ defmodule LedgerBankApi.Accounts.UserService do
   end
 
   defp apply_user_pagination(query, nil), do: query
+
   defp apply_user_pagination(query, %{page: page, page_size: page_size}) do
     offset = (page - 1) * page_size
+
     query
     |> limit(^page_size)
     |> offset(^offset)

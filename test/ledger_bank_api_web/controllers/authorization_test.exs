@@ -39,121 +39,160 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
 
   describe "Admin-only endpoints authorization" do
     test "admin can access user list", %{conn: conn, admin_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 200)
     end
 
     test "admin can access user statistics", %{conn: conn, admin_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/stats")
 
       assert json_response(conn, 200)
     end
 
     test "admin can view any user", %{conn: conn, admin_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 200)
     end
 
     test "admin can update any user", %{conn: conn, admin_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
 
       assert json_response(conn, 200)
     end
 
     test "admin can delete any user", %{conn: conn, admin_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> delete(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 200)
     end
 
     test "support user cannot access user list", %{conn: conn, support_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 403)
     end
 
     test "support user cannot access user statistics", %{conn: conn, support_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/stats")
 
       assert json_response(conn, 403)
     end
 
-    test "support user cannot view other users", %{conn: conn, support_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/#{user.id}")
+    test "support user cannot view other users", %{
+      conn: conn,
+      support_token: token,
+      regular_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
 
-    test "support user cannot update other users", %{conn: conn, support_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
+    test "support user cannot update other users", %{
+      conn: conn,
+      support_token: token,
+      regular_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
 
       assert json_response(conn, 403)
     end
 
-    test "support user cannot delete other users", %{conn: conn, support_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> delete(~p"/api/users/#{user.id}")
+    test "support user cannot delete other users", %{
+      conn: conn,
+      support_token: token,
+      regular_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
 
     test "regular user cannot access user list", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 403)
     end
 
     test "regular user cannot access user statistics", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/stats")
 
       assert json_response(conn, 403)
     end
 
-    test "regular user cannot view other users", %{conn: conn, user_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/#{user.id}")
+    test "regular user cannot view other users", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
 
-    test "regular user cannot update other users", %{conn: conn, user_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
+    test "regular user cannot update other users", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
 
       assert json_response(conn, 403)
     end
 
-    test "regular user cannot delete other users", %{conn: conn, user_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> delete(~p"/api/users/#{user.id}")
+    test "regular user cannot delete other users", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
@@ -195,85 +234,94 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
 
   describe "Profile endpoints authorization" do
     test "user can view their own profile", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 200)
     end
 
     test "user can update their own profile", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/profile", %{full_name: "Updated Name"})
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/profile", %{full_name: "Updated Name"})
 
       assert json_response(conn, 200)
     end
 
     test "user can change their own password", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/profile/password", %{
-        current_password: "ValidPassword123!",
-        new_password: "NewPassword123!",
-        password_confirmation: "NewPassword123!"
-      })
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/profile/password", %{
+          current_password: "ValidPassword123!",
+          new_password: "NewPassword123!",
+          password_confirmation: "NewPassword123!"
+        })
 
       assert json_response(conn, 200)
     end
 
     test "admin can view their own profile", %{conn: conn, admin_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 200)
     end
 
     test "admin can update their own profile", %{conn: conn, admin_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/profile", %{full_name: "Updated Admin Name"})
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/profile", %{full_name: "Updated Admin Name"})
 
       assert json_response(conn, 200)
     end
 
     test "admin can change their own password", %{conn: conn, admin_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/profile/password", %{
-        current_password: "ValidPassword123!",
-        new_password: "NewAdminPassword123!",
-        password_confirmation: "NewAdminPassword123!"
-      })
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/profile/password", %{
+          current_password: "ValidPassword123!",
+          new_password: "NewAdminPassword123!",
+          password_confirmation: "NewAdminPassword123!"
+        })
 
       assert json_response(conn, 200)
     end
 
     test "support user can view their own profile", %{conn: conn, support_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 200)
     end
 
     test "support user can update their own profile", %{conn: conn, support_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/profile", %{full_name: "Updated Support Name"})
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/profile", %{full_name: "Updated Support Name"})
 
       assert json_response(conn, 200)
     end
 
     test "support user can change their own password", %{conn: conn, support_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/profile/password", %{
-        current_password: "ValidPassword123!",
-        new_password: "NewSupportPassword123!",
-        password_confirmation: "NewSupportPassword123!"
-      })
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/profile/password", %{
+          current_password: "ValidPassword123!",
+          new_password: "NewSupportPassword123!",
+          password_confirmation: "NewSupportPassword123!"
+        })
 
       assert json_response(conn, 200)
     end
@@ -291,11 +339,12 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
     end
 
     test "unauthenticated user cannot change password", %{conn: conn} do
-      conn = put(conn, ~p"/api/profile/password", %{
-        current_password: "ValidPassword123!",
-        new_password: "NewPassword123!",
-        password_confirmation: "NewPassword123!"
-      })
+      conn =
+        put(conn, ~p"/api/profile/password", %{
+          current_password: "ValidPassword123!",
+          new_password: "NewPassword123!",
+          password_confirmation: "NewPassword123!"
+        })
 
       assert json_response(conn, 401)
     end
@@ -307,18 +356,20 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
 
   describe "Authentication endpoints authorization" do
     test "unauthenticated user can login", %{conn: conn} do
-      conn = post(conn, ~p"/api/auth/login", %{
-        email: "user@example.com",
-        password: "ValidPassword123!"
-      })
+      conn =
+        post(conn, ~p"/api/auth/login", %{
+          email: "user@example.com",
+          password: "ValidPassword123!"
+        })
 
       assert json_response(conn, 200)
     end
 
     test "unauthenticated user can refresh token", %{conn: conn, user_token: _token} do
-      conn = post(conn, ~p"/api/auth/refresh", %{
-        refresh_token: "valid-refresh-token"
-      })
+      conn =
+        post(conn, ~p"/api/auth/refresh", %{
+          refresh_token: "valid-refresh-token"
+        })
 
       # This will fail due to invalid refresh token
       assert json_response(conn, 401)
@@ -332,25 +383,28 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
     end
 
     test "authenticated user can access /auth/me", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/auth/me")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/auth/me")
 
       assert json_response(conn, 200)
     end
 
     test "authenticated user can validate token", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/auth/validate")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/auth/validate")
 
       assert json_response(conn, 200)
     end
 
     test "authenticated user can logout all sessions", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> post(~p"/api/auth/logout-all")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> post(~p"/api/auth/logout-all")
 
       assert json_response(conn, 200)
     end
@@ -380,17 +434,19 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
 
   describe "Token validation" do
     test "valid token allows access", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 200)
     end
 
     test "invalid token format is rejected", %{conn: conn} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer invalid-token")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer invalid-token")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 401)
     end
@@ -402,17 +458,19 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
     end
 
     test "empty authorization header is rejected", %{conn: conn} do
-      conn = conn
-      |> put_req_header("authorization", "")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 401)
     end
 
     test "malformed authorization header is rejected", %{conn: conn} do
-      conn = conn
-      |> put_req_header("authorization", "InvalidFormat token")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "InvalidFormat token")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 401)
     end
@@ -421,9 +479,10 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
       # Create an expired token (this would need to be implemented in the test setup)
       expired_token = "expired-token-here"
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{expired_token}")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{expired_token}")
+        |> get(~p"/api/profile")
 
       assert json_response(conn, 401)
     end
@@ -435,121 +494,160 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
 
   describe "Role-based access control" do
     test "admin can access user list endpoint", %{conn: conn, admin_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 200)
     end
 
     test "admin can access user stats endpoint", %{conn: conn, admin_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/stats")
 
       assert json_response(conn, 200)
     end
 
     test "admin can view specific user", %{conn: conn, admin_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 200)
     end
 
     test "admin can update specific user", %{conn: conn, admin_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
 
       assert json_response(conn, 200)
     end
 
     test "admin can delete specific user", %{conn: conn, admin_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> delete(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 200)
     end
 
     test "support user cannot access user list", %{conn: conn, support_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 403)
     end
 
     test "support user cannot access user stats", %{conn: conn, support_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/stats")
 
       assert json_response(conn, 403)
     end
 
-    test "support user cannot view other users", %{conn: conn, support_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/#{user.id}")
+    test "support user cannot view other users", %{
+      conn: conn,
+      support_token: token,
+      regular_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
 
-    test "support user cannot update other users", %{conn: conn, support_token: token, regular_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
+    test "support user cannot update other users", %{
+      conn: conn,
+      support_token: token,
+      regular_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
 
       assert json_response(conn, 403)
     end
 
-    test "support user cannot delete other users", %{conn: conn, support_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> delete(~p"/api/users/#{user.id}")
+    test "support user cannot delete other users", %{
+      conn: conn,
+      support_token: token,
+      another_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
 
     test "regular user cannot access user list", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 403)
     end
 
     test "regular user cannot access user stats", %{conn: conn, user_token: token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/stats")
 
       assert json_response(conn, 403)
     end
 
-    test "regular user cannot view other users", %{conn: conn, user_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/#{user.id}")
+    test "regular user cannot view other users", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
 
-    test "regular user cannot update other users", %{conn: conn, user_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
+    test "regular user cannot update other users", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/users/#{user.id}", %{full_name: "Updated Name"})
 
       assert json_response(conn, 403)
     end
 
-    test "regular user cannot delete other users", %{conn: conn, user_token: token, another_user: user} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> delete(~p"/api/users/#{user.id}")
+    test "regular user cannot delete other users", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       assert json_response(conn, 403)
     end
@@ -560,70 +658,102 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
   # ============================================================================
 
   describe "Security edge cases" do
-    test "user cannot access other user's profile via user ID", %{conn: conn, user_token: token, another_user: user} do
+    test "user cannot access other user's profile via user ID", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
       # Try to access another user's profile by using their ID in the path
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/#{user.id}")
 
       # Should be forbidden since this is an admin-only endpoint
       assert json_response(conn, 403)
     end
 
-    test "user cannot update other user's profile via user ID", %{conn: conn, user_token: token, another_user: user} do
+    test "user cannot update other user's profile via user ID", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
       # Try to update another user's profile by using their ID in the path
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> put(~p"/api/users/#{user.id}", %{full_name: "Hacked Name"})
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> put(~p"/api/users/#{user.id}", %{full_name: "Hacked Name"})
 
       # Should be forbidden since this is an admin-only endpoint
       assert json_response(conn, 403)
     end
 
-    test "user cannot delete other user via user ID", %{conn: conn, user_token: token, another_user: user} do
+    test "user cannot delete other user via user ID", %{
+      conn: conn,
+      user_token: token,
+      another_user: user
+    } do
       # Try to delete another user by using their ID in the path
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> delete(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       # Should be forbidden since this is an admin-only endpoint
       assert json_response(conn, 403)
     end
 
-    test "admin cannot access profile endpoints with user ID", %{conn: conn, admin_token: token, regular_user: _user} do
+    test "admin cannot access profile endpoints with user ID", %{
+      conn: conn,
+      admin_token: token,
+      regular_user: _user
+    } do
       # Admin should use profile endpoints for their own profile, not user ID endpoints
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/profile")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/profile")
 
       # Should work since admin can access their own profile
       assert json_response(conn, 200)
     end
 
-    test "malicious user cannot bypass authorization with invalid user ID", %{conn: conn, user_token: token} do
+    test "malicious user cannot bypass authorization with invalid user ID", %{
+      conn: conn,
+      user_token: token
+    } do
       # Try to access a non-existent user
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users/invalid-uuid")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users/invalid-uuid")
 
       # Should be forbidden since this is an admin-only endpoint
       assert json_response(conn, 403)
     end
 
-    test "user cannot access admin endpoints with valid but insufficient role", %{conn: conn, user_token: token} do
+    test "user cannot access admin endpoints with valid but insufficient role", %{
+      conn: conn,
+      user_token: token
+    } do
       # Regular user with valid token trying to access admin endpoints
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 403)
     end
 
-    test "support user cannot access admin endpoints with valid but insufficient role", %{conn: conn, support_token: token} do
+    test "support user cannot access admin endpoints with valid but insufficient role", %{
+      conn: conn,
+      support_token: token
+    } do
       # Support user with valid token trying to access admin endpoints
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> get(~p"/api/users")
 
       assert json_response(conn, 403)
     end
@@ -641,22 +771,24 @@ defmodule LedgerBankApiWeb.Controllers.AuthorizationTest do
     end
 
     test "anyone can register a new user", %{conn: conn} do
-      conn = post(conn, ~p"/api/users", %{
-        email: "newuser@example.com",
-        full_name: "New User",
-        role: "user",
-        password: "ValidPassword123!",
-        password_confirmation: "ValidPassword123!"
-      })
+      conn =
+        post(conn, ~p"/api/users", %{
+          email: "newuser@example.com",
+          full_name: "New User",
+          role: "user",
+          password: "ValidPassword123!",
+          password_confirmation: "ValidPassword123!"
+        })
 
       assert json_response(conn, 201)
     end
 
     test "anyone can login", %{conn: conn} do
-      conn = post(conn, ~p"/api/auth/login", %{
-        email: "user@example.com",
-        password: "ValidPassword123!"
-      })
+      conn =
+        post(conn, ~p"/api/auth/login", %{
+          email: "user@example.com",
+          password: "ValidPassword123!"
+        })
 
       assert json_response(conn, 200)
     end

@@ -22,7 +22,9 @@ defmodule LedgerBankApiWeb.Resolvers.PaymentResolver do
   end
 
   def list(%{limit: limit, offset: offset}, %{context: %{current_user: current_user}}) do
-    {payments, _pagination} = FinancialService.list_user_payments(current_user.id, %{limit: limit, offset: offset})
+    {payments, _pagination} =
+      FinancialService.list_user_payments(current_user.id, %{limit: limit, offset: offset})
+
     {:ok, payments}
   end
 

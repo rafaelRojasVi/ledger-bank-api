@@ -56,7 +56,8 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
     end
 
     test "fails to get user with non-existent email" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.get_user_by_email("nonexistent@example.com")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.get_user_by_email("nonexistent@example.com")
     end
 
     # Note: This test is disabled due to Ecto query issues with nil values
@@ -72,15 +73,35 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
   describe "list_users/1" do
     setup do
       # Create test users with different attributes
-      user1 = UsersFixtures.user_fixture(%{email: "user1@example.com", role: "user", status: "ACTIVE"})
-      user2 = UsersFixtures.user_fixture(%{email: "user2@example.com", role: "admin", status: "ACTIVE"})
-      user3 = UsersFixtures.user_fixture(%{email: "user3@example.com", role: "support", status: "SUSPENDED"})
-      user4 = UsersFixtures.user_fixture(%{email: "user4@example.com", role: "user", status: "SUSPENDED"})
+      user1 =
+        UsersFixtures.user_fixture(%{email: "user1@example.com", role: "user", status: "ACTIVE"})
+
+      user2 =
+        UsersFixtures.user_fixture(%{email: "user2@example.com", role: "admin", status: "ACTIVE"})
+
+      user3 =
+        UsersFixtures.user_fixture(%{
+          email: "user3@example.com",
+          role: "support",
+          status: "SUSPENDED"
+        })
+
+      user4 =
+        UsersFixtures.user_fixture(%{
+          email: "user4@example.com",
+          role: "user",
+          status: "SUSPENDED"
+        })
 
       %{user1: user1, user2: user2, user3: user3, user4: user4}
     end
 
-    test "lists all users without filters", %{user1: user1, user2: user2, user3: user3, user4: user4} do
+    test "lists all users without filters", %{
+      user1: user1,
+      user2: user2,
+      user3: user3,
+      user4: user4
+    } do
       users = UserService.list_users()
       user_ids = Enum.map(users, & &1.id)
 
@@ -97,7 +118,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
       assert user1.id in user_ids
       assert user2.id in user_ids
-      assert Enum.all?(users, & &1.status == "ACTIVE")
+      assert Enum.all?(users, &(&1.status == "ACTIVE"))
     end
 
     test "lists users with role filter", %{user2: user2} do
@@ -105,7 +126,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       user_ids = Enum.map(users, & &1.id)
 
       assert user2.id in user_ids
-      assert Enum.all?(users, & &1.role == "admin")
+      assert Enum.all?(users, &(&1.role == "admin"))
     end
 
     test "lists users with multiple filters", %{user1: user1} do
@@ -113,13 +134,13 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       user_ids = Enum.map(users, & &1.id)
 
       assert user1.id in user_ids
-      assert Enum.all?(users, & &1.status == "ACTIVE" and &1.role == "user")
+      assert Enum.all?(users, &(&1.status == "ACTIVE" and &1.role == "user"))
     end
 
     test "lists users with boolean filters" do
       users = UserService.list_users(filters: %{active: true, verified: false})
 
-      assert Enum.all?(users, & &1.active == true and &1.verified == false)
+      assert Enum.all?(users, &(&1.active == true and &1.verified == false))
     end
 
     test "lists users with sorting", %{user1: _user1, user2: _user2, user3: _user3, user4: _user4} do
@@ -331,128 +352,149 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
   describe "authenticate_user/2" do
     setup do
-      user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{email: "auth@example.com"})
+      user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{email: "auth@example.com"})
+
       %{user: user}
     end
 
     test "successfully authenticates user with valid credentials", %{user: user} do
-      assert {:ok, authenticated_user} = UserService.authenticate_user(user.email, "ValidPassword123!")
+      assert {:ok, authenticated_user} =
+               UserService.authenticate_user(user.email, "ValidPassword123!")
+
       assert authenticated_user.id == user.id
       assert authenticated_user.email == user.email
     end
 
     test "fails to authenticate user with incorrect password", %{user: user} do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user(user.email, "WrongPassword123!")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user(user.email, "WrongPassword123!")
     end
 
     test "fails to authenticate user with non-existent email" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user("nonexistent@example.com", "ValidPassword123!")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user("nonexistent@example.com", "ValidPassword123!")
     end
 
     test "fails to authenticate user with invalid email format" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user("invalid-email", "ValidPassword123!")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user("invalid-email", "ValidPassword123!")
     end
 
     test "fails to authenticate user with weak password" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user("test@example.com", "weak")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user("test@example.com", "weak")
     end
 
     test "fails to authenticate user with nil email" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user(nil, "ValidPassword123!")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user(nil, "ValidPassword123!")
     end
 
     test "fails to authenticate user with nil password" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user("test@example.com", nil)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user("test@example.com", nil)
     end
 
     test "fails to authenticate inactive user", %{user: _user} do
       # Create an inactive user
-      inactive_user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "inactive@example.com",
-        status: "SUSPENDED"
-      })
+      inactive_user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "inactive@example.com",
+          status: "SUSPENDED"
+        })
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user(inactive_user.email, "ValidPassword123!")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user(inactive_user.email, "ValidPassword123!")
     end
 
     test "fails to authenticate suspended user", %{user: _user} do
       # Create a suspended user
-      suspended_user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "suspended@example.com",
-        suspended: true
-      })
+      suspended_user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "suspended@example.com",
+          suspended: true
+        })
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user(suspended_user.email, "ValidPassword123!")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user(suspended_user.email, "ValidPassword123!")
     end
 
     test "fails to authenticate deleted user", %{user: _user} do
       # Create a deleted user
-      deleted_user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "deleted@example.com",
-        deleted: true
-      })
+      deleted_user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "deleted@example.com",
+          deleted: true
+        })
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.authenticate_user(deleted_user.email, "ValidPassword123!")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.authenticate_user(deleted_user.email, "ValidPassword123!")
     end
   end
 
   describe "is_user_active?/1" do
     test "returns true for active user" do
-      user = UsersFixtures.user_fixture(%{
-        email: "active@example.com",
-        status: "ACTIVE",
-        active: true,
-        suspended: false,
-        deleted: false
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "active@example.com",
+          status: "ACTIVE",
+          active: true,
+          suspended: false,
+          deleted: false
+        })
 
       assert UserService.is_user_active?(user) == true
     end
 
     test "returns false for inactive user" do
-      user = UsersFixtures.user_fixture(%{
-        email: "inactive@example.com",
-        status: "SUSPENDED",
-        active: true,
-        suspended: false,
-        deleted: false
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "inactive@example.com",
+          status: "SUSPENDED",
+          active: true,
+          suspended: false,
+          deleted: false
+        })
 
       assert UserService.is_user_active?(user) == false
     end
 
     test "returns false for suspended user" do
-      user = UsersFixtures.user_fixture(%{
-        email: "suspended@example.com",
-        status: "ACTIVE",
-        active: true,
-        suspended: true,
-        deleted: false
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "suspended@example.com",
+          status: "ACTIVE",
+          active: true,
+          suspended: true,
+          deleted: false
+        })
 
       assert UserService.is_user_active?(user) == false
     end
 
     test "returns false for deleted user" do
-      user = UsersFixtures.user_fixture(%{
-        email: "deleted@example.com",
-        status: "ACTIVE",
-        active: true,
-        suspended: false,
-        deleted: true
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "deleted@example.com",
+          status: "ACTIVE",
+          active: true,
+          suspended: false,
+          deleted: true
+        })
 
       assert UserService.is_user_active?(user) == false
     end
 
     test "returns false for user with active: false" do
-      user = UsersFixtures.user_fixture(%{
-        email: "inactive@example.com",
-        status: "ACTIVE",
-        active: false,
-        suspended: false,
-        deleted: false
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "inactive@example.com",
+          status: "ACTIVE",
+          active: false,
+          suspended: false,
+          deleted: false
+        })
 
       assert UserService.is_user_active?(user) == false
     end
@@ -507,10 +549,29 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
   describe "get_user_statistics/0" do
     setup do
       # Create test users with different attributes
-      _user1 = UsersFixtures.user_fixture(%{email: "stats1@example.com", role: "user", status: "ACTIVE"})
-      _user2 = UsersFixtures.user_fixture(%{email: "stats2@example.com", role: "admin", status: "ACTIVE"})
-      _user3 = UsersFixtures.user_fixture(%{email: "stats3@example.com", role: "user", status: "SUSPENDED"})
-      _user4 = UsersFixtures.user_fixture(%{email: "stats4@example.com", role: "support", status: "SUSPENDED"})
+      _user1 =
+        UsersFixtures.user_fixture(%{email: "stats1@example.com", role: "user", status: "ACTIVE"})
+
+      _user2 =
+        UsersFixtures.user_fixture(%{
+          email: "stats2@example.com",
+          role: "admin",
+          status: "ACTIVE"
+        })
+
+      _user3 =
+        UsersFixtures.user_fixture(%{
+          email: "stats3@example.com",
+          role: "user",
+          status: "SUSPENDED"
+        })
+
+      _user4 =
+        UsersFixtures.user_fixture(%{
+          email: "stats4@example.com",
+          role: "support",
+          status: "SUSPENDED"
+        })
 
       :ok
     end
@@ -530,10 +591,14 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       assert is_integer(stats.suspended_users)
 
       # Basic consistency checks
-      assert stats.total_users >= 4  # At least our test users
-      assert stats.active_users >= 2  # At least 2 active users
-      assert stats.admin_users >= 1  # At least 1 admin user
-      assert stats.suspended_users >= 0  # At least 0 suspended users (may be 0 in test environment)
+      # At least our test users
+      assert stats.total_users >= 4
+      # At least 2 active users
+      assert stats.active_users >= 2
+      # At least 1 admin user
+      assert stats.admin_users >= 1
+      # At least 0 suspended users (may be 0 in test environment)
+      assert stats.suspended_users >= 0
     end
 
     test "statistics are consistent" do
@@ -615,11 +680,12 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       jti = Ecto.UUID.generate()
       expires_at = DateTime.add(DateTime.utc_now(), 3600, :second)
 
-      {:ok, refresh_token} = UserService.create_refresh_token(%{
-        user_id: user.id,
-        jti: jti,
-        expires_at: expires_at
-      })
+      {:ok, refresh_token} =
+        UserService.create_refresh_token(%{
+          user_id: user.id,
+          jti: jti,
+          expires_at: expires_at
+        })
 
       %{user: user, refresh_token: refresh_token, jti: jti}
     end
@@ -646,11 +712,12 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       jti = Ecto.UUID.generate()
       expires_at = DateTime.add(DateTime.utc_now(), 3600, :second)
 
-      {:ok, refresh_token} = UserService.create_refresh_token(%{
-        user_id: user.id,
-        jti: jti,
-        expires_at: expires_at
-      })
+      {:ok, refresh_token} =
+        UserService.create_refresh_token(%{
+          user_id: user.id,
+          jti: jti,
+          expires_at: expires_at
+        })
 
       %{user: user, refresh_token: refresh_token, jti: jti}
     end
@@ -670,7 +737,8 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
     end
 
     test "fails to revoke token with invalid JTI format" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.revoke_refresh_token("invalid-uuid")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.revoke_refresh_token("invalid-uuid")
     end
 
     test "fails to revoke non-existent token" do
@@ -688,17 +756,19 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       jti2 = Ecto.UUID.generate()
       expires_at = DateTime.add(DateTime.utc_now(), 3600, :second)
 
-      {:ok, _token1} = UserService.create_refresh_token(%{
-        user_id: user.id,
-        jti: jti1,
-        expires_at: expires_at
-      })
+      {:ok, _token1} =
+        UserService.create_refresh_token(%{
+          user_id: user.id,
+          jti: jti1,
+          expires_at: expires_at
+        })
 
-      {:ok, _token2} = UserService.create_refresh_token(%{
-        user_id: user.id,
-        jti: jti2,
-        expires_at: expires_at
-      })
+      {:ok, _token2} =
+        UserService.create_refresh_token(%{
+          user_id: user.id,
+          jti: jti2,
+          expires_at: expires_at
+        })
 
       %{user: user, jti1: jti1, jti2: jti2}
     end
@@ -715,7 +785,8 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
     end
 
     test "fails to revoke tokens with invalid user_id format" do
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.revoke_all_refresh_tokens("invalid-uuid")
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.revoke_all_refresh_tokens("invalid-uuid")
     end
 
     test "returns 0 count for user with no tokens" do
@@ -804,6 +875,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
   describe "update_user_password/2" do
     test "successfully updates user password with valid attributes" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "NewPassword123!",
         password_confirmation: "NewPassword123!"
@@ -816,6 +888,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "successfully updates admin user password with longer password" do
       user = UsersFixtures.user_fixture(%{role: "admin"})
+
       attrs = %{
         password: "NewAdminPassword123!",
         password_confirmation: "NewAdminPassword123!"
@@ -828,6 +901,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "successfully updates support user password with longer password" do
       user = UsersFixtures.user_fixture(%{role: "support"})
+
       attrs = %{
         password: "NewSupportPassword123!",
         password_confirmation: "NewSupportPassword123!"
@@ -856,52 +930,62 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "fails to update password with nil password" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: nil,
         password_confirmation: "NewPassword123!"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     test "fails to update password with nil password_confirmation" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "NewPassword123!",
         password_confirmation: nil
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     test "fails to update password with empty password" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "",
         password_confirmation: "NewPassword123!"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     test "fails to update password with empty password_confirmation" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "NewPassword123!",
         password_confirmation: ""
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     test "fails to update password with password too short for regular user" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "Short1!",
         password_confirmation: "Short1!"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     # Note: This test is disabled due to password validation behavior
@@ -929,22 +1013,26 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
     test "fails to update password with password exceeding maximum length" do
       user = UsersFixtures.user_fixture()
       long_password = String.duplicate("A", 256)
+
       attrs = %{
         password: long_password,
         password_confirmation: long_password
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     test "fails to update password with password mismatch" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "NewPassword123!",
         password_confirmation: "DifferentPassword123!"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     # Note: This test is disabled due to password validation behavior
@@ -972,7 +1060,8 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
     test "fails to update password with nil attributes" do
       user = UsersFixtures.user_fixture()
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, nil)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, nil)
     end
 
     # Note: This test is disabled due to password validation behavior
@@ -985,26 +1074,31 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "fails to update password with invalid attribute types" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: 123,
         password_confirmation: "NewPassword123!"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     test "fails to update password with invalid password_confirmation type" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "NewPassword123!",
         password_confirmation: 123
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = UserService.update_user_password_for_test(user, attrs)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               UserService.update_user_password_for_test(user, attrs)
     end
 
     test "successfully updates password with minimum length for regular user" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "MinPass1!",
         password_confirmation: "MinPass1!"
@@ -1017,6 +1111,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "successfully updates password with minimum length for admin user" do
       user = UsersFixtures.user_fixture(%{role: "admin"})
+
       attrs = %{
         password: "MinAdminPass123!",
         password_confirmation: "MinAdminPass123!"
@@ -1029,6 +1124,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "successfully updates password with minimum length for support user" do
       user = UsersFixtures.user_fixture(%{role: "support"})
+
       attrs = %{
         password: "MinSupportPass123!",
         password_confirmation: "MinSupportPass123!"
@@ -1042,6 +1138,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
     test "successfully updates password with maximum length" do
       user = UsersFixtures.user_fixture()
       max_password = String.duplicate("A", 255)
+
       attrs = %{
         password: max_password,
         password_confirmation: max_password
@@ -1090,6 +1187,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "password update works with suspended user" do
       user = UsersFixtures.user_fixture(%{status: "SUSPENDED"})
+
       attrs = %{
         password: "NewPassword123!",
         password_confirmation: "NewPassword123!"
@@ -1102,6 +1200,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "password update works with deleted user" do
       user = UsersFixtures.user_fixture(%{status: "DELETED"})
+
       attrs = %{
         password: "NewPassword123!",
         password_confirmation: "NewPassword123!"
@@ -1145,6 +1244,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "password update with special characters" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "P@ssw0rd!@#$%^&*()_+-=[]{}|;':\",./<>?",
         password_confirmation: "P@ssw0rd!@#$%^&*()_+-=[]{}|;':\",./<>?"
@@ -1157,6 +1257,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "password update with unicode characters" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "Pássw0rd123!",
         password_confirmation: "Pássw0rd123!"
@@ -1169,6 +1270,7 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
 
     test "password update with whitespace handling" do
       user = UsersFixtures.user_fixture()
+
       attrs = %{
         password: "  Password123!  ",
         password_confirmation: "  Password123!  "

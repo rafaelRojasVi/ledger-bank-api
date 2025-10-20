@@ -19,19 +19,19 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       conn = post(conn, ~p"/api/users", user_params)
 
       assert %{
-        "success" => true,
-        "data" => %{
-          "id" => user_id,
-          "email" => "newuser@example.com",
-          "full_name" => "New User",
-          "role" => "user",
-          "status" => "ACTIVE",
-          "active" => true,
-          "verified" => false,
-          "suspended" => false,
-          "deleted" => false
-        }
-      } = json_response(conn, 201)
+               "success" => true,
+               "data" => %{
+                 "id" => user_id,
+                 "email" => "newuser@example.com",
+                 "full_name" => "New User",
+                 "role" => "user",
+                 "status" => "ACTIVE",
+                 "active" => true,
+                 "verified" => false,
+                 "suspended" => false,
+                 "deleted" => false
+               }
+             } = json_response(conn, 201)
 
       assert is_binary(user_id)
     end
@@ -42,20 +42,22 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         full_name: "Attempted Admin",
         password: "AdminPassword123!",
         password_confirmation: "AdminPassword123!",
-        role: "admin"  # ← Attempting to create admin via public endpoint
+        # ← Attempting to create admin via public endpoint
+        role: "admin"
       }
 
       conn = post(conn, ~p"/api/users", user_params)
 
       # Should succeed but role should be forced to "user"
       assert %{
-        "success" => true,
-        "data" => %{
-          "email" => "attempted-admin@example.com",
-          "full_name" => "Attempted Admin",
-          "role" => "user"  # ← Role is forced to "user", NOT "admin"
-        }
-      } = json_response(conn, 201)
+               "success" => true,
+               "data" => %{
+                 "email" => "attempted-admin@example.com",
+                 "full_name" => "Attempted Admin",
+                 # ← Role is forced to "user", NOT "admin"
+                 "role" => "user"
+               }
+             } = json_response(conn, 201)
     end
 
     test "SECURITY: public endpoint ignores support role and creates regular user", %{conn: conn} do
@@ -64,20 +66,22 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         full_name: "Attempted Support",
         password: "SupportPassword123!",
         password_confirmation: "SupportPassword123!",
-        role: "support"  # ← Attempting to create support via public endpoint
+        # ← Attempting to create support via public endpoint
+        role: "support"
       }
 
       conn = post(conn, ~p"/api/users", user_params)
 
       # Should succeed but role should be forced to "user"
       assert %{
-        "success" => true,
-        "data" => %{
-          "email" => "attempted-support@example.com",
-          "full_name" => "Attempted Support",
-          "role" => "user"  # ← Role is forced to "user", NOT "support"
-        }
-      } = json_response(conn, 201)
+               "success" => true,
+               "data" => %{
+                 "email" => "attempted-support@example.com",
+                 "full_name" => "Attempted Support",
+                 # ← Role is forced to "user", NOT "support"
+                 "role" => "user"
+               }
+             } = json_response(conn, 201)
     end
 
     test "fails to create user with missing email", %{conn: conn} do
@@ -237,20 +241,23 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         full_name: "Invalid Role User",
         password: "ValidPassword123!",
         password_confirmation: "ValidPassword123!",
-        role: "invalid_role"  # ← Invalid role attempt
+        # ← Invalid role attempt
+        role: "invalid_role"
       }
 
       conn = post(conn, ~p"/api/users", user_params)
 
       # Should succeed with role forced to "user"
       response = json_response(conn, 201)
+
       assert %{
-        "success" => true,
-        "data" => %{
-          "email" => "invalrole@example.com",
-          "role" => "user"  # ← Invalid role is ignored, defaults to "user"
-        }
-      } = response
+               "success" => true,
+               "data" => %{
+                 "email" => "invalrole@example.com",
+                 # ← Invalid role is ignored, defaults to "user"
+                 "role" => "user"
+               }
+             } = response
     end
 
     test "fails to create user with duplicate email", %{conn: conn} do
@@ -276,6 +283,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
 
     test "fails to create user with very long full name", %{conn: conn} do
       long_name = String.duplicate("A", 300)
+
       user_params = %{
         email: "newuser@example.com",
         full_name: long_name,
@@ -361,14 +369,16 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com"})
       _admin_user = UsersFixtures.admin_user_fixture(%{email: "admin2@example.com"})
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users} = response
       assert is_list(users)
-      assert length(users) >= 3  # At least the users we created
+      # At least the users we created
+      assert length(users) >= 3
 
       # Verify user data structure
       user = List.first(users)
@@ -385,9 +395,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         UsersFixtures.user_fixture(%{email: "user#{i}@example.com"})
       end
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users?page=1&page_size=3")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users?page=1&page_size=3")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users, "metadata" => metadata} = response
@@ -403,9 +414,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       UsersFixtures.user_fixture(%{email: "zuser@example.com"})
       UsersFixtures.user_fixture(%{email: "auser@example.com"})
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users?sort=email:asc")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users?sort=email:asc")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users} = response
@@ -417,9 +429,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       UsersFixtures.user_fixture(%{email: "user@example.com", role: "user"})
       UsersFixtures.admin_user_fixture(%{email: "admin@example.com"})
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users?role=user")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users?role=user")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users} = response
@@ -431,9 +444,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       UsersFixtures.user_fixture(%{email: "active@example.com", status: "ACTIVE"})
       UsersFixtures.user_fixture(%{email: "suspended@example.com", status: "SUSPENDED"})
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users?status=ACTIVE")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users?status=ACTIVE")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users} = response
@@ -450,9 +464,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "fails to list users with invalid token", %{conn: conn} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer invalid.token.here")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer invalid.token.here")
+        |> get(~p"/api/users")
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -464,9 +479,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       user = UsersFixtures.user_fixture()
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -478,9 +494,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       support_user = UsersFixtures.user_fixture(%{role: "support"})
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(support_user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -488,10 +505,14 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       assert error["reason"] == "insufficient_permissions"
     end
 
-    test "handles invalid pagination parameters gracefully", %{conn: conn, access_token: access_token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users?page=invalid&page_size=abc")
+    test "handles invalid pagination parameters gracefully", %{
+      conn: conn,
+      access_token: access_token
+    } do
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users?page=invalid&page_size=abc")
 
       # The API handles invalid pagination gracefully by using defaults
       response = json_response(conn, 200)
@@ -512,15 +533,17 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     # end
 
     test "handles invalid filter parameters gracefully", %{conn: conn, access_token: access_token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users?role=invalid_role")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users?role=invalid_role")
 
       # The API handles invalid filter values gracefully by returning empty results
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => users} = response
       assert is_list(users)
-      assert length(users) == 0  # No users match invalid role
+      # No users match invalid role
+      assert length(users) == 0
     end
   end
 
@@ -536,15 +559,17 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "successfully shows user with admin access", %{conn: conn, access_token: access_token} do
-      user = UsersFixtures.user_fixture(%{
-        email: "showuser@example.com",
-        full_name: "Show User",
-        role: "user"
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "showuser@example.com",
+          full_name: "Show User",
+          role: "user"
+        })
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/#{user.id}")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
@@ -555,14 +580,16 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "successfully shows admin user", %{conn: conn, access_token: access_token} do
-      admin_user = UsersFixtures.admin_user_fixture(%{
-        email: "showadmin@example.com",
-        full_name: "Show Admin"
-      })
+      admin_user =
+        UsersFixtures.admin_user_fixture(%{
+          email: "showadmin@example.com",
+          full_name: "Show Admin"
+        })
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/#{admin_user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/#{admin_user.id}")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
@@ -574,9 +601,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "fails to show non-existent user", %{conn: conn, access_token: access_token} do
       fake_id = Ecto.UUID.generate()
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/#{fake_id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/#{fake_id}")
 
       response = json_response(conn, 404)
       assert %{"error" => error} = response
@@ -585,9 +613,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "fails to show user with invalid UUID", %{conn: conn, access_token: access_token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/invalid-uuid")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/invalid-uuid")
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -609,9 +638,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       target_user = UsersFixtures.user_fixture()
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/#{target_user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/#{target_user.id}")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -624,9 +654,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       target_user = UsersFixtures.user_fixture()
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(support_user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/#{target_user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/#{target_user.id}")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -647,15 +678,20 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "successfully updates user with valid data", %{conn: conn, access_token: access_token} do
-      user = UsersFixtures.user_fixture(%{
-        email: "updateuser@example.com",
-        full_name: "Original Name",
-        role: "user"
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "updateuser@example.com",
+          full_name: "Original Name",
+          role: "user"
+        })
+
       update_params = %{full_name: "Updated Name"}
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{user.id}", update_params)
+
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{user.id}", update_params)
+
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
       assert user_data["id"] == user.id
@@ -665,9 +701,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "successfully updates user role", %{conn: conn, access_token: access_token} do
       user = UsersFixtures.user_fixture(%{role: "user"})
       update_params = %{role: "support"}
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{user.id}", update_params)
+
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{user.id}", update_params)
+
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
       assert user_data["role"] == "support"
@@ -676,9 +715,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "successfully updates user email", %{conn: conn, access_token: access_token} do
       user = UsersFixtures.user_fixture(%{email: "old@example.com"})
       update_params = %{email: "new@example.com"}
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{user.id}", update_params)
+
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{user.id}", update_params)
+
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => user_data} = response
       assert user_data["email"] == "new@example.com"
@@ -688,9 +730,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       fake_id = Ecto.UUID.generate()
       update_params = %{full_name: "Updated Name"}
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{fake_id}", update_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{fake_id}", update_params)
 
       response = json_response(conn, 404)
       assert %{"error" => error} = response
@@ -701,9 +744,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "fails to update user with invalid UUID", %{conn: conn, access_token: access_token} do
       update_params = %{full_name: "Updated Name"}
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/invalid-uuid", update_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/invalid-uuid", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -714,9 +758,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       user = UsersFixtures.user_fixture()
       update_params = %{email: "invalid-email"}
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{user.id}", update_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{user.id}", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -728,9 +773,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       user = UsersFixtures.user_fixture()
       update_params = %{role: "invalid_role"}
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{user.id}", update_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{user.id}", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -742,9 +788,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       user = UsersFixtures.user_fixture()
       update_params = %{status: "INVALID_STATUS"}
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{user.id}", update_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{user.id}", update_params)
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -784,9 +831,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(user)
       update_params = %{full_name: "Updated Name"}
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{target_user.id}", update_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{target_user.id}", update_params)
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -797,9 +845,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "fails to update user with empty request body", %{conn: conn, access_token: access_token} do
       user = UsersFixtures.user_fixture()
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> put(~p"/api/users/#{user.id}", %{})
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> put(~p"/api/users/#{user.id}", %{})
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -822,9 +871,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "successfully deletes user", %{conn: conn, access_token: access_token} do
       user = UsersFixtures.user_fixture(%{email: "deleteuser@example.com"})
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> delete(~p"/api/users/#{user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/users/#{user.id}")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => data} = response
@@ -834,9 +884,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "successfully deletes admin user", %{conn: conn, access_token: access_token} do
       admin_user = UsersFixtures.admin_user_fixture(%{email: "deleteadmin@example.com"})
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> delete(~p"/api/users/#{admin_user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/users/#{admin_user.id}")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => data} = response
@@ -846,9 +897,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "fails to delete non-existent user", %{conn: conn, access_token: access_token} do
       fake_id = Ecto.UUID.generate()
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> delete(~p"/api/users/#{fake_id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/users/#{fake_id}")
 
       response = json_response(conn, 404)
       assert %{"error" => error} = response
@@ -857,9 +909,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "fails to delete user with invalid UUID", %{conn: conn, access_token: access_token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> delete(~p"/api/users/invalid-uuid")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/users/invalid-uuid")
 
       response = json_response(conn, 400)
       assert %{"error" => error} = response
@@ -881,9 +934,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       target_user = UsersFixtures.user_fixture()
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> delete(~p"/api/users/#{target_user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/users/#{target_user.id}")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -896,9 +950,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       target_user = UsersFixtures.user_fixture()
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(support_user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> delete(~p"/api/users/#{target_user.id}")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/users/#{target_user.id}")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -924,9 +979,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       UsersFixtures.user_fixture(%{email: "user2@example.com", role: "user", status: "SUSPENDED"})
       UsersFixtures.admin_user_fixture(%{email: "admin1@example.com"})
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/stats")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => stats} = response
@@ -941,9 +997,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "returns zero statistics when no users exist", %{conn: conn, access_token: access_token} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/stats")
 
       response = json_response(conn, 200)
       assert %{"success" => true, "data" => stats} = response
@@ -966,9 +1023,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       user = UsersFixtures.user_fixture()
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/stats")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -980,9 +1038,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       support_user = UsersFixtures.user_fixture(%{role: "support"})
       {:ok, access_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(support_user)
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{access_token}")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/users/stats")
 
       response = json_response(conn, 403)
       assert %{"error" => error} = response
@@ -991,9 +1050,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     end
 
     test "fails to get statistics with invalid token", %{conn: conn} do
-      conn = conn
-      |> put_req_header("authorization", "Bearer invalid.token.here")
-      |> get(~p"/api/users/stats")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer invalid.token.here")
+        |> get(~p"/api/users/stats")
 
       response = json_response(conn, 401)
       assert %{"error" => error} = response
@@ -1009,10 +1069,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
   describe "POST /api/users/admin - Admin user creation" do
     setup do
       # Create admin user for authentication
-      admin = UsersFixtures.user_fixture(%{
-        email: "admin@example.com",
-        role: "admin"
-      })
+      admin =
+        UsersFixtures.user_fixture(%{
+          email: "admin@example.com",
+          role: "admin"
+        })
+
       {:ok, admin_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(admin)
 
       %{admin: admin, admin_token: admin_token}
@@ -1027,18 +1089,20 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         role: "admin"
       }
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{admin_token}")
-      |> post(~p"/api/users/admin", user_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{admin_token}")
+        |> post(~p"/api/users/admin", user_params)
 
       assert %{
-        "success" => true,
-        "data" => %{
-          "email" => "newadmin@example.com",
-          "full_name" => "New Admin",
-          "role" => "admin"  # ← Admin can create admin users
-        }
-      } = json_response(conn, 201)
+               "success" => true,
+               "data" => %{
+                 "email" => "newadmin@example.com",
+                 "full_name" => "New Admin",
+                 # ← Admin can create admin users
+                 "role" => "admin"
+               }
+             } = json_response(conn, 201)
     end
 
     test "admin can create support user with valid data", %{conn: conn, admin_token: admin_token} do
@@ -1050,18 +1114,20 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         role: "support"
       }
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{admin_token}")
-      |> post(~p"/api/users/admin", user_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{admin_token}")
+        |> post(~p"/api/users/admin", user_params)
 
       assert %{
-        "success" => true,
-        "data" => %{
-          "email" => "newsupport@example.com",
-          "full_name" => "New Support",
-          "role" => "support"  # ← Admin can create support users
-        }
-      } = json_response(conn, 201)
+               "success" => true,
+               "data" => %{
+                 "email" => "newsupport@example.com",
+                 "full_name" => "New Support",
+                 # ← Admin can create support users
+                 "role" => "support"
+               }
+             } = json_response(conn, 201)
     end
 
     test "admin can create regular user with valid data", %{conn: conn, admin_token: admin_token} do
@@ -1073,20 +1139,24 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         role: "user"
       }
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{admin_token}")
-      |> post(~p"/api/users/admin", user_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{admin_token}")
+        |> post(~p"/api/users/admin", user_params)
 
       assert %{
-        "success" => true,
-        "data" => %{
-          "email" => "newuser@example.com",
-          "role" => "user"
-        }
-      } = json_response(conn, 201)
+               "success" => true,
+               "data" => %{
+                 "email" => "newuser@example.com",
+                 "role" => "user"
+               }
+             } = json_response(conn, 201)
     end
 
-    test "admin user creation defaults to user role when not specified", %{conn: conn, admin_token: admin_token} do
+    test "admin user creation defaults to user role when not specified", %{
+      conn: conn,
+      admin_token: admin_token
+    } do
       user_params = %{
         email: "defaultrole@example.com",
         full_name: "Default Role User",
@@ -1095,16 +1165,17 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         # No role specified
       }
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{admin_token}")
-      |> post(~p"/api/users/admin", user_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{admin_token}")
+        |> post(~p"/api/users/admin", user_params)
 
       assert %{
-        "success" => true,
-        "data" => %{
-          "role" => "user"
-        }
-      } = json_response(conn, 201)
+               "success" => true,
+               "data" => %{
+                 "role" => "user"
+               }
+             } = json_response(conn, 201)
     end
 
     test "SECURITY: non-admin cannot access admin user creation endpoint", %{conn: conn} do
@@ -1120,9 +1191,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         role: "admin"
       }
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{user_token}")
-      |> post(~p"/api/users/admin", user_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{user_token}")
+        |> post(~p"/api/users/admin", user_params)
 
       # Should return 403 Forbidden
       response = json_response(conn, 403)
@@ -1148,18 +1220,23 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       assert error["type"] == "https://api.ledgerbank.com/problems/invalid_token"
     end
 
-    test "admin user creation validates password length for admin role", %{conn: conn, admin_token: admin_token} do
+    test "admin user creation validates password length for admin role", %{
+      conn: conn,
+      admin_token: admin_token
+    } do
       user_params = %{
         email: "shortpass@example.com",
         full_name: "Short Pass Admin",
-        password: "Short123!",  # Only 9 chars, needs 15 for admin
+        # Only 9 chars, needs 15 for admin
+        password: "Short123!",
         password_confirmation: "Short123!",
         role: "admin"
       }
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{admin_token}")
-      |> post(~p"/api/users/admin", user_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{admin_token}")
+        |> post(~p"/api/users/admin", user_params)
 
       # Should fail validation due to password length
       response = json_response(conn, 400)
@@ -1170,7 +1247,9 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
     test "admin user creation enforces policy checks", %{conn: conn} do
       # Create support user (not admin)
       support_user = UsersFixtures.user_fixture(%{email: "support@example.com", role: "support"})
-      {:ok, support_token} = LedgerBankApi.Accounts.AuthService.generate_access_token(support_user)
+
+      {:ok, support_token} =
+        LedgerBankApi.Accounts.AuthService.generate_access_token(support_user)
 
       user_params = %{
         email: "newadmin@example.com",
@@ -1180,9 +1259,10 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
         role: "admin"
       }
 
-      conn = conn
-      |> put_req_header("authorization", "Bearer #{support_token}")
-      |> post(~p"/api/users/admin", user_params)
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{support_token}")
+        |> post(~p"/api/users/admin", user_params)
 
       # Support user cannot access admin-only endpoint
       response = json_response(conn, 403)

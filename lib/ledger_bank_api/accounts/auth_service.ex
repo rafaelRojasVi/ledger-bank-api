@@ -63,7 +63,8 @@ defmodule LedgerBankApi.Accounts.AuthService do
   """
   def revoke_refresh_token(token) do
     # Trust that token is valid (web layer already validated)
-    context = ServiceBehavior.build_context(__MODULE__, :revoke_refresh_token, %{token_type: "refresh"})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :revoke_refresh_token, %{token_type: "refresh"})
 
     with {:ok, claims} <- verify_refresh_token(token),
          {:ok, result} <- UserService.revoke_refresh_token(claims["jti"]) do
@@ -87,7 +88,8 @@ defmodule LedgerBankApi.Accounts.AuthService do
   """
   def get_user_from_token(token) do
     # Trust that token is valid (web layer already validated)
-    context = ServiceBehavior.build_context(__MODULE__, :get_user_from_token, %{token_type: "access"})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :get_user_from_token, %{token_type: "access"})
 
     with {:ok, claims} <- verify_access_token(token),
          {:ok, user} <- UserService.get_user(claims["sub"]) do
@@ -156,11 +158,12 @@ defmodule LedgerBankApi.Accounts.AuthService do
         correlation_id: context.correlation_id
       })
 
-      {:ok, %{
-        access_token: access_token,
-        refresh_token: refresh_token,
-        user: user
-      }}
+      {:ok,
+       %{
+         access_token: access_token,
+         refresh_token: refresh_token,
+         user: user
+       }}
     end
   end
 
@@ -206,6 +209,7 @@ defmodule LedgerBankApi.Accounts.AuthService do
       {:ok, claims} ->
         token_user_id = claims["sub"]
         {:ok, token_user_id == user_id}
+
       {:error, _reason} ->
         {:ok, false}
     end
@@ -216,7 +220,8 @@ defmodule LedgerBankApi.Accounts.AuthService do
   """
   def get_token_expiration(token) do
     # Trust that token is valid (web layer already validated)
-    context = ServiceBehavior.build_context(__MODULE__, :get_token_expiration, %{token_type: "access"})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :get_token_expiration, %{token_type: "access"})
 
     with {:ok, claims} <- verify_access_token(token) do
       exp = claims["exp"]

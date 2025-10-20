@@ -135,8 +135,10 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
     test "filters out non-updatable fields" do
       attrs = %{
         "description" => "Updated description",
-        "amount" => "100.50",  # Should be filtered out
-        "user_id" => "123"     # Should be filtered out
+        # Should be filtered out
+        "amount" => "100.50",
+        # Should be filtered out
+        "user_id" => "123"
       }
 
       result = Normalize.payment_update_attrs(attrs)
@@ -167,8 +169,10 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
     test "filters out non-updatable fields" do
       attrs = %{
         "account_name" => "Updated Name",
-        "currency" => "EUR",  # Should be filtered out
-        "user_id" => "123"    # Should be filtered out
+        # Should be filtered out
+        "currency" => "EUR",
+        # Should be filtered out
+        "user_id" => "123"
       }
 
       result = Normalize.bank_account_update_attrs(attrs)
@@ -195,7 +199,8 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
     test "handles invalid amounts" do
       attrs = %{"amount" => "invalid"}
       result = Normalize.payment_attrs(attrs)
-      assert result["amount"] == "invalid"  # Should remain unchanged
+      # Should remain unchanged
+      assert result["amount"] == "invalid"
     end
   end
 
@@ -215,7 +220,8 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
     test "handles invalid direction" do
       attrs = %{"direction" => "invalid"}
       result = Normalize.payment_attrs(attrs)
-      assert result["direction"] == "invalid"  # Should remain unchanged
+      # Should remain unchanged
+      assert result["direction"] == "invalid"
     end
   end
 
@@ -229,7 +235,8 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
     test "handles invalid currency format" do
       attrs = %{"currency" => "invalid"}
       result = Normalize.bank_account_attrs(attrs)
-      assert result["currency"] == "invalid"  # Should remain unchanged
+      # Should remain unchanged
+      assert result["currency"] == "invalid"
     end
   end
 
@@ -244,7 +251,8 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
       long_desc = String.duplicate("a", 300)
       attrs = %{"description" => long_desc}
       result = Normalize.payment_attrs(attrs)
-      assert result["description"] == long_desc  # Should remain unchanged
+      # Should remain unchanged
+      assert result["description"] == long_desc
     end
   end
 
@@ -258,7 +266,8 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
     test "handles invalid UUID format" do
       attrs = %{"user_bank_account_id" => "invalid-uuid"}
       result = Normalize.payment_attrs(attrs)
-      assert result["user_bank_account_id"] == "invalid-uuid"  # Should remain unchanged
+      # Should remain unchanged
+      assert result["user_bank_account_id"] == "invalid-uuid"
     end
   end
 
@@ -272,7 +281,8 @@ defmodule LedgerBankApi.Financial.NormalizeTest do
     test "handles invalid datetime strings" do
       attrs = %{"posted_at" => "invalid-datetime"}
       result = Normalize.transaction_attrs(attrs)
-      assert result["posted_at"] == "invalid-datetime"  # Should remain unchanged
+      # Should remain unchanged
+      assert result["posted_at"] == "invalid-datetime"
     end
   end
 end

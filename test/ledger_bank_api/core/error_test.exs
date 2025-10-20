@@ -4,13 +4,14 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "new/6" do
     test "creates error with all required fields" do
-      error = Error.new(
-        :validation_error,
-        "Invalid input",
-        400,
-        :missing_fields,
-        %{field: "email"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Invalid input",
+          400,
+          :missing_fields,
+          %{field: "email"}
+        )
 
       assert error.type == :validation_error
       assert error.message == "Invalid input"
@@ -73,20 +74,19 @@ defmodule LedgerBankApi.Core.ErrorTest do
     end
 
     test "accepts optional parameters" do
-      error = Error.new(
-        :validation_error,
-        "Test error",
-        400,
-        :test_reason,
-        %{field: "test"},
-        [
+      error =
+        Error.new(
+          :validation_error,
+          "Test error",
+          400,
+          :test_reason,
+          %{field: "test"},
           category: :custom_category,
           correlation_id: "test-correlation-id",
           source: "test_module",
           retryable: true,
           circuit_breaker: false
-        ]
-      )
+        )
 
       assert error.category == :custom_category
       assert error.correlation_id == "test-correlation-id"
@@ -119,13 +119,14 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "to_client_map/1" do
     test "converts error to client-safe map" do
-      error = Error.new(
-        :validation_error,
-        "Invalid email format",
-        400,
-        :invalid_email_format,
-        %{field: "email", value: "test"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Invalid email format",
+          400,
+          :invalid_email_format,
+          %{field: "email", value: "test"}
+        )
 
       client_map = Error.to_client_map(error)
 
@@ -138,22 +139,23 @@ defmodule LedgerBankApi.Core.ErrorTest do
     end
 
     test "sanitizes sensitive fields from context" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{
-          field: "email",
-          password: "secret123",
-          password_hash: "$argon2...",
-          access_token: "jwt.token.here",
-          refresh_token: "refresh.token",
-          secret: "api-secret",
-          private_key: "private-key",
-          api_key: "api-key-123"
-        }
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{
+            field: "email",
+            password: "secret123",
+            password_hash: "$argon2...",
+            access_token: "jwt.token.here",
+            refresh_token: "refresh.token",
+            secret: "api-secret",
+            private_key: "private-key",
+            api_key: "api-key-123"
+          }
+        )
 
       client_map = Error.to_client_map(error)
 
@@ -171,13 +173,14 @@ defmodule LedgerBankApi.Core.ErrorTest do
     end
 
     test "converts atom keys to strings" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{field: "email", error_code: 1001}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{field: "email", error_code: 1001}
+        )
 
       client_map = Error.to_client_map(error)
 
@@ -204,13 +207,14 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "to_log_map/1" do
     test "converts error to logging map with full context" do
-      error = Error.new(
-        :internal_server_error,
-        "Database connection failed",
-        500,
-        :db_connection_failed,
-        %{db_host: "localhost", retry_count: 3}
-      )
+      error =
+        Error.new(
+          :internal_server_error,
+          "Database connection failed",
+          500,
+          :db_connection_failed,
+          %{db_host: "localhost", retry_count: 3}
+        )
 
       log_map = Error.to_log_map(error)
 
@@ -223,16 +227,17 @@ defmodule LedgerBankApi.Core.ErrorTest do
     end
 
     test "includes ALL context (no sanitization)" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{
-          password: "should-be-logged",
-          api_key: "should-be-logged-for-debugging"
-        }
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{
+            password: "should-be-logged",
+            api_key: "should-be-logged-for-debugging"
+          }
+        )
 
       log_map = Error.to_log_map(error)
 
@@ -244,66 +249,76 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "should_retry?/1" do
     test "returns true for external dependency errors" do
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [category: :external_dependency, retryable: true]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          category: :external_dependency,
+          retryable: true
+        )
 
       assert Error.should_retry?(error) == true
     end
 
     test "returns true for system errors" do
-      error = Error.new(
-        :internal_server_error,
-        "System error",
-        500,
-        :server_error,
-        %{},
-        [category: :system, retryable: true]
-      )
+      error =
+        Error.new(
+          :internal_server_error,
+          "System error",
+          500,
+          :server_error,
+          %{},
+          category: :system,
+          retryable: true
+        )
 
       assert Error.should_retry?(error) == true
     end
 
     test "returns false for validation errors" do
-      error = Error.new(
-        :validation_error,
-        "Invalid input",
-        400,
-        :invalid,
-        %{},
-        [category: :validation, retryable: false]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Invalid input",
+          400,
+          :invalid,
+          %{},
+          category: :validation,
+          retryable: false
+        )
 
       assert Error.should_retry?(error) == false
     end
 
     test "returns false for business rule errors" do
-      error = Error.new(
-        :unprocessable_entity,
-        "Business rule failed",
-        422,
-        :rule_failed,
-        %{},
-        [category: :business_rule, retryable: false]
-      )
+      error =
+        Error.new(
+          :unprocessable_entity,
+          "Business rule failed",
+          422,
+          :rule_failed,
+          %{},
+          category: :business_rule,
+          retryable: false
+        )
 
       assert Error.should_retry?(error) == false
     end
 
     test "returns false when retryable is false" do
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [category: :external_dependency, retryable: false]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          category: :external_dependency,
+          retryable: false
+        )
 
       assert Error.should_retry?(error) == false
     end
@@ -311,53 +326,61 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "should_circuit_break?/1" do
     test "returns true for external dependency errors" do
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [category: :external_dependency, circuit_breaker: true]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          category: :external_dependency,
+          circuit_breaker: true
+        )
 
       assert Error.should_circuit_break?(error) == true
     end
 
     test "returns true for system errors" do
-      error = Error.new(
-        :internal_server_error,
-        "System error",
-        500,
-        :server_error,
-        %{},
-        [category: :system, circuit_breaker: true]
-      )
+      error =
+        Error.new(
+          :internal_server_error,
+          "System error",
+          500,
+          :server_error,
+          %{},
+          category: :system,
+          circuit_breaker: true
+        )
 
       assert Error.should_circuit_break?(error) == true
     end
 
     test "returns false for validation errors" do
-      error = Error.new(
-        :validation_error,
-        "Invalid",
-        400,
-        :invalid,
-        %{},
-        [category: :validation, circuit_breaker: false]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Invalid",
+          400,
+          :invalid,
+          %{},
+          category: :validation,
+          circuit_breaker: false
+        )
 
       assert Error.should_circuit_break?(error) == false
     end
 
     test "returns false when circuit_breaker is false" do
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [category: :external_dependency, circuit_breaker: false]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          category: :external_dependency,
+          circuit_breaker: false
+        )
 
       assert Error.should_circuit_break?(error) == false
     end
@@ -365,40 +388,43 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "retry_delay/1" do
     test "returns 1000ms for external dependency errors" do
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [category: :external_dependency]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          category: :external_dependency
+        )
 
       assert Error.retry_delay(error) == 1000
     end
 
     test "returns 500ms for system errors" do
-      error = Error.new(
-        :internal_server_error,
-        "System error",
-        500,
-        :server_error,
-        %{},
-        [category: :system]
-      )
+      error =
+        Error.new(
+          :internal_server_error,
+          "System error",
+          500,
+          :server_error,
+          %{},
+          category: :system
+        )
 
       assert Error.retry_delay(error) == 500
     end
 
     test "returns 0ms for non-retryable errors" do
-      error = Error.new(
-        :validation_error,
-        "Invalid",
-        400,
-        :invalid,
-        %{},
-        [category: :validation]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Invalid",
+          400,
+          :invalid,
+          %{},
+          category: :validation
+        )
 
       assert Error.retry_delay(error) == 0
     end
@@ -406,40 +432,43 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "max_retry_attempts/1" do
     test "returns 3 attempts for external dependency errors" do
-      error = Error.new(
-        :service_unavailable,
-        "Service down",
-        503,
-        :unavailable,
-        %{},
-        [category: :external_dependency]
-      )
+      error =
+        Error.new(
+          :service_unavailable,
+          "Service down",
+          503,
+          :unavailable,
+          %{},
+          category: :external_dependency
+        )
 
       assert Error.max_retry_attempts(error) == 3
     end
 
     test "returns 2 attempts for system errors" do
-      error = Error.new(
-        :internal_server_error,
-        "System error",
-        500,
-        :server_error,
-        %{},
-        [category: :system]
-      )
+      error =
+        Error.new(
+          :internal_server_error,
+          "System error",
+          500,
+          :server_error,
+          %{},
+          category: :system
+        )
 
       assert Error.max_retry_attempts(error) == 2
     end
 
     test "returns 0 attempts for validation errors" do
-      error = Error.new(
-        :validation_error,
-        "Invalid",
-        400,
-        :invalid,
-        %{},
-        [category: :validation]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Invalid",
+          400,
+          :invalid,
+          %{},
+          category: :validation
+        )
 
       assert Error.max_retry_attempts(error) == 0
     end
@@ -450,7 +479,8 @@ defmodule LedgerBankApi.Core.ErrorTest do
       id = Error.generate_correlation_id()
 
       assert is_binary(id)
-      assert String.length(id) == 32  # 16 bytes = 32 hex chars
+      # 16 bytes = 32 hex chars
+      assert String.length(id) == 32
       assert String.match?(id, ~r/^[0-9a-f]{32}$/)
     end
 
@@ -484,19 +514,23 @@ defmodule LedgerBankApi.Core.ErrorTest do
         nil
       )
 
-      error = Error.new(
-        :validation_error,
-        "Test error",
-        400,
-        :test_reason,
-        %{field: "test"},
-        [correlation_id: "test-correlation-id", source: "test_module"]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test error",
+          400,
+          :test_reason,
+          %{field: "test"},
+          correlation_id: "test-correlation-id",
+          source: "test_module"
+        )
 
       Error.emit_telemetry(error)
 
       # Verify telemetry event
-      assert_receive {:telemetry_event, [:ledger_bank_api, :error, :created], measurements, metadata}, 1000
+      assert_receive {:telemetry_event, [:ledger_bank_api, :error, :created], measurements,
+                      metadata},
+                     1000
 
       assert measurements.count == 1
       assert metadata.error_type == :validation_error
@@ -572,19 +606,20 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "context sanitization edge cases" do
     test "handles nested maps in context" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{
-          user: %{
-            id: 1,
-            password: "secret",
-            email: "test@example.com"
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{
+            user: %{
+              id: 1,
+              password: "secret",
+              email: "test@example.com"
+            }
           }
-        }
-      )
+        )
 
       client_map = Error.to_client_map(error)
 
@@ -594,13 +629,14 @@ defmodule LedgerBankApi.Core.ErrorTest do
     end
 
     test "handles lists in context" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{errors: ["error1", "error2", "error3"]}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{errors: ["error1", "error2", "error3"]}
+        )
 
       client_map = Error.to_client_map(error)
 
@@ -608,13 +644,14 @@ defmodule LedgerBankApi.Core.ErrorTest do
     end
 
     test "handles string keys in context" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{"field" => "email", "value" => "test"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{"field" => "email", "value" => "test"}
+        )
 
       client_map = Error.to_client_map(error)
 
@@ -623,13 +660,14 @@ defmodule LedgerBankApi.Core.ErrorTest do
     end
 
     test "handles mixed atom and string keys" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{"string_key" => "value2", atom_key: "value1"}
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{"string_key" => "value2", atom_key: "value1"}
+        )
 
       client_map = Error.to_client_map(error)
 
@@ -692,28 +730,32 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "retry policy edge cases" do
     test "retryable external dependency with non-matching category returns false" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{},
-        [category: :validation, retryable: true]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{},
+          category: :validation,
+          retryable: true
+        )
 
       # Even though retryable is true, category validation prevents retry
       assert Error.should_retry?(error) == false
     end
 
     test "system error with retryable false doesn't retry" do
-      error = Error.new(
-        :internal_server_error,
-        "Test",
-        500,
-        :test,
-        %{},
-        [category: :system, retryable: false]
-      )
+      error =
+        Error.new(
+          :internal_server_error,
+          "Test",
+          500,
+          :test,
+          %{},
+          category: :system,
+          retryable: false
+        )
 
       assert Error.should_retry?(error) == false
     end
@@ -723,14 +765,15 @@ defmodule LedgerBankApi.Core.ErrorTest do
     test "preserves correlation ID" do
       correlation_id = "custom-correlation-#{System.unique_integer()}"
 
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{},
-        [correlation_id: correlation_id]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{},
+          correlation_id: correlation_id
+        )
 
       assert error.correlation_id == correlation_id
 
@@ -751,27 +794,29 @@ defmodule LedgerBankApi.Core.ErrorTest do
 
   describe "error with source tracking" do
     test "tracks error source module" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{},
-        [source: "UserService.create_user"]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{},
+          source: "UserService.create_user"
+        )
 
       assert error.source == "UserService.create_user"
     end
 
     test "source appears in log map but not client map" do
-      error = Error.new(
-        :validation_error,
-        "Test",
-        400,
-        :test,
-        %{},
-        [source: "TestModule"]
-      )
+      error =
+        Error.new(
+          :validation_error,
+          "Test",
+          400,
+          :test,
+          %{},
+          source: "TestModule"
+        )
 
       _log_map = Error.to_log_map(error)
       # Source is part of error struct but not in log_map keys

@@ -30,22 +30,25 @@ defmodule LedgerBankApi.Core.CacheTest do
       computed_value = %{computed: true}
 
       # First call should compute the value
-      assert {:ok, ^computed_value} = Cache.get_or_put(key, fn ->
-        {:ok, computed_value}
-      end)
+      assert {:ok, ^computed_value} =
+               Cache.get_or_put(key, fn ->
+                 {:ok, computed_value}
+               end)
 
       # Second call should return cached value
-      assert {:ok, ^computed_value} = Cache.get_or_put(key, fn ->
-        {:ok, %{different: true}}
-      end)
+      assert {:ok, ^computed_value} =
+               Cache.get_or_put(key, fn ->
+                 {:ok, %{different: true}}
+               end)
     end
 
     test "get_or_put handles computation errors" do
       key = "error_key"
 
-      assert {:error, :computation_failed} = Cache.get_or_put(key, fn ->
-        {:error, :computation_failed}
-      end)
+      assert {:error, :computation_failed} =
+               Cache.get_or_put(key, fn ->
+                 {:error, :computation_failed}
+               end)
 
       # Key should not be in cache after error
       assert :not_found = Cache.get(key)

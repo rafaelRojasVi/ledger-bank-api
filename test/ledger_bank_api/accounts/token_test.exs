@@ -11,10 +11,11 @@ defmodule LedgerBankApi.Accounts.TokenTest do
 
   describe "generate_access_token/1" do
     test "generates valid access token with all required claims" do
-      user = UsersFixtures.user_fixture(%{
-        email: "test@example.com",
-        role: "user"
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "test@example.com",
+          role: "user"
+        })
 
       {:ok, token} = Token.generate_access_token(user)
 
@@ -31,14 +32,20 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       {:ok, token} = Token.generate_access_token(user)
 
       # Verify using Joken directly
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims} = Joken.verify(token, signer)
 
       exp_time = DateTime.from_unix!(claims["exp"])
       iat_time = DateTime.from_unix!(claims["iat"])
       duration = DateTime.diff(exp_time, iat_time, :second)
 
-      assert duration == 900  # 15 minutes
+      # 15 minutes
+      assert duration == 900
     end
 
     test "generates token with unique JTI each time" do
@@ -48,7 +55,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       {:ok, token2} = Token.generate_access_token(user)
 
       # Decode tokens
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims1} = Joken.verify(token1, signer)
       {:ok, claims2} = Joken.verify(token2, signer)
 
@@ -56,14 +68,20 @@ defmodule LedgerBankApi.Accounts.TokenTest do
     end
 
     test "includes all required claims in access token" do
-      user = UsersFixtures.user_fixture(%{
-        email: "claims@example.com",
-        role: "admin"
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "claims@example.com",
+          role: "admin"
+        })
 
       {:ok, token} = Token.generate_access_token(user)
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims} = Joken.verify(token, signer)
 
       # Required claims
@@ -89,7 +107,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       assert token1 != token2
 
       # Verify different user IDs
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims1} = Joken.verify(token1, signer)
       {:ok, claims2} = Joken.verify(token2, signer)
 
@@ -122,14 +145,20 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       user = UsersFixtures.user_fixture()
       {:ok, token} = Token.generate_refresh_token(user)
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims} = Joken.verify(token, signer)
 
       exp_time = DateTime.from_unix!(claims["exp"])
       iat_time = DateTime.from_unix!(claims["iat"])
       duration = DateTime.diff(exp_time, iat_time, :second)
 
-      assert duration == 604800  # 7 days
+      # 7 days
+      assert duration == 604_800
     end
 
     test "stores refresh token in database" do
@@ -138,7 +167,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       {:ok, token} = Token.generate_refresh_token(user)
 
       # Verify token was stored
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims} = Joken.verify(token, signer)
       jti = claims["jti"]
 
@@ -154,7 +188,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       {:ok, token1} = Token.generate_refresh_token(user)
       {:ok, token2} = Token.generate_refresh_token(user)
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims1} = Joken.verify(token1, signer)
       {:ok, claims2} = Joken.verify(token2, signer)
 
@@ -166,7 +205,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
 
       {:ok, token} = Token.generate_refresh_token(user)
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims} = Joken.verify(token, signer)
 
       # Refresh tokens should have minimal claims
@@ -225,14 +269,19 @@ defmodule LedgerBankApi.Accounts.TokenTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = Token.verify_access_token(expired_token)
 
       assert error.type == :unauthorized
-      # Expired tokens may return :invalid_token or :invalid_token_type depending on Joken's validation order
-      assert error.reason in [:invalid_token, :invalid_token_type]
+      # Expired tokens may return different errors depending on validation order
+      assert error.reason in [:token_expired, :missing_required_claims]
     end
 
     test "rejects token with wrong issuer" do
@@ -251,7 +300,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
         "nbf" => System.system_time(:second)
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = Token.verify_access_token(token)
@@ -275,7 +329,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
         "nbf" => System.system_time(:second)
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = Token.verify_access_token(token)
@@ -300,7 +359,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       {:ok, token} = Token.generate_refresh_token(user)
 
       # Get JTI and revoke
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims} = Joken.verify(token, signer)
       jti = claims["jti"]
 
@@ -337,7 +401,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = Token.verify_refresh_token(expired_token)
@@ -351,16 +420,22 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       # Create token manually (not stored in DB)
       payload = %{
         "sub" => to_string(user.id),
-        "exp" => System.system_time(:second) + 604800,
+        "exp" => System.system_time(:second) + 604_800,
         "iat" => System.system_time(:second),
         "type" => "refresh",
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
-        "jti" => Ecto.UUID.generate(),  # Random JTI not in DB
+        # Random JTI not in DB
+        "jti" => Ecto.UUID.generate(),
         "nbf" => System.system_time(:second)
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = Token.verify_refresh_token(token)
@@ -414,7 +489,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       user = UsersFixtures.user_fixture()
       {:ok, refresh_token} = Token.generate_refresh_token(user)
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       {:ok, claims} = Joken.verify(refresh_token, signer)
       jti = claims["jti"]
 
@@ -476,7 +556,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       {:ok, is_expired} = Token.is_token_expired?(expired_token)
@@ -558,10 +643,11 @@ defmodule LedgerBankApi.Accounts.TokenTest do
     test "generates tokens with consistent format" do
       user = UsersFixtures.user_fixture()
 
-      tokens = Enum.map(1..10, fn _ ->
-        {:ok, token} = Token.generate_access_token(user)
-        token
-      end)
+      tokens =
+        Enum.map(1..10, fn _ ->
+          {:ok, token} = Token.generate_access_token(user)
+          token
+        end)
 
       # All should have 3 parts
       Enum.each(tokens, fn token ->
@@ -579,11 +665,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
     test "handles concurrent access token generation" do
       user = UsersFixtures.user_fixture()
 
-      tasks = Enum.map(1..20, fn _ ->
-        Task.async(fn ->
-          Token.generate_access_token(user)
+      tasks =
+        Enum.map(1..20, fn _ ->
+          Task.async(fn ->
+            Token.generate_access_token(user)
+          end)
         end)
-      end)
 
       results = Task.await_many(tasks)
 
@@ -599,11 +686,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
     test "handles concurrent refresh token generation" do
       user = UsersFixtures.user_fixture()
 
-      tasks = Enum.map(1..10, fn _ ->
-        Task.async(fn ->
-          Token.generate_refresh_token(user)
+      tasks =
+        Enum.map(1..10, fn _ ->
+          Task.async(fn ->
+            Token.generate_refresh_token(user)
+          end)
         end)
-      end)
 
       results = Task.await_many(tasks)
 
@@ -620,11 +708,12 @@ defmodule LedgerBankApi.Accounts.TokenTest do
       user = UsersFixtures.user_fixture()
       {:ok, token} = Token.generate_access_token(user)
 
-      tasks = Enum.map(1..50, fn _ ->
-        Task.async(fn ->
-          Token.verify_access_token(token)
+      tasks =
+        Enum.map(1..50, fn _ ->
+          Task.async(fn ->
+            Token.verify_access_token(token)
+          end)
         end)
-      end)
 
       results = Task.await_many(tasks)
 

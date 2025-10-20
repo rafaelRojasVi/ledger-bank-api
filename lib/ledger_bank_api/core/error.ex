@@ -5,21 +5,33 @@ defmodule LedgerBankApi.Core.Error do
   This module provides the canonical ErrorResponse struct and core error handling functionality.
   """
 
-  defstruct [:type, :message, :code, :reason, :context, :timestamp, :category, :correlation_id, :source, :retryable, :circuit_breaker]
+  defstruct [
+    :type,
+    :message,
+    :code,
+    :reason,
+    :context,
+    :timestamp,
+    :category,
+    :correlation_id,
+    :source,
+    :retryable,
+    :circuit_breaker
+  ]
 
   @type t :: %__MODULE__{
-    type: atom(),
-    message: String.t(),
-    code: integer(),
-    reason: atom(),
-    context: map(),
-    timestamp: DateTime.t(),
-    category: atom(),
-    correlation_id: String.t() | nil,
-    source: String.t() | nil,
-    retryable: boolean(),
-    circuit_breaker: boolean()
-  }
+          type: atom(),
+          message: String.t(),
+          code: integer(),
+          reason: atom(),
+          context: map(),
+          timestamp: DateTime.t(),
+          category: atom(),
+          correlation_id: String.t() | nil,
+          source: String.t() | nil,
+          retryable: boolean(),
+          circuit_breaker: boolean()
+        }
 
   @doc """
   Creates a new ErrorResponse with the given parameters.
@@ -29,7 +41,9 @@ defmodule LedgerBankApi.Core.Error do
     correlation_id = Keyword.get(opts, :correlation_id)
     source = Keyword.get(opts, :source)
     retryable = Keyword.get(opts, :retryable, infer_retryable_from_category(category))
-    circuit_breaker = Keyword.get(opts, :circuit_breaker, infer_circuit_breaker_from_category(category))
+
+    circuit_breaker =
+      Keyword.get(opts, :circuit_breaker, infer_circuit_breaker_from_category(category))
 
     %__MODULE__{
       type: type,
@@ -80,7 +94,15 @@ defmodule LedgerBankApi.Core.Error do
   # Private helper to sanitize context for client responses
   defp sanitize_context(context) when is_map(context) do
     context
-    |> Map.drop([:password, :password_hash, :access_token, :refresh_token, :secret, :private_key, :api_key])
+    |> Map.drop([
+      :password,
+      :password_hash,
+      :access_token,
+      :refresh_token,
+      :secret,
+      :private_key,
+      :api_key
+    ])
     |> Enum.reduce(%{}, fn {key, value}, acc ->
       # Convert atom keys to strings for JSON serialization
       string_key = if is_atom(key), do: Atom.to_string(key), else: key
@@ -142,6 +164,7 @@ defmodule LedgerBankApi.Core.Error do
       _ -> false
     end
   end
+
   def should_retry?(_), do: false
 
   @doc """
@@ -154,6 +177,7 @@ defmodule LedgerBankApi.Core.Error do
       _ -> false
     end
   end
+
   def should_circuit_break?(_), do: false
 
   @doc """

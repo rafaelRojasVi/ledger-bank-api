@@ -40,12 +40,14 @@ defmodule LedgerBankApi.Core.Validator do
   """
   def validate_uuid(nil), do: {:error, :missing_fields}
   def validate_uuid(""), do: {:error, :missing_fields}
+
   def validate_uuid(uuid) when is_binary(uuid) do
     case Ecto.UUID.cast(uuid) do
       {:ok, _uuid} -> :ok
       :error -> {:error, :invalid_uuid_format}
     end
   end
+
   def validate_uuid(_), do: {:error, :invalid_uuid_format}
 
   @doc """
@@ -56,6 +58,7 @@ defmodule LedgerBankApi.Core.Validator do
   """
   def validate_email(nil), do: {:error, :missing_fields}
   def validate_email(""), do: {:error, :missing_fields}
+
   def validate_email(email) when is_binary(email) do
     # SECURITY: Reject null bytes (potential injection vector)
     if String.contains?(email, <<0>>) do
@@ -68,6 +71,7 @@ defmodule LedgerBankApi.Core.Validator do
       end
     end
   end
+
   def validate_email(_), do: {:error, :invalid_email_format}
 
   @doc """
@@ -79,6 +83,7 @@ defmodule LedgerBankApi.Core.Validator do
   """
   def validate_email_secure(nil), do: {:error, :user_not_found}
   def validate_email_secure(""), do: {:error, :user_not_found}
+
   def validate_email_secure(email) when is_binary(email) do
     cond do
       # SECURITY: Reject null bytes (potential injection vector)
@@ -98,6 +103,7 @@ defmodule LedgerBankApi.Core.Validator do
         {:error, :user_not_found}
     end
   end
+
   def validate_email_secure(_), do: {:error, :user_not_found}
 
   @doc """
@@ -116,6 +122,7 @@ defmodule LedgerBankApi.Core.Validator do
   Returns :ok for valid future datetimes, {:error, reason} for invalid ones.
   """
   def validate_future_datetime(nil), do: {:error, :missing_fields}
+
   def validate_future_datetime(datetime) when is_struct(datetime, DateTime) do
     if DateTime.compare(DateTime.utc_now(), datetime) == :lt do
       :ok
@@ -123,6 +130,7 @@ defmodule LedgerBankApi.Core.Validator do
       {:error, :invalid_datetime_format}
     end
   end
+
   def validate_future_datetime(_), do: {:error, :invalid_datetime_format}
 
   @doc """
@@ -132,6 +140,7 @@ defmodule LedgerBankApi.Core.Validator do
   """
   def validate_required(nil), do: {:error, :missing_fields}
   def validate_required(""), do: {:error, :missing_fields}
+
   def validate_required(value) when is_binary(value) do
     if String.trim(value) == "" do
       {:error, :missing_fields}
@@ -139,6 +148,7 @@ defmodule LedgerBankApi.Core.Validator do
       :ok
     end
   end
+
   def validate_required(_), do: :ok
 
   @doc """
@@ -163,6 +173,7 @@ defmodule LedgerBankApi.Core.Validator do
   def validate_fields(fields, validations) when is_map(fields) and is_map(validations) do
     Enum.reduce_while(validations, :ok, fn {field, validator}, _acc ->
       value = Map.get(fields, field)
+
       case validator.(value) do
         :ok -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}

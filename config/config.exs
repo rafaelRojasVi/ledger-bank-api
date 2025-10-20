@@ -37,10 +37,12 @@ config :ledger_bank_api, :external_api,
 config :ledger_bank_api, :jwt,
   secret_key: System.get_env("JWT_SECRET"),
   algorithm: "HS256",
-  issuer: "ledger_bank_api",
-  audience: "banking_api",
-  access_token_expiry: 3600, # 1 hour
-  refresh_token_expiry: 7 * 24 * 3600 # 7 days
+  issuer: "ledger-bank-api",
+  audience: "ledger-bank-api",
+  # 1 hour
+  access_token_expiry: 3600,
+  # 7 days
+  refresh_token_expiry: 7 * 24 * 3600
 
 # JWT secret for Joken (unified naming)
 config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET")
@@ -66,8 +68,7 @@ config :ledger_bank_api, LedgerBankApiWeb.Endpoint,
 config :ledger_bank_api, LedgerBankApi.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure your database
-config :ledger_bank_api, LedgerBankApi.Repo,
-  migration_primary_key: [type: :binary_id]
+config :ledger_bank_api, LedgerBankApi.Repo, migration_primary_key: [type: :binary_id]
 
 # Configure the telemetry
 config :ledger_bank_api, :telemetry,
@@ -95,9 +96,12 @@ config :ledger_bank_api, :cache,
   account_cache_ttl: 300
 
 # Configure cache adapter (pluggable for horizontal scaling)
-config :ledger_bank_api, :cache_adapter,
-  LedgerBankApi.Core.Cache.EtsAdapter  # Default: ETS (single-node)
-  # Future: LedgerBankApi.Core.Cache.RedisAdapter for distributed caching
+config :ledger_bank_api,
+       :cache_adapter,
+       # Default: ETS (single-node)
+       LedgerBankApi.Core.Cache.EtsAdapter
+
+# Future: LedgerBankApi.Core.Cache.RedisAdapter for distributed caching
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
@@ -118,11 +122,31 @@ config :ledger_bank_api, :open_api_spex,
   description: "A modern Elixir/Phoenix API for banking and financial data management",
   server_url: "http://localhost:4000"
 
+# ============================================================================
+# PASSWORD HASHING CONFIGURATION
+# ============================================================================
+# Password hashing configuration for different environments
+# This allows for different hashing strategies without Mix.env() coupling
+
+# Default password hashing configuration
+config :ledger_bank_api, :password_hashing,
+  algorithm: :pbkdf2,
+  options: [
+    # PBKDF2 options
+    iterations: 100_000,
+    length: 32,
+    digest: :sha256
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
 
-# Configure Oban
+# ============================================================================
+# OBAN CONFIGURATION (Base)
+# ============================================================================
+# Base Oban configuration with conservative defaults
+# Environment-specific overrides are in dev.exs, test.exs, and runtime.exs
 config :ledger_bank_api, Oban,
   repo: LedgerBankApi.Repo,
   plugins: [
@@ -132,8 +156,12 @@ config :ledger_bank_api, Oban,
   queues: [
     # Reduced concurrency to avoid overwhelming external APIs
     # and respect rate limits from bank providers
-    banking: 3,        # Bank API calls (external, slow, rate-limited)
-    payments: 2,       # Payment processing (external, critical)
-    notifications: 3,  # Email/SMS notifications (external)
-    default: 1         # Miscellaneous background tasks
+    # Bank API calls (external, slow, rate-limited)
+    banking: 3,
+    # Payment processing (external, critical)
+    payments: 2,
+    # Email/SMS notifications (external)
+    notifications: 3,
+    # Miscellaneous background tasks
+    default: 1
   ]

@@ -100,7 +100,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       job = %Oban.Job{
         id: 1,
         args: %{"payment_id" => payment.id},
-        attempt: 5,  # Max attempts reached
+        # Max attempts reached
+        attempt: 5,
         max_attempts: 5
       }
 
@@ -116,7 +117,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       }
 
       delay = PaymentWorker.backoff(job)
-      assert delay >= 5000  # Base delay for business rule errors
+      # Base delay for business rule errors
+      assert delay >= 5000
     end
 
     test "returns financial-specific backoff for system errors" do
@@ -126,7 +128,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       }
 
       delay = PaymentWorker.backoff(job)
-      assert delay >= 2000  # Base delay for system errors
+      # Base delay for system errors
+      assert delay >= 2000
     end
 
     test "returns financial-specific backoff for external dependency errors" do
@@ -136,7 +139,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       }
 
       delay = PaymentWorker.backoff(job)
-      assert delay >= 1000  # Base delay for external dependency errors
+      # Base delay for external dependency errors
+      assert delay >= 1000
     end
 
     test "returns category-based backoff" do
@@ -146,7 +150,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       }
 
       delay = PaymentWorker.backoff(job)
-      assert delay >= 2000  # Base delay for business rule category
+      # Base delay for business rule category
+      assert delay >= 2000
     end
 
     test "returns default exponential backoff" do
@@ -155,7 +160,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       }
 
       delay = PaymentWorker.backoff(job)
-      assert delay >= 1000  # Base delay for default
+      # Base delay for default
+      assert delay >= 1000
     end
 
     test "exponential backoff increases with attempts" do
@@ -196,7 +202,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
     @tag :tmp_dir
     test "schedules a payment with delay", %{tmp_dir: _tmp_dir} do
       payment_id = Ecto.UUID.generate()
-      delay_seconds = 3600  # 1 hour
+      # 1 hour
+      delay_seconds = 3600
 
       # Get time before scheduling
       before_time = DateTime.utc_now()
@@ -253,7 +260,9 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       payment_id = Ecto.UUID.generate()
       retry_config = %{max_attempts: 3}
 
-      assert {:ok, job} = PaymentWorker.schedule_payment_with_retry_config(payment_id, retry_config)
+      assert {:ok, job} =
+               PaymentWorker.schedule_payment_with_retry_config(payment_id, retry_config)
+
       assert job.args["payment_id"] == payment_id
       assert job.max_attempts == 3
     end
@@ -262,21 +271,27 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorkerTest do
       payment_id = Ecto.UUID.generate()
       retry_config = %{}
 
-      assert {:ok, job} = PaymentWorker.schedule_payment_with_retry_config(payment_id, retry_config)
+      assert {:ok, job} =
+               PaymentWorker.schedule_payment_with_retry_config(payment_id, retry_config)
+
       assert job.args["payment_id"] == payment_id
-      assert job.max_attempts == 5  # Default value
+      # Default value
+      assert job.max_attempts == 5
     end
   end
 
   describe "schedule_payment_with_error_context/3" do
     test "schedules a payment with error context" do
       payment_id = Ecto.UUID.generate()
+
       error_context = %{
         "error_reason" => "insufficient_funds",
         "error_category" => "business_rule"
       }
 
-      assert {:ok, job} = PaymentWorker.schedule_payment_with_error_context(payment_id, error_context)
+      assert {:ok, job} =
+               PaymentWorker.schedule_payment_with_error_context(payment_id, error_context)
+
       assert job.args["payment_id"] == payment_id
       assert job.args["error_reason"] == "insufficient_funds"
       assert job.args["error_category"] == "business_rule"

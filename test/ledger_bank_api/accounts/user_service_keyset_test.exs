@@ -7,7 +7,8 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
     test "returns first page of users when no cursor provided" do
       # Create test users with different timestamps
       _user1 = UsersFixtures.user_fixture(%{email: "user1@example.com"})
-      :timer.sleep(100) # Ensure different timestamps
+      # Ensure different timestamps
+      :timer.sleep(100)
       _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com"})
       :timer.sleep(100)
       _user3 = UsersFixtures.user_fixture(%{email: "user3@example.com"})
@@ -35,10 +36,11 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
       first_result = UserService.list_users_keyset(%{limit: 2})
 
       # Get second page using cursor
-      second_result = UserService.list_users_keyset(%{
-        limit: 2,
-        cursor: first_result.next_cursor
-      })
+      second_result =
+        UserService.list_users_keyset(%{
+          limit: 2,
+          cursor: first_result.next_cursor
+        })
 
       assert length(second_result.data) == 1
       assert second_result.has_more == false
@@ -48,9 +50,10 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
       [last_user] = second_result.data
       # Verify it's older than the users in the first page
       first_page_users = first_result.data
+
       assert Enum.all?(first_page_users, fn user ->
-        last_user.inserted_at <= user.inserted_at
-      end)
+               last_user.inserted_at <= user.inserted_at
+             end)
     end
 
     test "respects limit parameter" do
@@ -75,7 +78,8 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
 
       result = UserService.list_users_keyset(%{limit: 200})
 
-      assert length(result.data) == 5 # Only 5 users exist
+      # Only 5 users exist
+      assert length(result.data) == 5
       assert result.has_more == false
     end
 
@@ -87,10 +91,11 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
       :timer.sleep(10)
       _user2 = UsersFixtures.user_fixture(%{email: "user2@example.com", role: "user"})
 
-      result = UserService.list_users_keyset(%{
-        limit: 10,
-        filters: %{role: "user"}
-      })
+      result =
+        UserService.list_users_keyset(%{
+          limit: 10,
+          filters: %{role: "user"}
+        })
 
       assert length(result.data) == 2
       assert Enum.all?(result.data, &(&1.role == "user"))
@@ -99,10 +104,11 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
     test "returns empty result when no users match filters" do
       UsersFixtures.user_fixture(%{email: "user@example.com", role: "user"})
 
-      result = UserService.list_users_keyset(%{
-        limit: 10,
-        filters: %{role: "admin"}
-      })
+      result =
+        UserService.list_users_keyset(%{
+          limit: 10,
+          filters: %{role: "admin"}
+        })
 
       assert result.data == []
       assert result.has_more == false
@@ -113,10 +119,11 @@ defmodule LedgerBankApi.Accounts.UserServiceKeysetTest do
       UsersFixtures.user_fixture(%{email: "user@example.com"})
 
       # Invalid cursor should be treated as nil (first page)
-      result = UserService.list_users_keyset(%{
-        limit: 10,
-        cursor: %{inserted_at: "invalid", id: "invalid"}
-      })
+      result =
+        UserService.list_users_keyset(%{
+          limit: 10,
+          cursor: %{inserted_at: "invalid", id: "invalid"}
+        })
 
       assert length(result.data) == 1
       assert result.has_more == false

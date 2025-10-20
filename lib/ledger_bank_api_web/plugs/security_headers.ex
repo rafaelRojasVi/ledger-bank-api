@@ -38,15 +38,16 @@ defmodule LedgerBankApiWeb.Plugs.SecurityHeaders do
 
   defp put_csp_header(conn) do
     # Content Security Policy for API endpoints
-    csp = "default-src 'none'; " <>
-          "script-src 'none'; " <>
-          "style-src 'none'; " <>
-          "img-src 'none'; " <>
-          "font-src 'none'; " <>
-          "connect-src 'self'; " <>
-          "frame-ancestors 'none'; " <>
-          "base-uri 'none'; " <>
-          "form-action 'none'"
+    csp =
+      "default-src 'none'; " <>
+        "script-src 'none'; " <>
+        "style-src 'none'; " <>
+        "img-src 'none'; " <>
+        "font-src 'none'; " <>
+        "connect-src 'self'; " <>
+        "frame-ancestors 'none'; " <>
+        "base-uri 'none'; " <>
+        "form-action 'none'"
 
     put_resp_header(conn, "content-security-policy", csp)
   end
@@ -66,7 +67,10 @@ defmodule LedgerBankApiWeb.Plugs.SecurityHeaders do
     conn
     |> put_resp_header("access-control-allow-origin", "*")
     |> put_resp_header("access-control-allow-methods", "GET, POST, PUT, DELETE, OPTIONS")
-    |> put_resp_header("access-control-allow-headers", "Content-Type, Authorization, X-Correlation-ID")
+    |> put_resp_header(
+      "access-control-allow-headers",
+      "Content-Type, Authorization, X-Correlation-ID"
+    )
     |> put_resp_header("access-control-max-age", "86400")
   end
 end

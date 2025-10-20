@@ -28,7 +28,8 @@ defmodule LedgerBankApiWeb.Plugs.RateLimit do
 
   @behaviour Plug
 
-  @default_window_size 60_000  # 1 minute
+  # 1 minute
+  @default_window_size 60_000
   @default_max_requests 100
   @default_key_func &__MODULE__.default_key_func/1
 
@@ -65,14 +66,17 @@ defmodule LedgerBankApiWeb.Plugs.RateLimit do
       |> put_resp_header("x-rate-limit-limit", to_string(max_requests))
       |> put_resp_header("x-rate-limit-remaining", "0")
       |> put_resp_header("x-rate-limit-reset", to_string(now + window_size))
-      |> send_resp(429, Jason.encode!(%{
-        error: %{
-          type: "rate_limit_exceeded",
-          message: "Too many requests. Please try again later.",
-          code: 429,
-          timestamp: DateTime.utc_now()
-        }
-      }))
+      |> send_resp(
+        429,
+        Jason.encode!(%{
+          error: %{
+            type: "rate_limit_exceeded",
+            message: "Too many requests. Please try again later.",
+            code: 429,
+            timestamp: DateTime.utc_now()
+          }
+        })
+      )
       |> halt()
     else
       # Record this request
@@ -92,7 +96,9 @@ defmodule LedgerBankApiWeb.Plugs.RateLimit do
   # Default key function using IP address
   def default_key_func(conn) do
     case get_req_header(conn, "x-forwarded-for") do
-      [ip | _] -> ip
+      [ip | _] ->
+        ip
+
       _ ->
         case get_req_header(conn, "x-real-ip") do
           [ip] -> ip
@@ -108,6 +114,7 @@ defmodule LedgerBankApiWeb.Plugs.RateLimit do
         timestamps
         |> Enum.filter(fn timestamp -> timestamp > window_start end)
         |> length()
+
       [] ->
         0
     end
@@ -119,6 +126,7 @@ defmodule LedgerBankApiWeb.Plugs.RateLimit do
       [{^key, timestamps}] ->
         new_timestamps = [timestamp | timestamps]
         :ets.insert(:rate_limit_table, {key, new_timestamps})
+
       [] ->
         :ets.insert(:rate_limit_table, {key, [timestamp]})
     end
@@ -136,6 +144,7 @@ defmodule LedgerBankApiWeb.Plugs.RateLimit do
     case :ets.whereis(:rate_limit_table) do
       :undefined ->
         :ets.new(:rate_limit_table, [:set, :public, :named_table])
+
       _pid ->
         :ok
     end

@@ -13,7 +13,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
       params = %{
         "email" => "test@example.com",
         "full_name" => "John Doe",
-        "role" => "admin",  # ← Role parameter is present but will be ignored
+        # ← Role parameter is present but will be ignored
+        "role" => "admin",
         "password" => "ValidPassword123!",
         "password_confirmation" => "ValidPassword123!"
       }
@@ -21,7 +22,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
       assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
       assert validated_params.email == "test@example.com"
       assert validated_params.full_name == "John Doe"
-      refute Map.has_key?(validated_params, :role)  # ← Role not in output (security)
+      # ← Role not in output (security)
+      refute Map.has_key?(validated_params, :role)
       assert validated_params.password == "ValidPassword123!"
       assert validated_params.password_confirmation == "ValidPassword123!"
     end
@@ -37,7 +39,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
 
       assert {:ok, validated_params} = InputValidator.validate_user_creation(params)
       assert validated_params.email == "test@example.com"
-      refute Map.has_key?(validated_params, :role)  # ← No role in output
+      # ← No role in output
+      refute Map.has_key?(validated_params, :role)
     end
   end
 
@@ -53,7 +56,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
 
       assert {:ok, validated_params} = InputValidator.validate_admin_user_creation(params)
       assert validated_params.email == "admin@example.com"
-      assert validated_params.role == "admin"  # ← Role IS in output for admin endpoint
+      # ← Role IS in output for admin endpoint
+      assert validated_params.role == "admin"
       assert validated_params.password == "AdminPassword123!"
     end
 
@@ -91,7 +95,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with nil email" do
@@ -103,7 +108,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with empty email" do
@@ -115,7 +121,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with invalid email format" do
@@ -127,7 +134,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_email_format}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_email_format}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with missing full_name" do
@@ -138,7 +146,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with nil full_name" do
@@ -150,7 +159,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with empty full_name" do
@@ -162,11 +172,13 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with full_name exceeding 255 characters" do
       long_name = String.duplicate("A", 256)
+
       params = %{
         "email" => "test@example.com",
         "full_name" => long_name,
@@ -175,7 +187,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_name_format}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_name_format}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "SECURITY: missing role is OK for public registration (role forced server-side)" do
@@ -196,7 +209,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
       params = %{
         "email" => "test@example.com",
         "full_name" => "John Doe",
-        "role" => "invalid_role",  # ← Invalid role is ignored
+        # ← Invalid role is ignored
+        "role" => "invalid_role",
         "password" => "ValidPassword123!",
         "password_confirmation" => "ValidPassword123!"
       }
@@ -210,7 +224,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
       params = %{
         "email" => "test@example.com",
         "full_name" => "John Doe",
-        "role" => nil,  # ← Nil role is ignored
+        # ← Nil role is ignored
+        "role" => nil,
         "password" => "ValidPassword123!",
         "password_confirmation" => "ValidPassword123!"
       }
@@ -228,7 +243,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with nil password" do
@@ -240,7 +256,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with empty password" do
@@ -252,7 +269,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "admin endpoint: fails to validate admin creation with password too short" do
@@ -260,12 +278,14 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "email" => "admin@example.com",
         "full_name" => "Admin User",
         "role" => "admin",
-        "password" => "Short123!",  # Only 9 chars, needs 15 for admin
+        # Only 9 chars, needs 15 for admin
+        "password" => "Short123!",
         "password_confirmation" => "Short123!"
       }
 
       # Use admin validation endpoint (which validates role-based password requirements)
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_admin_user_creation(params)
+      assert {:error, %Error{reason: :invalid_password_format}} =
+               InputValidator.validate_admin_user_creation(params)
     end
 
     test "admin endpoint: fails to validate support creation with password too short" do
@@ -273,12 +293,14 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "email" => "support@example.com",
         "full_name" => "Support User",
         "role" => "support",
-        "password" => "Short123!",  # Only 9 chars, needs 15 for support
+        # Only 9 chars, needs 15 for support
+        "password" => "Short123!",
         "password_confirmation" => "Short123!"
       }
 
       # Use admin validation endpoint (which validates role-based password requirements)
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_admin_user_creation(params)
+      assert {:error, %Error{reason: :invalid_password_format}} =
+               InputValidator.validate_admin_user_creation(params)
     end
 
     test "fails to validate user creation with missing password_confirmation" do
@@ -289,7 +311,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with nil password_confirmation" do
@@ -301,7 +324,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => nil
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with empty password_confirmation" do
@@ -313,7 +337,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => ""
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with password mismatch" do
@@ -325,17 +350,20 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "DifferentPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :invalid_password_format}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with all missing fields" do
       params = %{}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(params)
     end
 
     test "fails to validate user creation with nil params" do
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_creation(nil)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_creation(nil)
     end
   end
 
@@ -388,7 +416,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
     test "fails to validate user update with no fields provided" do
       params = %{}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_update(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_update(params)
     end
 
     test "fails to validate user update with nil params" do
@@ -403,32 +432,37 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "status" => nil
       }
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_update(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_update(params)
     end
 
     test "fails to validate user update with invalid email format" do
       params = %{"email" => "invalid-email"}
 
-      assert {:error, %Error{reason: :invalid_email_format}} = InputValidator.validate_user_update(params)
+      assert {:error, %Error{reason: :invalid_email_format}} =
+               InputValidator.validate_user_update(params)
     end
 
     test "fails to validate user update with empty email" do
       params = %{"email" => ""}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_update(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_update(params)
     end
 
     test "fails to validate user update with full_name exceeding 255 characters" do
       long_name = String.duplicate("A", 256)
       params = %{"full_name" => long_name}
 
-      assert {:error, %Error{reason: :invalid_name_format}} = InputValidator.validate_user_update(params)
+      assert {:error, %Error{reason: :invalid_name_format}} =
+               InputValidator.validate_user_update(params)
     end
 
     test "fails to validate user update with empty full_name" do
       params = %{"full_name" => ""}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_user_update(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_user_update(params)
     end
 
     test "fails to validate user update with invalid role" do
@@ -440,7 +474,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
     test "fails to validate user update with invalid status" do
       params = %{"status" => "INVALID"}
 
-      assert {:error, %Error{reason: :invalid_status}} = InputValidator.validate_user_update(params)
+      assert {:error, %Error{reason: :invalid_status}} =
+               InputValidator.validate_user_update(params)
     end
 
     test "successfully validates user update with valid fields and ignores invalid ones" do
@@ -503,7 +538,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "NewPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with nil current_password" do
@@ -513,7 +549,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "NewPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with empty current_password" do
@@ -523,7 +560,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "NewPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with missing new_password" do
@@ -532,7 +570,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "NewPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with nil new_password" do
@@ -542,7 +581,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "NewPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with empty new_password" do
@@ -552,7 +592,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "NewPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with new password too short for admin" do
@@ -562,7 +603,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "Short123!"
       }
 
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_password_change(params, "admin")
+      assert {:error, %Error{reason: :invalid_password_format}} =
+               InputValidator.validate_password_change(params, "admin")
     end
 
     test "fails to validate password change with new password too short for support" do
@@ -572,7 +614,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "Short123!"
       }
 
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_password_change(params, "support")
+      assert {:error, %Error{reason: :invalid_password_format}} =
+               InputValidator.validate_password_change(params, "support")
     end
 
     test "fails to validate password change with missing password_confirmation" do
@@ -581,7 +624,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "new_password" => "NewPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with nil password_confirmation" do
@@ -591,7 +635,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => nil
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with empty password_confirmation" do
@@ -601,7 +646,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => ""
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with password mismatch" do
@@ -611,17 +657,20 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password_confirmation" => "DifferentPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_password_format}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_password_format}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with all missing fields" do
       params = %{}
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(params)
     end
 
     test "fails to validate password change with nil params" do
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_password_change(nil)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_password_change(nil)
     end
   end
 
@@ -671,13 +720,15 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password" => "ValidPassword123!"
       }
 
-      assert {:error, %Error{reason: :invalid_email_format}} = InputValidator.validate_login(params)
+      assert {:error, %Error{reason: :invalid_email_format}} =
+               InputValidator.validate_login(params)
     end
 
     test "fails to validate login with missing password" do
       params = %{"email" => "test@example.com"}
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_login(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_login(params)
     end
 
     test "fails to validate login with nil password" do
@@ -686,7 +737,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password" => nil
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_login(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_login(params)
     end
 
     test "fails to validate login with empty password" do
@@ -695,7 +747,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
         "password" => ""
       }
 
-      assert {:error, %Error{reason: :invalid_credentials}} = InputValidator.validate_login(params)
+      assert {:error, %Error{reason: :invalid_credentials}} =
+               InputValidator.validate_login(params)
     end
 
     test "fails to validate login with all missing fields" do
@@ -724,29 +777,34 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
     test "fails to validate refresh token with missing token" do
       params = %{}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_refresh_token(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_refresh_token(params)
     end
 
     test "fails to validate refresh token with nil token" do
       params = %{"refresh_token" => nil}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_refresh_token(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_refresh_token(params)
     end
 
     test "fails to validate refresh token with empty token" do
       params = %{"refresh_token" => ""}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_refresh_token(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_refresh_token(params)
     end
 
     test "fails to validate refresh token with non-string token" do
       params = %{"refresh_token" => 123}
 
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_refresh_token(params)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_refresh_token(params)
     end
 
     test "fails to validate refresh token with nil params" do
-      assert {:error, %Error{reason: :missing_fields}} = InputValidator.validate_refresh_token(nil)
+      assert {:error, %Error{reason: :missing_fields}} =
+               InputValidator.validate_refresh_token(nil)
     end
   end
 
@@ -788,7 +846,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
     end
 
     test "fails to validate user ID with invalid UUID format" do
-      assert {:error, %Error{reason: :invalid_uuid_format}} = InputValidator.validate_user_id("invalid-uuid")
+      assert {:error, %Error{reason: :invalid_uuid_format}} =
+               InputValidator.validate_user_id("invalid-uuid")
     end
 
     test "fails to validate user ID with nil" do
@@ -825,7 +884,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorTest do
     end
 
     test "fails to validate UUID with invalid format" do
-      assert {:error, %Error{reason: :invalid_uuid_format}} = InputValidator.validate_uuid("invalid-uuid")
+      assert {:error, %Error{reason: :invalid_uuid_format}} =
+               InputValidator.validate_uuid("invalid-uuid")
     end
 
     test "fails to validate UUID with nil" do

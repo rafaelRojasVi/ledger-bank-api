@@ -4,31 +4,58 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
   """
   use LedgerBankApi.Core.SchemaHelpers
 
-  @derive {Jason.Encoder, only: [:id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id, :user_bank_login_id, :user_id, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :currency,
+             :account_type,
+             :balance,
+             :last_four,
+             :account_name,
+             :status,
+             :last_sync_at,
+             :external_account_id,
+             :user_bank_login_id,
+             :user_id,
+             :inserted_at,
+             :updated_at
+           ]}
 
   schema "user_bank_accounts" do
-    field :currency, :string
-    field :account_type, :string
-    field :balance, :decimal, default: 0.0
-    field :last_four, :string
-    field :account_name, :string
-    field :status, :string, default: "ACTIVE"
-    field :last_sync_at, :utc_datetime
-    field :external_account_id, :string
+    field(:currency, :string)
+    field(:account_type, :string)
+    field(:balance, :decimal, default: 0.0)
+    field(:last_four, :string)
+    field(:account_name, :string)
+    field(:status, :string, default: "ACTIVE")
+    field(:last_sync_at, :utc_datetime)
+    field(:external_account_id, :string)
 
-    belongs_to :user_bank_login, LedgerBankApi.Financial.Schemas.UserBankLogin
-    belongs_to :user, LedgerBankApi.Accounts.Schemas.User
-    has_many :user_payments, LedgerBankApi.Financial.Schemas.UserPayment
-    has_many :transactions, LedgerBankApi.Financial.Schemas.Transaction, foreign_key: :account_id
+    belongs_to(:user_bank_login, LedgerBankApi.Financial.Schemas.UserBankLogin)
+    belongs_to(:user, LedgerBankApi.Accounts.Schemas.User)
+    has_many(:user_payments, LedgerBankApi.Financial.Schemas.UserPayment)
+    has_many(:transactions, LedgerBankApi.Financial.Schemas.Transaction, foreign_key: :account_id)
 
     timestamps(type: :utc_datetime)
   end
 
   @fields [
-    :user_bank_login_id, :user_id, :currency, :account_type, :balance, :last_four, :account_name, :status, :last_sync_at, :external_account_id
+    :user_bank_login_id,
+    :user_id,
+    :currency,
+    :account_type,
+    :balance,
+    :last_four,
+    :account_name,
+    :status,
+    :last_sync_at,
+    :external_account_id
   ]
   @required_fields [
-    :user_bank_login_id, :user_id, :currency, :account_type
+    :user_bank_login_id,
+    :user_id,
+    :currency,
+    :account_type
   ]
 
   def base_changeset(user_bank_account, attrs) do
@@ -50,7 +77,9 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
     |> validate_balance_limits()
     |> foreign_key_constraint(:user_bank_login_id)
     |> foreign_key_constraint(:user_id)
-    |> unique_constraint(:external_account_id, name: :user_bank_accounts_external_account_id_index)
+    |> unique_constraint(:external_account_id,
+      name: :user_bank_accounts_external_account_id_index
+    )
     |> validate_user_owns_login()
   end
 
@@ -109,6 +138,7 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
     # Credit accounts can have negative balances, so they always have "sufficient" balance
     true
   end
+
   def has_sufficient_balance?(%__MODULE__{balance: balance}, amount) do
     Decimal.gte?(balance, amount)
   end
@@ -117,6 +147,7 @@ defmodule LedgerBankApi.Financial.Schemas.UserBankAccount do
   Returns true if the account needs syncing based on last sync time.
   """
   def needs_sync?(%__MODULE__{last_sync_at: nil}), do: true
+
   def needs_sync?(%__MODULE__{last_sync_at: last_sync_at}) do
     # Consider account needs sync if last sync was more than the configured threshold
     sync_threshold_hours = Application.get_env(:ledger_bank_api, :account_sync_threshold_hours, 1)

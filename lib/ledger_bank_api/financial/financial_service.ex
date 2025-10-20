@@ -13,8 +13,14 @@ defmodule LedgerBankApi.Financial.FinancialService do
   require LedgerBankApi.Core.ServiceBehavior
   alias LedgerBankApi.Repo
   alias LedgerBankApi.Core.{ErrorHandler, ServiceBehavior}
+
   alias LedgerBankApi.Financial.Schemas.{
-    Bank, BankBranch, UserBankAccount, UserBankLogin, Transaction, UserPayment
+    Bank,
+    BankBranch,
+    UserBankAccount,
+    UserBankLogin,
+    Transaction,
+    UserPayment
   }
 
   # ============================================================================
@@ -86,8 +92,16 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   def get_bank_branch(id) do
     case Repo.get(BankBranch, id) do
-      nil -> {:error, ErrorHandler.business_error(:account_not_found, %{resource: "bank_branch", id: id, source: "financial_service"})}
-      branch -> {:ok, branch}
+      nil ->
+        {:error,
+         ErrorHandler.business_error(:account_not_found, %{
+           resource: "bank_branch",
+           id: id,
+           source: "financial_service"
+         })}
+
+      branch ->
+        {:ok, branch}
     end
   end
 
@@ -147,7 +161,10 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   def update_account_balance(account, new_balance) do
     account
-    |> UserBankAccount.balance_changeset(%{balance: new_balance, last_sync_at: DateTime.utc_now()})
+    |> UserBankAccount.balance_changeset(%{
+      balance: new_balance,
+      last_sync_at: DateTime.utc_now()
+    })
     |> Repo.update()
   end
 
@@ -239,7 +256,8 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   @impl true
   def get_user_payment(payment_id) do
-    context = ServiceBehavior.build_context(__MODULE__, :get_user_payment, %{payment_id: payment_id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :get_user_payment, %{payment_id: payment_id})
 
     ServiceBehavior.with_standard_error_handling(context, :payment_not_found, fn ->
       ServiceBehavior.get_operation(UserPayment, payment_id, :payment_not_found, context)
@@ -250,10 +268,11 @@ defmodule LedgerBankApi.Financial.FinancialService do
   List user payments for a user.
   """
   def list_user_payments(user_id, opts \\ []) do
-    base_query = UserPayment
-    |> where([up], up.user_id == ^user_id)
-    |> apply_payment_filters(opts[:filters])
-    |> apply_payment_sorting(opts[:sort])
+    base_query =
+      UserPayment
+      |> where([up], up.user_id == ^user_id)
+      |> apply_payment_filters(opts[:filters])
+      |> apply_payment_sorting(opts[:sort])
 
     # Get total count for pagination
     total_count = base_query |> Repo.aggregate(:count)
@@ -263,26 +282,28 @@ defmodule LedgerBankApi.Financial.FinancialService do
     payments = Repo.all(paginated_query)
 
     # Build pagination metadata
-    pagination = case opts[:pagination] do
-      %{page: page, page_size: page_size} ->
-        %{
-          page: page,
-          page_size: page_size,
-          total_count: total_count,
-          total_pages: ceil(total_count / page_size),
-          has_next: page * page_size < total_count,
-          has_prev: page > 1
-        }
-      _ ->
-        %{
-          page: 1,
-          page_size: total_count,
-          total_count: total_count,
-          total_pages: 1,
-          has_next: false,
-          has_prev: false
-        }
-    end
+    pagination =
+      case opts[:pagination] do
+        %{page: page, page_size: page_size} ->
+          %{
+            page: page,
+            page_size: page_size,
+            total_count: total_count,
+            total_pages: ceil(total_count / page_size),
+            has_next: page * page_size < total_count,
+            has_prev: page > 1
+          }
+
+        _ ->
+          %{
+            page: 1,
+            page_size: total_count,
+            total_count: total_count,
+            total_pages: 1,
+            has_next: false,
+            has_prev: false
+          }
+      end
 
     {payments, pagination}
   end
@@ -291,13 +312,19 @@ defmodule LedgerBankApi.Financial.FinancialService do
   Create a new user payment with basic business rule validation.
   """
   def create_user_payment(attrs) do
-    context = ServiceBehavior.build_context(__MODULE__, :create_user_payment, %{user_id: attrs[:user_id]})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :create_user_payment, %{user_id: attrs[:user_id]})
 
     ServiceBehavior.with_standard_error_handling(context, :validation_error, fn ->
       with {:ok, account} <- get_user_bank_account(attrs[:user_bank_account_id]),
            :ok <- validate_account_active(account),
            :ok <- validate_amount_limits_at_creation(attrs),
-           {:ok, payment} <- ServiceBehavior.create_operation(&UserPayment.changeset(%UserPayment{}, &1), attrs, context) do
+           {:ok, payment} <-
+             ServiceBehavior.create_operation(
+               &UserPayment.changeset(%UserPayment{}, &1),
+               attrs,
+               context
+             ) do
         {:ok, payment}
       end
     end)
@@ -308,7 +335,8 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   @impl true
   def process_payment(payment_id) do
-    context = ServiceBehavior.build_context(__MODULE__, :process_payment, %{payment_id: payment_id})
+    context =
+      ServiceBehavior.build_context(__MODULE__, :process_payment, %{payment_id: payment_id})
 
     ServiceBehavior.with_standard_error_handling(context, :payment_processing_failed, fn ->
       with {:ok, payment} <- get_user_payment(payment_id),
@@ -328,7 +356,6 @@ defmodule LedgerBankApi.Financial.FinancialService do
   # ============================================================================
   # BANK SYNCHRONIZATION
   # ============================================================================
-
 
   @doc """
   Synchronizes bank login data with external bank API.
@@ -355,8 +382,15 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   def validate_account_active(account) do
     case account.status do
-      "ACTIVE" -> :ok
-      _ -> {:error, ErrorHandler.business_error(:account_inactive, %{account_id: account.id, status: account.status})}
+      "ACTIVE" ->
+        :ok
+
+      _ ->
+        {:error,
+         ErrorHandler.business_error(:account_inactive, %{
+           account_id: account.id,
+           status: account.status
+         })}
     end
   end
 
@@ -368,18 +402,24 @@ defmodule LedgerBankApi.Financial.FinancialService do
     # Only validate for DEBIT payments (money going out)
     case payment.direction do
       "DEBIT" ->
-        if Decimal.gt?(account.balance, payment.amount) or Decimal.eq?(account.balance, payment.amount) do
+        if Decimal.gt?(account.balance, payment.amount) or
+             Decimal.eq?(account.balance, payment.amount) do
           :ok
         else
-          {:error, ErrorHandler.business_error(:insufficient_funds, %{
-            payment_id: payment.id,
-            payment_amount: payment.amount,
-            account_balance: account.balance,
-            shortfall: Decimal.sub(payment.amount, account.balance)
-          })}
+          {:error,
+           ErrorHandler.business_error(:insufficient_funds, %{
+             payment_id: payment.id,
+             payment_amount: payment.amount,
+             account_balance: account.balance,
+             shortfall: Decimal.sub(payment.amount, account.balance)
+           })}
         end
-      "CREDIT" -> :ok
-      _ -> {:error, ErrorHandler.business_error(:invalid_direction, %{direction: payment.direction})}
+
+      "CREDIT" ->
+        :ok
+
+      _ ->
+        {:error, ErrorHandler.business_error(:invalid_direction, %{direction: payment.direction})}
     end
   end
 
@@ -395,18 +435,23 @@ defmodule LedgerBankApi.Financial.FinancialService do
         daily_spent = calculate_daily_spent(account, DateTime.utc_now())
 
         if Decimal.gt?(Decimal.add(daily_spent, payment.amount), daily_limit) do
-          {:error, ErrorHandler.business_error(:daily_limit_exceeded, %{
-            payment_id: payment.id,
-            payment_amount: payment.amount,
-            daily_spent: daily_spent,
-            daily_limit: daily_limit,
-            account_id: account.id
-          })}
+          {:error,
+           ErrorHandler.business_error(:daily_limit_exceeded, %{
+             payment_id: payment.id,
+             payment_amount: payment.amount,
+             daily_spent: daily_spent,
+             daily_limit: daily_limit,
+             account_id: account.id
+           })}
         else
           :ok
         end
-      "CREDIT" -> :ok
-      _ -> {:error, ErrorHandler.business_error(:invalid_direction, %{direction: payment.direction})}
+
+      "CREDIT" ->
+        :ok
+
+      _ ->
+        {:error, ErrorHandler.business_error(:invalid_direction, %{direction: payment.direction})}
     end
   end
 
@@ -419,11 +464,12 @@ defmodule LedgerBankApi.Financial.FinancialService do
     max_single_transaction = get_max_single_transaction_limit()
 
     if Decimal.gt?(payment.amount, max_single_transaction) do
-      {:error, ErrorHandler.business_error(:amount_exceeds_limit, %{
-        payment_id: payment.id,
-        payment_amount: payment.amount,
-        max_limit: max_single_transaction
-      })}
+      {:error,
+       ErrorHandler.business_error(:amount_exceeds_limit, %{
+         payment_id: payment.id,
+         payment_amount: payment.amount,
+         max_limit: max_single_transaction
+       })}
     else
       :ok
     end
@@ -438,22 +484,29 @@ defmodule LedgerBankApi.Financial.FinancialService do
     # Only check for duplicates within the last 5 minutes
     duplicate_window_minutes = 5
 
-    query = from up in UserPayment,
-      where: up.user_id == ^payment.user_id,
-      where: up.amount == ^payment.amount,
-      where: up.description == ^payment.description,
-      where: up.direction == ^payment.direction,
-      where: up.id != ^payment.id,
-      where: up.status == "COMPLETED",  # Only check completed payments
-      where: up.posted_at > ago(^duplicate_window_minutes, "minute")
+    query =
+      from(up in UserPayment,
+        where: up.user_id == ^payment.user_id,
+        where: up.amount == ^payment.amount,
+        where: up.description == ^payment.description,
+        where: up.direction == ^payment.direction,
+        where: up.id != ^payment.id,
+        # Only check completed payments
+        where: up.status == "COMPLETED",
+        where: up.posted_at > ago(^duplicate_window_minutes, "minute")
+      )
 
     case Repo.one(query) do
-      nil -> :ok
-      _duplicate -> {:error, ErrorHandler.business_error(:duplicate_transaction, %{
-        payment_id: payment.id,
-        amount: payment.amount,
-        description: payment.description
-      })}
+      nil ->
+        :ok
+
+      _duplicate ->
+        {:error,
+         ErrorHandler.business_error(:duplicate_transaction, %{
+           payment_id: payment.id,
+           amount: payment.amount,
+           description: payment.description
+         })}
     end
   end
 
@@ -463,8 +516,15 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   def validate_payment_status(payment) do
     case payment.status do
-      "PENDING" -> :ok
-      _ -> {:error, ErrorHandler.business_error(:already_processed, %{payment_id: payment.id, current_status: payment.status})}
+      "PENDING" ->
+        :ok
+
+      _ ->
+        {:error,
+         ErrorHandler.business_error(:already_processed, %{
+           payment_id: payment.id,
+           current_status: payment.status
+         })}
     end
   end
 
@@ -476,12 +536,13 @@ defmodule LedgerBankApi.Financial.FinancialService do
     if Decimal.gt?(account.balance, amount) or Decimal.eq?(account.balance, amount) do
       :ok
     else
-      {:error, ErrorHandler.business_error(:insufficient_funds, %{
-        account_id: account.id,
-        required_amount: amount,
-        account_balance: account.balance,
-        shortfall: Decimal.sub(amount, account.balance)
-      })}
+      {:error,
+       ErrorHandler.business_error(:insufficient_funds, %{
+         account_id: account.id,
+         required_amount: amount,
+         account_balance: account.balance,
+         shortfall: Decimal.sub(amount, account.balance)
+       })}
     end
   end
 
@@ -493,11 +554,12 @@ defmodule LedgerBankApi.Financial.FinancialService do
     if user.id == account.user_id do
       :ok
     else
-      {:error, ErrorHandler.business_error(:unauthorized_access, %{
-        user_id: user.id,
-        account_id: account.id,
-        account_user_id: account.user_id
-      })}
+      {:error,
+       ErrorHandler.business_error(:unauthorized_access, %{
+         user_id: user.id,
+         account_id: account.id,
+         account_user_id: account.user_id
+       })}
     end
   end
 
@@ -511,16 +573,21 @@ defmodule LedgerBankApi.Financial.FinancialService do
 
     cond do
       Decimal.lt?(amount, min_amount) ->
-        {:error, ErrorHandler.business_error(:amount_too_small, %{
-          amount: amount,
-          min_amount: min_amount
-        })}
+        {:error,
+         ErrorHandler.business_error(:amount_too_small, %{
+           amount: amount,
+           min_amount: min_amount
+         })}
+
       Decimal.gt?(amount, max_amount) ->
-        {:error, ErrorHandler.business_error(:amount_exceeds_limit, %{
-          amount: amount,
-          max_amount: max_amount
-        })}
-      true -> :ok
+        {:error,
+         ErrorHandler.business_error(:amount_exceeds_limit, %{
+           amount: amount,
+           max_amount: max_amount
+         })}
+
+      true ->
+        :ok
     end
   end
 
@@ -530,9 +597,14 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   def validate_account_not_frozen(account) do
     case account.status do
-      "FROZEN" -> {:error, ErrorHandler.business_error(:account_frozen, %{account_id: account.id})}
-      "SUSPENDED" -> {:error, ErrorHandler.business_error(:account_suspended, %{account_id: account.id})}
-      _ -> :ok
+      "FROZEN" ->
+        {:error, ErrorHandler.business_error(:account_frozen, %{account_id: account.id})}
+
+      "SUSPENDED" ->
+        {:error, ErrorHandler.business_error(:account_suspended, %{account_id: account.id})}
+
+      _ ->
+        :ok
     end
   end
 
@@ -544,12 +616,16 @@ defmodule LedgerBankApi.Financial.FinancialService do
     cond do
       is_nil(description) or description == "" ->
         {:error, ErrorHandler.business_error(:description_required, %{})}
+
       String.length(description) > 255 ->
-        {:error, ErrorHandler.business_error(:description_too_long, %{
-          description: description,
-          max_length: 255
-        })}
-      true -> :ok
+        {:error,
+         ErrorHandler.business_error(:description_too_long, %{
+           description: description,
+           max_length: 255
+         })}
+
+      true ->
+        :ok
     end
   end
 
@@ -630,7 +706,8 @@ defmodule LedgerBankApi.Financial.FinancialService do
       daily_remaining: daily_remaining,
       daily_utilization_percent: calculate_utilization_percent(daily_spent, daily_limit),
       is_healthy: account.status == "ACTIVE" and Decimal.gt?(account.balance, Decimal.new("0")),
-      can_make_payments: account.status == "ACTIVE" and Decimal.gt?(daily_remaining, Decimal.new("0"))
+      can_make_payments:
+        account.status == "ACTIVE" and Decimal.gt?(daily_remaining, Decimal.new("0"))
     }
   end
 
@@ -640,9 +717,11 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   def check_user_financial_health(user_id) do
     accounts = list_user_bank_accounts(user_id)
-    total_balance = Enum.reduce(accounts, Decimal.new("0"), fn account, acc ->
-      Decimal.add(acc, account.balance)
-    end)
+
+    total_balance =
+      Enum.reduce(accounts, Decimal.new("0"), fn account, acc ->
+        Decimal.add(acc, account.balance)
+      end)
 
     active_accounts = Enum.filter(accounts, fn account -> account.status == "ACTIVE" end)
     frozen_accounts = Enum.filter(accounts, fn account -> account.status == "FROZEN" end)
@@ -672,10 +751,11 @@ defmodule LedgerBankApi.Financial.FinancialService do
     max_single_transaction = get_max_single_transaction_limit()
 
     if Decimal.gt?(attrs[:amount], max_single_transaction) do
-      {:error, ErrorHandler.business_error(:amount_exceeds_limit, %{
-        payment_amount: attrs[:amount],
-        max_limit: max_single_transaction
-      })}
+      {:error,
+       ErrorHandler.business_error(:amount_exceeds_limit, %{
+         payment_amount: attrs[:amount],
+         max_limit: max_single_transaction
+       })}
     else
       :ok
     end
@@ -685,24 +765,31 @@ defmodule LedgerBankApi.Financial.FinancialService do
     # Execute payment processing with account balance update
     Repo.transaction(fn ->
       # Update account balance for DEBIT payments
-      _updated_account = case payment.direction do
-        "DEBIT" ->
-          new_balance = Decimal.sub(account.balance, payment.amount)
-          account
-          |> UserBankAccount.balance_changeset(%{balance: new_balance})
-          |> Repo.update!()
-        "CREDIT" ->
-          new_balance = Decimal.add(account.balance, payment.amount)
-          account
-          |> UserBankAccount.balance_changeset(%{balance: new_balance})
-          |> Repo.update!()
-        _ -> account
-      end
+      _updated_account =
+        case payment.direction do
+          "DEBIT" ->
+            new_balance = Decimal.sub(account.balance, payment.amount)
+
+            account
+            |> UserBankAccount.balance_changeset(%{balance: new_balance})
+            |> Repo.update!()
+
+          "CREDIT" ->
+            new_balance = Decimal.add(account.balance, payment.amount)
+
+            account
+            |> UserBankAccount.balance_changeset(%{balance: new_balance})
+            |> Repo.update!()
+
+          _ ->
+            account
+        end
 
       # Update payment status
-      updated_payment = payment
-      |> UserPayment.changeset(%{status: "COMPLETED", posted_at: DateTime.utc_now()})
-      |> Repo.update!()
+      updated_payment =
+        payment
+        |> UserPayment.changeset(%{status: "COMPLETED", posted_at: DateTime.utc_now()})
+        |> Repo.update!()
 
       # Create transaction record
       transaction_attrs = %{
@@ -723,11 +810,11 @@ defmodule LedgerBankApi.Financial.FinancialService do
   end
 
   defp execute_sync(login) do
-        # Simple sync logic - in real implementation, this would call external APIs
-        # For now, just update the last_sync_at timestamp
-        login
-        |> UserBankLogin.update_changeset(%{last_sync_at: DateTime.utc_now()})
-        |> Repo.update()
+    # Simple sync logic - in real implementation, this would call external APIs
+    # For now, just update the last_sync_at timestamp
+    login
+    |> UserBankLogin.update_changeset(%{last_sync_at: DateTime.utc_now()})
+    |> Repo.update()
   end
 
   # ============================================================================
@@ -756,13 +843,15 @@ defmodule LedgerBankApi.Financial.FinancialService do
     start_of_day = DateTime.new!(Date.utc_today(), ~T[00:00:00], "Etc/UTC")
     end_of_day = DateTime.new!(Date.utc_today(), ~T[23:59:59], "Etc/UTC")
 
-    query = from up in UserPayment,
-      where: up.user_bank_account_id == ^account.id,
-      where: up.direction == "DEBIT",
-      where: up.status == "COMPLETED",
-      where: up.posted_at >= ^start_of_day,
-      where: up.posted_at <= ^end_of_day,
-      select: sum(up.amount)
+    query =
+      from(up in UserPayment,
+        where: up.user_bank_account_id == ^account.id,
+        where: up.direction == "DEBIT",
+        where: up.status == "COMPLETED",
+        where: up.posted_at >= ^start_of_day,
+        where: up.posted_at <= ^end_of_day,
+        select: sum(up.amount)
+      )
 
     case Repo.one(query) do
       nil -> Decimal.new("0")
@@ -786,13 +875,16 @@ defmodule LedgerBankApi.Financial.FinancialService do
   # Bank filters
   defp apply_bank_filters(query, nil), do: query
   defp apply_bank_filters(query, []), do: query
+
   defp apply_bank_filters(query, filters) when is_map(filters) do
     Enum.reduce(filters, query, fn {field, value}, acc ->
       case field do
         :status when is_binary(value) ->
           where(acc, [b], b.status == ^value)
+
         :country when is_binary(value) ->
           where(acc, [b], b.country == ^value)
+
         _ ->
           acc
       end
@@ -801,6 +893,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
 
   defp apply_bank_sorting(query, nil), do: query
   defp apply_bank_sorting(query, []), do: query
+
   defp apply_bank_sorting(query, sort) when is_list(sort) do
     Enum.reduce(sort, query, fn {field, direction}, acc ->
       case direction do
@@ -812,8 +905,10 @@ defmodule LedgerBankApi.Financial.FinancialService do
   end
 
   defp apply_bank_pagination(query, nil), do: query
+
   defp apply_bank_pagination(query, %{page: page, page_size: page_size}) do
     offset = (page - 1) * page_size
+
     query
     |> limit(^page_size)
     |> offset(^offset)
@@ -822,15 +917,19 @@ defmodule LedgerBankApi.Financial.FinancialService do
   # Transaction filters
   defp apply_transaction_filters(query, nil), do: query
   defp apply_transaction_filters(query, []), do: query
+
   defp apply_transaction_filters(query, filters) when is_map(filters) do
     Enum.reduce(filters, query, fn {field, value}, acc ->
       case field do
         :direction when is_binary(value) ->
           where(acc, [t], t.direction == ^value)
+
         :date_from when is_binary(value) ->
           where(acc, [t], t.posted_at >= ^value)
+
         :date_to when is_binary(value) ->
           where(acc, [t], t.posted_at <= ^value)
+
         _ ->
           acc
       end
@@ -839,6 +938,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
 
   defp apply_transaction_sorting(query, nil), do: query
   defp apply_transaction_sorting(query, []), do: query
+
   defp apply_transaction_sorting(query, sort) when is_list(sort) do
     Enum.reduce(sort, query, fn {field, direction}, acc ->
       case direction do
@@ -850,8 +950,10 @@ defmodule LedgerBankApi.Financial.FinancialService do
   end
 
   defp apply_transaction_pagination(query, nil), do: query
+
   defp apply_transaction_pagination(query, %{page: page, page_size: page_size}) do
     offset = (page - 1) * page_size
+
     query
     |> limit(^page_size)
     |> offset(^offset)
@@ -860,15 +962,19 @@ defmodule LedgerBankApi.Financial.FinancialService do
   # Payment filters
   defp apply_payment_filters(query, nil), do: query
   defp apply_payment_filters(query, []), do: query
+
   defp apply_payment_filters(query, filters) when is_map(filters) do
     Enum.reduce(filters, query, fn {field, value}, acc ->
       case field do
         :status when is_binary(value) ->
           where(acc, [up], up.status == ^value)
+
         :payment_type when is_binary(value) ->
           where(acc, [up], up.payment_type == ^value)
+
         :direction when is_binary(value) ->
           where(acc, [up], up.direction == ^value)
+
         _ ->
           acc
       end
@@ -877,6 +983,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
 
   defp apply_payment_sorting(query, nil), do: query
   defp apply_payment_sorting(query, []), do: query
+
   defp apply_payment_sorting(query, %{field: field, direction: direction}) do
     case direction do
       :asc -> order_by(query, [up], asc: field(up, ^field))
@@ -884,6 +991,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
       _ -> query
     end
   end
+
   defp apply_payment_sorting(query, sort) when is_list(sort) do
     Enum.reduce(sort, query, fn {field, direction}, acc ->
       case direction do
@@ -895,8 +1003,10 @@ defmodule LedgerBankApi.Financial.FinancialService do
   end
 
   defp apply_payment_pagination(query, nil), do: query
+
   defp apply_payment_pagination(query, %{page: page, page_size: page_size}) do
     offset = (page - 1) * page_size
+
     query
     |> limit(^page_size)
     |> offset(^offset)

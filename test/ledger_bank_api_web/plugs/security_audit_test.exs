@@ -26,11 +26,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
 
   describe "suspicious IP detection" do
     test "detects localhost IP", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("x-forwarded-for", "127.0.0.1")
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("x-forwarded-for", "127.0.0.1")
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "suspicious_ip_header" or log == ""
     end
@@ -43,11 +44,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(private_ips, fn ip ->
-        log = capture_log(fn ->
-          conn
-          |> put_req_header("x-forwarded-for", ip)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> put_req_header("x-forwarded-for", ip)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_ip_header" or log == ""
       end)
@@ -61,11 +63,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(public_ips, fn ip ->
-        log = capture_log(fn ->
-          conn
-          |> put_req_header("x-forwarded-for", ip)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> put_req_header("x-forwarded-for", ip)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         # Should not log suspicious activity for public IPs
         refute log =~ "suspicious_ip_header"
@@ -73,11 +76,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
     end
 
     test "handles invalid IP format", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("x-forwarded-for", "not-an-ip")
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("x-forwarded-for", "not-an-ip")
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "suspicious_ip_header" or log == ""
     end
@@ -95,11 +99,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(scanner_agents, fn agent ->
-        log = capture_log(fn ->
-          conn
-          |> put_req_header("user-agent", agent)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> put_req_header("user-agent", agent)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_user_agent" or log == ""
       end)
@@ -114,11 +119,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(bot_agents, fn agent ->
-        log = capture_log(fn ->
-          conn
-          |> put_req_header("user-agent", agent)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> put_req_header("user-agent", agent)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_user_agent" or log == ""
       end)
@@ -133,11 +139,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(cli_agents, fn agent ->
-        log = capture_log(fn ->
-          conn
-          |> put_req_header("user-agent", agent)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> put_req_header("user-agent", agent)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_user_agent" or log == ""
       end)
@@ -151,11 +158,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(legitimate_agents, fn agent ->
-        log = capture_log(fn ->
-          conn
-          |> put_req_header("user-agent", agent)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> put_req_header("user-agent", agent)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         # Should not log suspicious activity for legitimate browsers
         refute log =~ "suspicious_user_agent"
@@ -163,9 +171,10 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
     end
 
     test "handles missing user agent header", %{conn: conn} do
-      log = capture_log(fn ->
-        LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
-      end)
+      log =
+        capture_log(fn ->
+          LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
+        end)
 
       # Should not crash, just log nothing
       refute log =~ "suspicious_user_agent"
@@ -183,30 +192,33 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(suspicious_types, fn content_type ->
-        log = capture_log(fn ->
-          conn
-          |> put_req_header("content-type", content_type)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> put_req_header("content-type", content_type)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_content_type" or log == ""
       end)
     end
 
     test "allows JSON content type", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("content-type", "application/json")
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("content-type", "application/json")
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       refute log =~ "suspicious_content_type"
     end
 
     test "handles missing content type header", %{conn: conn} do
-      log = capture_log(fn ->
-        LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
-      end)
+      log =
+        capture_log(fn ->
+          LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
+        end)
 
       refute log =~ "suspicious_content_type"
     end
@@ -221,12 +233,13 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(suspicious_paths, fn path ->
-        log = capture_log(fn ->
-          conn
-          |> Map.put(:request_path, path)
-          |> Map.put(:status, 400)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> Map.put(:request_path, path)
+            |> Map.put(:status, 400)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_request_path" or log == ""
       end)
@@ -241,12 +254,13 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(system_paths, fn path ->
-        log = capture_log(fn ->
-          conn
-          |> Map.put(:request_path, path)
-          |> Map.put(:status, 400)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> Map.put(:request_path, path)
+            |> Map.put(:status, 400)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_request_path" or log == ""
       end)
@@ -261,12 +275,13 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(script_paths, fn path ->
-        log = capture_log(fn ->
-          conn
-          |> Map.put(:request_path, path)
-          |> Map.put(:status, 400)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> Map.put(:request_path, path)
+            |> Map.put(:status, 400)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         assert log =~ "suspicious_request_path" or log == ""
       end)
@@ -281,11 +296,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       ]
 
       Enum.each(legitimate_paths, fn path ->
-        log = capture_log(fn ->
-          conn
-          |> Map.put(:request_path, path)
-          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-        end)
+        log =
+          capture_log(fn ->
+            conn
+            |> Map.put(:request_path, path)
+            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+          end)
 
         refute log =~ "suspicious_request_path"
       end)
@@ -294,51 +310,56 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
 
   describe "response status code auditing" do
     test "logs authentication failures (401)", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:status, 401)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:status, 401)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "authentication_failure" or log == ""
     end
 
     test "logs authorization failures (403)", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:status, 403)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:status, 403)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "authorization_failure" or log == ""
     end
 
     test "logs rate limit violations (429)", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:status, 429)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:status, 429)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "rate_limit_exceeded" or log == ""
     end
 
     test "logs bad requests (400)", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:status, 400)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:status, 400)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "malformed_json_request" or log == ""
     end
 
     test "does not log successful requests (200)", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:status, 200)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:status, 200)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Should not log security events for successful requests
       refute log =~ "authentication_failure"
@@ -346,11 +367,12 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
     end
 
     test "does not log created responses (201)", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:status, 201)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:status, 201)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       refute log =~ "authentication_failure"
     end
@@ -358,14 +380,15 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
 
   describe "multiple suspicious indicators" do
     test "logs multiple security issues in single request", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("x-forwarded-for", "127.0.0.1")
-        |> put_req_header("user-agent", "sqlmap/1.0")
-        |> put_req_header("content-type", "text/xml")
-        |> Map.put(:status, 401)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("x-forwarded-for", "127.0.0.1")
+          |> put_req_header("user-agent", "sqlmap/1.0")
+          |> put_req_header("content-type", "text/xml")
+          |> Map.put(:status, 401)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Should log multiple security events
       assert log =~ "suspicious" or log =~ "authentication_failure" or log == ""
@@ -389,9 +412,10 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
       # Remove all headers
       conn = %{conn | req_headers: []}
 
-      _log = capture_log(fn ->
-        LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
-      end)
+      _log =
+        capture_log(fn ->
+          LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
+        end)
 
       # Should not crash - just verify it completes
       assert true
@@ -400,9 +424,10 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
     test "handles request with nil status", %{conn: conn} do
       conn = %{conn | status: nil}
 
-      _log = capture_log(fn ->
-        LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
-      end)
+      _log =
+        capture_log(fn ->
+          LedgerBankApiWeb.Plugs.SecurityAudit.call(conn, [])
+        end)
 
       # Should not crash
       refute conn.halted
@@ -411,22 +436,24 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
     test "handles very long header values", %{conn: conn} do
       long_value = String.duplicate("a", 10000)
 
-      _log = capture_log(fn ->
-        conn
-        |> put_req_header("user-agent", long_value)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      _log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("user-agent", long_value)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Should not crash
       refute conn.halted
     end
 
     test "handles binary data in headers", %{conn: conn} do
-      _log = capture_log(fn ->
-        conn
-        |> put_req_header("user-agent", <<0, 1, 2, 3>>)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      _log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("user-agent", <<0, 1, 2, 3>>)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Should handle gracefully
       refute conn.halted
@@ -435,31 +462,34 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
 
   describe "X-Forwarded-For header handling" do
     test "checks x-forwarded-for header", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("x-forwarded-for", "192.168.1.1")
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("x-forwarded-for", "192.168.1.1")
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "suspicious_ip_header" or log == ""
     end
 
     test "checks x-real-ip header", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("x-real-ip", "10.0.0.1")
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("x-real-ip", "10.0.0.1")
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "suspicious_ip_header" or log == ""
     end
 
     test "checks x-originating-ip header", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("x-originating-ip", "172.16.0.1")
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("x-originating-ip", "172.16.0.1")
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       assert log =~ "suspicious_ip_header" or log == ""
     end
@@ -467,35 +497,38 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
 
   describe "security audit logging format" do
     test "includes request method in audit log", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:method, "POST")
-        |> Map.put(:status, 401)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:method, "POST")
+          |> Map.put(:status, 401)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Log should include method information (if logging is working)
       assert is_binary(log)
     end
 
     test "includes request path in audit log", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:request_path, "/api/auth/login")
-        |> Map.put(:status, 401)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:request_path, "/api/auth/login")
+          |> Map.put(:status, 401)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Should include path information
       assert is_binary(log)
     end
 
     test "includes timestamp in audit log", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> Map.put(:status, 401)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> Map.put(:status, 401)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Timestamp should be included
       assert is_binary(log)
@@ -506,12 +539,13 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
     test "includes correlation ID in audit logs", %{conn: conn} do
       correlation_id = "test-correlation-#{System.unique_integer()}"
 
-      log = capture_log(fn ->
-        conn
-        |> assign(:correlation_id, correlation_id)
-        |> Map.put(:status, 401)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> assign(:correlation_id, correlation_id)
+          |> Map.put(:status, 401)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Correlation ID should be in logs
       assert is_binary(log)
@@ -520,23 +554,25 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
 
   describe "concurrent audit logging" do
     test "handles concurrent requests without race conditions", %{conn: _conn} do
-      tasks = Enum.map(1..50, fn i ->
-        Task.async(fn ->
-          conn = build_conn(:get, "/api/test")
+      tasks =
+        Enum.map(1..50, fn i ->
+          Task.async(fn ->
+            conn = build_conn(:get, "/api/test")
 
-          capture_log(fn ->
-            conn
-            |> put_req_header("user-agent", "test-agent-#{i}")
-            |> Map.put(:status, 401)
-            |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+            capture_log(fn ->
+              conn
+              |> put_req_header("user-agent", "test-agent-#{i}")
+              |> Map.put(:status, 401)
+              |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+            end)
           end)
         end)
-      end)
 
       results = Task.await_many(tasks)
 
       # All should complete without errors
       assert length(results) == 50
+
       Enum.each(results, fn log ->
         assert is_binary(log)
       end)
@@ -546,12 +582,13 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
   describe "audit event types" do
     test "audit_request happens before audit_response", %{conn: conn} do
       # This tests the flow, though implementation details may vary
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("user-agent", "sqlmap")
-        |> Map.put(:status, 401)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("user-agent", "sqlmap")
+          |> Map.put(:status, 401)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Both request and response auditing should occur
       assert is_binary(log)
@@ -560,29 +597,31 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAuditTest do
 
   describe "security patterns - comprehensive testing" do
     test "detects combined attack vectors", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("x-forwarded-for", "127.0.0.1")
-        |> put_req_header("user-agent", "sqlmap/1.0")
-        |> put_req_header("content-type", "text/xml")
-        |> Map.put(:request_path, "/api/../../../etc/passwd")
-        |> Map.put(:status, 400)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("x-forwarded-for", "127.0.0.1")
+          |> put_req_header("user-agent", "sqlmap/1.0")
+          |> put_req_header("content-type", "text/xml")
+          |> Map.put(:request_path, "/api/../../../etc/passwd")
+          |> Map.put(:status, 400)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Should detect multiple suspicious patterns
       assert is_binary(log)
     end
 
     test "does not flag legitimate API usage", %{conn: conn} do
-      log = capture_log(fn ->
-        conn
-        |> put_req_header("user-agent", "Mozilla/5.0 (Windows NT 10.0)")
-        |> put_req_header("content-type", "application/json")
-        |> Map.put(:request_path, "/api/users")
-        |> Map.put(:status, 200)
-        |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
-      end)
+      log =
+        capture_log(fn ->
+          conn
+          |> put_req_header("user-agent", "Mozilla/5.0 (Windows NT 10.0)")
+          |> put_req_header("content-type", "application/json")
+          |> Map.put(:request_path, "/api/users")
+          |> Map.put(:status, 200)
+          |> LedgerBankApiWeb.Plugs.SecurityAudit.call([])
+        end)
 
       # Should not log any suspicious activity
       refute log =~ "suspicious"

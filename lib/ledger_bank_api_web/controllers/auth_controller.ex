@@ -9,7 +9,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   alias LedgerBankApi.Accounts.AuthService
   alias LedgerBankApiWeb.Validation.InputValidator
 
-  action_fallback LedgerBankApiWeb.FallbackController
+  action_fallback(LedgerBankApiWeb.FallbackController)
 
   @doc """
   Login user with email and password.
@@ -55,7 +55,9 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
       end,
       fn %{access_token: access_token, refresh_token: refresh_token} ->
         # The success format nests both tokens under the access_token key as a map
-        handle_auth_success(conn, :refresh, %{access_token: %{access_token: access_token, refresh_token: refresh_token}})
+        handle_auth_success(conn, :refresh, %{
+          access_token: %{access_token: access_token, refresh_token: refresh_token}
+        })
       end
     )
   end

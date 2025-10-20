@@ -106,9 +106,14 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
   def with_standard_error_handling(context, error_type, operation) do
     with_error_handling(context, fn ->
       case operation.() do
-        {:ok, result} -> {:ok, result}
-        {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
-        {:error, reason} -> {:error, ErrorHandler.business_error(error_type, Map.put(context, :reason, reason))}
+        {:ok, result} ->
+          {:ok, result}
+
+        {:error, %LedgerBankApi.Core.Error{} = error} ->
+          {:error, error}
+
+        {:error, reason} ->
+          {:error, ErrorHandler.business_error(error_type, Map.put(context, :reason, reason))}
       end
     end)
   end
@@ -120,7 +125,12 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
     quote do
       case LedgerBankApi.Repo.get(unquote(schema), unquote(id)) do
         nil ->
-          {:error, LedgerBankApi.Core.ErrorHandler.business_error(unquote(not_found_reason), unquote(context))}
+          {:error,
+           LedgerBankApi.Core.ErrorHandler.business_error(
+             unquote(not_found_reason),
+             unquote(context)
+           )}
+
         resource ->
           {:ok, resource}
       end
@@ -134,7 +144,12 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
     quote do
       case LedgerBankApi.Repo.get_by(unquote(schema), unquote(conditions)) do
         nil ->
-          {:error, LedgerBankApi.Core.ErrorHandler.business_error(unquote(not_found_reason), unquote(context))}
+          {:error,
+           LedgerBankApi.Core.ErrorHandler.business_error(
+             unquote(not_found_reason),
+             unquote(context)
+           )}
+
         resource ->
           {:ok, resource}
       end
@@ -149,12 +164,17 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
       case unquote(changeset_fun).(unquote(attrs)) do
         %Ecto.Changeset{valid?: true} = changeset ->
           case LedgerBankApi.Repo.insert(changeset) do
-            {:ok, resource} -> {:ok, resource}
+            {:ok, resource} ->
+              {:ok, resource}
+
             {:error, changeset} ->
-              {:error, LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
+              {:error,
+               LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
           end
+
         %Ecto.Changeset{valid?: false} = changeset ->
-          {:error, LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
+          {:error,
+           LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
       end
     end
   end
@@ -167,12 +187,17 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
       case unquote(changeset_fun).(unquote(resource), unquote(attrs)) do
         %Ecto.Changeset{valid?: true} = changeset ->
           case LedgerBankApi.Repo.update(changeset) do
-            {:ok, resource} -> {:ok, resource}
+            {:ok, resource} ->
+              {:ok, resource}
+
             {:error, changeset} ->
-              {:error, LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
+              {:error,
+               LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
           end
+
         %Ecto.Changeset{valid?: false} = changeset ->
-          {:error, LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
+          {:error,
+           LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
       end
     end
   end
@@ -183,9 +208,12 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
   defmacro delete_operation(resource, context) do
     quote do
       case LedgerBankApi.Repo.delete(unquote(resource)) do
-        {:ok, resource} -> {:ok, resource}
+        {:ok, resource} ->
+          {:ok, resource}
+
         {:error, changeset} ->
-          {:error, LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
+          {:error,
+           LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, unquote(context))}
       end
     end
   end
@@ -196,17 +224,21 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
   defmacro list_operation(base_query, opts, context) do
     quote do
       try do
-        query = unquote(base_query)
-        |> apply_filters(unquote(opts)[:filters])
-        |> apply_sorting(unquote(opts)[:sort])
-        |> apply_pagination(unquote(opts)[:pagination])
+        query =
+          unquote(base_query)
+          |> apply_filters(unquote(opts)[:filters])
+          |> apply_sorting(unquote(opts)[:sort])
+          |> apply_pagination(unquote(opts)[:pagination])
 
         results = Repo.all(query)
         {:ok, results}
       rescue
         error ->
-          {:error, ErrorHandler.business_error(:database_error,
-            Map.put(unquote(context), :original_error, inspect(error)))}
+          {:error,
+           ErrorHandler.business_error(
+             :database_error,
+             Map.put(unquote(context), :original_error, inspect(error))
+           )}
       end
     end
   end
@@ -235,9 +267,13 @@ defmodule LedgerBankApi.Core.ServiceBehavior do
       rescue
         :timeout ->
           {:error, ErrorHandler.timeout_error(unquote(context), unquote(timeout_ms))}
+
         error ->
-          {:error, ErrorHandler.business_error(:service_unavailable,
-            Map.put(unquote(context), :original_error, inspect(error)))}
+          {:error,
+           ErrorHandler.business_error(
+             :service_unavailable,
+             Map.put(unquote(context), :original_error, inspect(error))
+           )}
       end
     end
   end

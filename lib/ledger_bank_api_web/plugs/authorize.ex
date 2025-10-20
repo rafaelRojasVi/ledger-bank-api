@@ -57,11 +57,12 @@ defmodule LedgerBankApiWeb.Plugs.Authorize do
       has_role = user_role in required_roles
 
       # Check if user is accessing their own resource (if allow_self is true)
-      is_self_access = if allow_self do
-        check_self_access(conn, current_user)
-      else
-        false
-      end
+      is_self_access =
+        if allow_self do
+          check_self_access(conn, current_user)
+        else
+          false
+        end
 
       if has_role or is_self_access do
         conn
@@ -99,10 +100,11 @@ defmodule LedgerBankApiWeb.Plugs.Authorize do
   end
 
   defp handle_auth_error(conn, message) do
-    error = ErrorHandler.business_error(:unauthorized_access, %{
-      message: message,
-      source: "authorize_plug"
-    })
+    error =
+      ErrorHandler.business_error(:unauthorized_access, %{
+        message: message,
+        source: "authorize_plug"
+      })
 
     # Use ErrorAdapter for consistent error handling
     ErrorAdapter.handle_error(conn, error)
@@ -110,7 +112,8 @@ defmodule LedgerBankApiWeb.Plugs.Authorize do
   end
 
   defp handle_authorization_error(conn, message, context) do
-    error = ErrorHandler.business_error(:insufficient_permissions, Map.put(context, :message, message))
+    error =
+      ErrorHandler.business_error(:insufficient_permissions, Map.put(context, :message, message))
 
     # Use ErrorAdapter for consistent error handling
     ErrorAdapter.handle_error(conn, error)

@@ -28,7 +28,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
 
     test "returns error for invalid amount format" do
@@ -40,7 +41,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
 
     test "returns error for negative amount" do
@@ -52,7 +54,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
 
     test "returns error for invalid direction" do
@@ -64,7 +67,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
 
     test "returns error for invalid payment type" do
@@ -76,7 +80,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
 
     test "returns error for missing description" do
@@ -87,7 +92,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
 
     test "returns error for missing user_bank_account_id" do
@@ -98,7 +104,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "description" => "Test payment"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
 
     test "returns error for invalid UUID format" do
@@ -110,7 +117,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "invalid-uuid"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
   end
 
@@ -141,7 +149,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_login_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_bank_account_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_bank_account_creation(params)
     end
 
     test "returns error for invalid currency format" do
@@ -152,7 +161,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_login_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_bank_account_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_bank_account_creation(params)
     end
 
     test "returns error for invalid account type" do
@@ -163,7 +173,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_login_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_bank_account_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_bank_account_creation(params)
     end
 
     test "returns error for missing account name" do
@@ -173,7 +184,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_login_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_bank_account_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_bank_account_creation(params)
     end
 
     test "returns error for missing user_bank_login_id" do
@@ -183,7 +195,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "account_name" => "My Checking Account"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_bank_account_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_bank_account_creation(params)
     end
   end
 
@@ -224,7 +237,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "direction" => "invalid"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_transaction_filters(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_transaction_filters(params)
     end
 
     test "returns error for invalid date format" do
@@ -232,7 +246,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "date_from" => "invalid-date"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_transaction_filters(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_transaction_filters(params)
     end
   end
 
@@ -272,7 +287,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidatorFinancialTest do
         "user_bank_account_id" => "123e4567-e89b-12d3-a456-426614174000"
       }
 
-      assert {:error, %LedgerBankApi.Core.Error{}} = InputValidator.validate_payment_creation(params)
+      assert {:error, %LedgerBankApi.Core.Error{}} =
+               InputValidator.validate_payment_creation(params)
     end
   end
 

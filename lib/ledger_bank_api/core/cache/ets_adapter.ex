@@ -26,8 +26,10 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
   alias LedgerBankApiWeb.Logger, as: AppLogger
 
   @cache_table :ledger_cache
-  @default_ttl 300  # 5 minutes
-  @max_ttl 3600     # 1 hour
+  # 5 minutes
+  @default_ttl 300
+  # 1 hour
+  @max_ttl 3600
 
   # ============================================================================
   # CACHE ADAPTER CALLBACKS
@@ -39,6 +41,7 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
       :undefined ->
         :ets.new(@cache_table, [:set, :public, :named_table])
         :ok
+
       _pid ->
         :ok
     end
@@ -72,6 +75,7 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
 
           :not_found
         end
+
       [] ->
         # Log cache miss (not found)
         AppLogger.log_business_event("cache_miss_not_found", %{
@@ -85,7 +89,8 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
   @impl true
   def put(key, value, opts \\ []) do
     ttl = Keyword.get(opts, :ttl, @default_ttl)
-    ttl = min(ttl, @max_ttl)  # Cap TTL to prevent memory issues
+    # Cap TTL to prevent memory issues
+    ttl = min(ttl, @max_ttl)
 
     expires_at = DateTime.add(DateTime.utc_now(), ttl, :second)
 
@@ -113,12 +118,14 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
     case get(key) do
       {:ok, value} ->
         {:ok, value}
+
       :not_found ->
         # Compute the value
         case fun.() do
           {:ok, value} ->
             put(key, value, opts)
             {:ok, value}
+
           {:error, reason} ->
             {:error, reason}
         end
@@ -152,24 +159,27 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
     entries = :ets.tab2list(@cache_table)
     now = DateTime.utc_now()
 
-    {active_entries, expired_entries} = Enum.split_with(entries, fn {_key, entry} ->
-      DateTime.compare(now, entry.expires_at) == :lt
-    end)
+    {active_entries, expired_entries} =
+      Enum.split_with(entries, fn {_key, entry} ->
+        DateTime.compare(now, entry.expires_at) == :lt
+      end)
 
-    total_access_count = Enum.reduce(active_entries, 0, fn {_key, entry}, acc ->
-      acc + entry.access_count
-    end)
+    total_access_count =
+      Enum.reduce(active_entries, 0, fn {_key, entry}, acc ->
+        acc + entry.access_count
+      end)
 
     stats = %{
       total_entries: length(entries),
       active_entries: length(active_entries),
       expired_entries: length(expired_entries),
       total_access_count: total_access_count,
-      average_access_count: if length(active_entries) > 0 do
-        total_access_count / length(active_entries)
-      else
-        0
-      end,
+      average_access_count:
+        if length(active_entries) > 0 do
+          total_access_count / length(active_entries)
+        else
+          0
+        end,
       adapter: "ets"
     }
 
@@ -184,11 +194,12 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
     now = DateTime.utc_now()
     entries = :ets.tab2list(@cache_table)
 
-    expired_keys = entries
-    |> Enum.filter(fn {_key, entry} ->
-      DateTime.compare(now, entry.expires_at) != :lt
-    end)
-    |> Enum.map(fn {key, _entry} -> key end)
+    expired_keys =
+      entries
+      |> Enum.filter(fn {_key, entry} ->
+        DateTime.compare(now, entry.expires_at) != :lt
+      end)
+      |> Enum.map(fn {key, _entry} -> key end)
 
     Enum.each(expired_keys, &delete/1)
 
@@ -214,13 +225,15 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
           expires_at: cache_entry.expires_at,
           access_count: cache_entry.access_count,
           is_expired: is_expired,
-          ttl_remaining: if is_expired do
-            0
-          else
-            DateTime.diff(cache_entry.expires_at, now, :second)
-          end,
+          ttl_remaining:
+            if is_expired do
+              0
+            else
+              DateTime.diff(cache_entry.expires_at, now, :second)
+            end,
           adapter: "ets"
         }
+
       [] ->
         nil
     end

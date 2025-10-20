@@ -11,7 +11,7 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   alias LedgerBankApi.Core.ErrorHandler
   alias LedgerBankApiWeb.Validation.InputValidator
 
-  action_fallback LedgerBankApiWeb.FallbackController
+  action_fallback(LedgerBankApiWeb.FallbackController)
 
   @doc """
   List users with optional filtering and pagination.
@@ -22,7 +22,6 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
     with {:ok, pagination} <- InputValidator.extract_pagination_params(params),
          {:ok, sort} <- InputValidator.extract_sort_params(params),
          {:ok, filters} <- InputValidator.extract_filter_params(params) do
-
       opts = [
         pagination: pagination,
         sort: sort,
@@ -56,26 +55,34 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   def index_keyset(conn, params) do
     with {:ok, filters} <- InputValidator.extract_filter_params(params) do
       # Parse cursor from query params
-      cursor = case params["cursor"] do
-        nil -> nil
-        cursor_string when is_binary(cursor_string) ->
-          case Jason.decode(cursor_string) do
-            {:ok, %{"inserted_at" => inserted_at, "id" => id}} ->
-              case DateTime.from_iso8601(inserted_at) do
-                {:ok, dt, _} -> %{inserted_at: dt, id: id}
-                _ -> nil
-              end
-            _ -> nil
-          end
-        _ -> nil
-      end
+      cursor =
+        case params["cursor"] do
+          nil ->
+            nil
+
+          cursor_string when is_binary(cursor_string) ->
+            case Jason.decode(cursor_string) do
+              {:ok, %{"inserted_at" => inserted_at, "id" => id}} ->
+                case DateTime.from_iso8601(inserted_at) do
+                  {:ok, dt, _} -> %{inserted_at: dt, id: id}
+                  _ -> nil
+                end
+
+              _ ->
+                nil
+            end
+
+          _ ->
+            nil
+        end
 
       # Parse limit
-      limit = case Integer.parse(params["limit"] || "20") do
-        {limit_num, ""} when limit_num >= 1 and limit_num <= 100 -> limit_num
-        {limit_num, ""} when limit_num > 100 -> 100
-        _ -> 20
-      end
+      limit =
+        case Integer.parse(params["limit"] || "20") do
+          {limit_num, ""} when limit_num >= 1 and limit_num <= 100 -> limit_num
+          {limit_num, ""} when limit_num > 100 -> 100
+          _ -> 20
+        end
 
       opts = [
         cursor: cursor,
@@ -173,7 +180,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
     with {:ok, _validated_id} <- InputValidator.validate_user_id(id),
          {:ok, user} <- UserService.get_user(id),
          {:ok, validated_params} <- InputValidator.validate_user_update(params),
-         {:ok, updated_user} <- UserService.update_user_with_normalization_and_policy(user, validated_params, current_user) do
+         {:ok, updated_user} <-
+           UserService.update_user_with_normalization_and_policy(
+             user,
+             validated_params,
+             current_user
+           ) do
       handle_success(conn, updated_user)
     end
   end
@@ -195,11 +207,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
           {:error, error} -> {:error, error}
         end
       else
-        {:error, ErrorHandler.business_error(:insufficient_permissions, %{
-          action: :delete_user,
-          user_id: user.id,
-          current_user_id: current_user.id
-        })}
+        {:error,
+         ErrorHandler.business_error(:insufficient_permissions, %{
+           action: :delete_user,
+           user_id: user.id,
+           current_user_id: current_user.id
+         })}
       end
     end
   end
@@ -245,7 +258,12 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
     current_user = conn.assigns[:current_user]
 
     with {:ok, validated_params} <- InputValidator.validate_user_update(params),
-         {:ok, updated_user} <- UserService.update_user_with_normalization_and_policy(current_user, validated_params, current_user) do
+         {:ok, updated_user} <-
+           UserService.update_user_with_normalization_and_policy(
+             current_user,
+             validated_params,
+             current_user
+           ) do
       handle_success(conn, updated_user)
     end
   end
@@ -263,7 +281,8 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   def update_password(conn, params) do
     current_user = conn.assigns[:current_user]
 
-    with {:ok, validated_params} <- InputValidator.validate_password_change(params, current_user.role),
+    with {:ok, validated_params} <-
+           InputValidator.validate_password_change(params, current_user.role),
          {:ok, _} <- UserService.update_user_password_with_policy(current_user, validated_params) do
       handle_success(conn, %{message: "Password updated successfully"})
     end

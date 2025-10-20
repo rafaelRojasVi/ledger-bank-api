@@ -58,7 +58,10 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
         fallback_fun.()
 
       {:error, reason} ->
-        Logger.warning("Circuit breaker #{fuse_name} failed with #{inspect(reason)}, using fallback")
+        Logger.warning(
+          "Circuit breaker #{fuse_name} failed with #{inspect(reason)}, using fallback"
+        )
+
         fallback_fun.()
     end
   end
@@ -86,7 +89,10 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
 
     case :fuse.install(fuse_name, fuse_options) do
       :ok ->
-        Logger.info("Circuit breaker #{fuse_name} initialized with max_failures=#{max_failures}, reset_timeout=#{reset_timeout}ms")
+        Logger.info(
+          "Circuit breaker #{fuse_name} initialized with max_failures=#{max_failures}, reset_timeout=#{reset_timeout}ms"
+        )
+
         :ok
 
       {:error, reason} ->
@@ -147,14 +153,16 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
       {:notification_service, [max_failures: 10, timeout: 30_000, reset_timeout: 15_000]}
     ]
 
-    results = Enum.map(breakers, fn {name, options} ->
-      init(name, options)
-    end)
+    results =
+      Enum.map(breakers, fn {name, options} ->
+        init(name, options)
+      end)
 
-    failed = Enum.filter(results, fn
-      :ok -> false
-      _ -> true
-    end)
+    failed =
+      Enum.filter(results, fn
+        :ok -> false
+        _ -> true
+      end)
 
     if length(failed) > 0 do
       Logger.error("Failed to initialize #{length(failed)} circuit breakers")
@@ -179,7 +187,6 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
 
       Logger.debug("Circuit breaker #{fuse_name} call succeeded in #{duration}ms")
       {:ok, result}
-
     rescue
       error ->
         duration = System.monotonic_time(:millisecond) - start_time
@@ -187,9 +194,11 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
         # Report failure to circuit breaker
         :fuse.melt(fuse_name)
 
-        Logger.warning("Circuit breaker #{fuse_name} call failed after #{duration}ms: #{inspect(error)}")
-        {:error, error}
+        Logger.warning(
+          "Circuit breaker #{fuse_name} call failed after #{duration}ms: #{inspect(error)}"
+        )
 
+        {:error, error}
     catch
       :exit, reason ->
         duration = System.monotonic_time(:millisecond) - start_time
@@ -197,7 +206,10 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
         # Report failure to circuit breaker
         :fuse.melt(fuse_name)
 
-        Logger.warning("Circuit breaker #{fuse_name} call exited after #{duration}ms: #{inspect(reason)}")
+        Logger.warning(
+          "Circuit breaker #{fuse_name} call exited after #{duration}ms: #{inspect(reason)}"
+        )
+
         {:error, {:exit, reason}}
 
       kind, reason ->
@@ -206,7 +218,10 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
         # Report failure to circuit breaker
         :fuse.melt(fuse_name)
 
-        Logger.warning("Circuit breaker #{fuse_name} call threw #{kind} after #{duration}ms: #{inspect(reason)}")
+        Logger.warning(
+          "Circuit breaker #{fuse_name} call threw #{kind} after #{duration}ms: #{inspect(reason)}"
+        )
+
         {:error, {kind, reason}}
     end
   end
@@ -220,13 +235,11 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
 
       Logger.debug("Fallback call succeeded in #{duration}ms")
       {:ok, result}
-
     rescue
       error ->
         duration = System.monotonic_time(:millisecond) - start_time
         Logger.warning("Fallback call failed after #{duration}ms: #{inspect(error)}")
         {:error, error}
-
     catch
       :exit, reason ->
         duration = System.monotonic_time(:millisecond) - start_time

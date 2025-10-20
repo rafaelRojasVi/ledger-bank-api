@@ -22,7 +22,8 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
 
   setup :verify_on_exit!
 
-  @moduletag timeout: 120_000  # 2 minutes timeout for all stress tests
+  # 2 minutes timeout for all stress tests
+  @moduletag timeout: 120_000
 
   describe "Oban Payment Worker - High Volume Stress Test" do
     test "processes 100 concurrent payments without errors" do
@@ -34,14 +35,17 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       account = account_fixture(login, %{balance: Decimal.new("100000.00")})
 
       # Create 100 payments
-      payment_ids = Enum.map(1..100, fn i ->
-        payment = payment_fixture(account, %{
-          user_id: user.id,
-          amount: Decimal.new("#{i}.00"),
-          description: "Stress test payment #{i}"
-        })
-        payment.id
-      end)
+      payment_ids =
+        Enum.map(1..100, fn i ->
+          payment =
+            payment_fixture(account, %{
+              user_id: user.id,
+              amount: Decimal.new("#{i}.00"),
+              description: "Stress test payment #{i}"
+            })
+
+          payment.id
+        end)
 
       # ========================================================================
       # TEST: Mock successful processing for all payments
@@ -90,16 +94,18 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       account = account_fixture(login, %{balance: Decimal.new("50000.00")})
 
       # Create payments with different priorities
-      payment_data = Enum.map(1..50, fn i ->
-        payment = payment_fixture(account, %{
-          user_id: user.id,
-          amount: Decimal.new("#{i * 10}.00")
-        })
+      payment_data =
+        Enum.map(1..50, fn i ->
+          payment =
+            payment_fixture(account, %{
+              user_id: user.id,
+              amount: Decimal.new("#{i * 10}.00")
+            })
 
-        # Vary priority: 0 (highest) to 9 (lowest)
-        priority = rem(i, 10)
-        {payment.id, priority}
-      end)
+          # Vary priority: 0 (highest) to 9 (lowest)
+          priority = rem(i, 10)
+          {payment.id, priority}
+        end)
 
       # ========================================================================
       # Mock all payments
@@ -139,9 +145,10 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       account = account_fixture(login)
 
       # Create 30 payments
-      payment_ids = Enum.map(1..30, fn _i ->
-        payment_fixture(account, %{user_id: user.id, amount: Decimal.new("10.00")}).id
-      end)
+      payment_ids =
+        Enum.map(1..30, fn _i ->
+          payment_fixture(account, %{user_id: user.id, amount: Decimal.new("10.00")}).id
+        end)
 
       # ========================================================================
       # Mock mixed success/failure responses
@@ -176,17 +183,19 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
   describe "Oban Bank Sync Worker - High Volume Stress Test" do
     test "schedules 50 bank syncs without queue saturation" do
       # Create 50 users with logins
-      login_ids = Enum.map(1..50, fn i ->
-        user = user_fixture(%{email: "stress#{i}@example.com"})
-        login = login_fixture(user)
-        login.id
-      end)
+      login_ids =
+        Enum.map(1..50, fn i ->
+          user = user_fixture(%{email: "stress#{i}@example.com"})
+          login = login_fixture(user)
+          login.id
+        end)
 
       # ========================================================================
       # Mock successful sync for all
       # ========================================================================
       expect(FinancialServiceMock, :sync_login, 50, fn login_id ->
-        Process.sleep(1)  # Simulate API delay
+        # Simulate API delay
+        Process.sleep(1)
         {:ok, %{status: "synced", login_id: login_id}}
       end)
 
@@ -211,22 +220,24 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
     end
 
     test "handles retry backoff correctly under load" do
-      login_ids = Enum.map(1..20, fn i ->
-        user = user_fixture(%{email: "retry#{i}@example.com"})
-        login = login_fixture(user)
-        login.id
-      end)
+      login_ids =
+        Enum.map(1..20, fn i ->
+          user = user_fixture(%{email: "retry#{i}@example.com"})
+          login = login_fixture(user)
+          login.id
+        end)
 
       # ========================================================================
       # Mock retryable errors
       # ========================================================================
       expect(FinancialServiceMock, :sync_login, 20, fn _login_id ->
-        {:error, %LedgerBankApi.Core.Error{
-          reason: :timeout,
-          category: :external_dependency,
-          retryable: true,
-          message: "Bank API timeout"
-        }}
+        {:error,
+         %LedgerBankApi.Core.Error{
+           reason: :timeout,
+           category: :external_dependency,
+           retryable: true,
+           message: "Bank API timeout"
+         }}
       end)
 
       # ========================================================================
@@ -251,15 +262,17 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       account = account_fixture(login, %{balance: Decimal.new("50000.00")})
 
       # Create 50 payments and 50 bank syncs
-      payment_ids = Enum.map(1..50, fn _i ->
-        payment_fixture(account, %{user_id: user.id, amount: Decimal.new("10.00")}).id
-      end)
+      payment_ids =
+        Enum.map(1..50, fn _i ->
+          payment_fixture(account, %{user_id: user.id, amount: Decimal.new("10.00")}).id
+        end)
 
-      login_ids = Enum.map(1..50, fn i ->
-        user = user_fixture(%{email: "queuetest#{i}@example.com"})
-        login = login_fixture(user)
-        login.id
-      end)
+      login_ids =
+        Enum.map(1..50, fn i ->
+          user = user_fixture(%{email: "queuetest#{i}@example.com"})
+          login = login_fixture(user)
+          login.id
+        end)
 
       # ========================================================================
       # Mock both services
@@ -269,12 +282,14 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       end)
 
       expect(FinancialServiceMock, :process_payment, 50, fn payment_id ->
-        Process.sleep(2)  # Simulate processing delay
+        # Simulate processing delay
+        Process.sleep(2)
         {:ok, %{id: payment_id, status: "COMPLETED"}}
       end)
 
       expect(FinancialServiceMock, :sync_login, 50, fn login_id ->
-        Process.sleep(1)  # Simulate sync delay
+        # Simulate sync delay
+        Process.sleep(1)
         {:ok, %{status: "synced", login_id: login_id}}
       end)
 
@@ -311,20 +326,26 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
 
       # Create 30 payments: 10 high, 10 medium, 10 low priority
       payment_data = [
-        {1..10, 0},   # High priority
-        {11..20, 5},  # Medium priority
-        {21..30, 9}   # Low priority
+        # High priority
+        {1..10, 0},
+        # Medium priority
+        {11..20, 5},
+        # Low priority
+        {21..30, 9}
       ]
 
-      payment_ids = Enum.flat_map(payment_data, fn {range, priority} ->
-        Enum.map(range, fn _i ->
-          payment = payment_fixture(account, %{
-            user_id: user.id,
-            amount: Decimal.new("10.00")
-          })
-          {payment.id, priority}
+      payment_ids =
+        Enum.flat_map(payment_data, fn {range, priority} ->
+          Enum.map(range, fn _i ->
+            payment =
+              payment_fixture(account, %{
+                user_id: user.id,
+                amount: Decimal.new("10.00")
+              })
+
+            {payment.id, priority}
+          end)
         end)
-      end)
 
       # ========================================================================
       # Mock processing
@@ -374,15 +395,17 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       # ========================================================================
       # Try to schedule same payment 100 times rapidly
       # ========================================================================
-      results = Enum.map(1..100, fn _ ->
-        PaymentWorker.schedule_payment(payment.id)
-      end)
+      results =
+        Enum.map(1..100, fn _ ->
+          PaymentWorker.schedule_payment(payment.id)
+        end)
 
       # Count successful schedules
-      success_count = Enum.count(results, fn
-        {:ok, _} -> true
-        _ -> false
-      end)
+      success_count =
+        Enum.count(results, fn
+          {:ok, _} -> true
+          _ -> false
+        end)
 
       wait_for_job_completion(1000)
 
@@ -429,13 +452,14 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
   describe "Oban Memory and Resource Management" do
     test "handles 200 jobs without memory leaks" do
       # Create test users and payments
-      payment_ids = Enum.map(1..200, fn i ->
-        user = user_fixture(%{email: "mem#{i}@example.com"})
-        login = login_fixture(user)
-        account = account_fixture(login)
-        payment = payment_fixture(account, %{user_id: user.id, amount: Decimal.new("5.00")})
-        payment.id
-      end)
+      payment_ids =
+        Enum.map(1..200, fn i ->
+          user = user_fixture(%{email: "mem#{i}@example.com"})
+          login = login_fixture(user)
+          account = account_fixture(login)
+          payment = payment_fixture(account, %{user_id: user.id, amount: Decimal.new("5.00")})
+          payment.id
+        end)
 
       # ========================================================================
       # Check memory before
@@ -485,12 +509,13 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
 
   describe "Oban Error Recovery and Retry Logic" do
     test "retryable errors respect exponential backoff" do
-      payment_ids = Enum.map(1..10, fn i ->
-        user = user_fixture(%{email: "retry#{i}@example.com"})
-        login = login_fixture(user)
-        account = account_fixture(login)
-        payment_fixture(account, %{user_id: user.id}).id
-      end)
+      payment_ids =
+        Enum.map(1..10, fn i ->
+          user = user_fixture(%{email: "retry#{i}@example.com"})
+          login = login_fixture(user)
+          account = account_fixture(login)
+          payment_fixture(account, %{user_id: user.id}).id
+        end)
 
       # ========================================================================
       # Mock retryable errors
@@ -508,7 +533,9 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       # ========================================================================
       Enum.each(payment_ids, fn payment_id ->
         retry_config = %{max_attempts: 3}
-        assert {:ok, _job} = PaymentWorker.schedule_payment_with_retry_config(payment_id, retry_config)
+
+        assert {:ok, _job} =
+                 PaymentWorker.schedule_payment_with_retry_config(payment_id, retry_config)
       end)
 
       wait_for_job_completion(1000)
@@ -519,12 +546,13 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
     end
 
     test "non-retryable errors go to dead letter queue immediately" do
-      payment_ids = Enum.map(1..5, fn i ->
-        user = user_fixture(%{email: "deadletter#{i}@example.com"})
-        login = login_fixture(user)
-        account = account_fixture(login)
-        payment_fixture(account, %{user_id: user.id}).id
-      end)
+      payment_ids =
+        Enum.map(1..5, fn i ->
+          user = user_fixture(%{email: "deadletter#{i}@example.com"})
+          login = login_fixture(user)
+          account = account_fixture(login)
+          payment_fixture(account, %{user_id: user.id}).id
+        end)
 
       # ========================================================================
       # Mock non-retryable business rule errors
@@ -560,9 +588,10 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       login = login_fixture(user)
       account = account_fixture(login, %{balance: Decimal.new("50000.00")})
 
-      payment_ids = Enum.map(1..25, fn _ ->
-        payment_fixture(account, %{user_id: user.id, amount: Decimal.new("10.00")}).id
-      end)
+      payment_ids =
+        Enum.map(1..25, fn _ ->
+          payment_fixture(account, %{user_id: user.id, amount: Decimal.new("10.00")}).id
+        end)
 
       # ========================================================================
       # Mock with processing delays
@@ -572,7 +601,8 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       end)
 
       expect(FinancialServiceMock, :process_payment, 25, fn payment_id ->
-        Process.sleep(5)  # Simulate longer processing
+        # Simulate longer processing
+        Process.sleep(5)
         {:ok, %{id: payment_id, status: "COMPLETED"}}
       end)
 
@@ -597,9 +627,10 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
 
   describe "Oban Performance Benchmarks" do
     test "benchmark: job scheduling throughput" do
-      payment_ids = Enum.map(1..100, fn _i ->
-        Ecto.UUID.generate()
-      end)
+      payment_ids =
+        Enum.map(1..100, fn _i ->
+          Ecto.UUID.generate()
+        end)
 
       # ========================================================================
       # Measure scheduling speed
@@ -625,14 +656,15 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
 
     test "benchmark: job status query performance" do
       # Create a few jobs
-      payment_ids = Enum.map(1..10, fn _ ->
-        user = user_fixture()
-        login = login_fixture(user)
-        account = account_fixture(login)
-        payment = payment_fixture(account, %{user_id: user.id})
-        {:ok, _} = PaymentWorker.schedule_payment(payment.id)
-        payment.id
-      end)
+      payment_ids =
+        Enum.map(1..10, fn _ ->
+          user = user_fixture()
+          login = login_fixture(user)
+          account = account_fixture(login)
+          payment = payment_fixture(account, %{user_id: user.id})
+          {:ok, _} = PaymentWorker.schedule_payment(payment.id)
+          payment.id
+        end)
 
       wait_for_job_completion(500)
 
@@ -641,9 +673,10 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       # ========================================================================
       start_time = System.monotonic_time(:microsecond)
 
-      results = Enum.map(payment_ids, fn payment_id ->
-        PaymentWorker.get_payment_job_status(payment_id)
-      end)
+      results =
+        Enum.map(payment_ids, fn payment_id ->
+          PaymentWorker.get_payment_job_status(payment_id)
+        end)
 
       end_time = System.monotonic_time(:microsecond)
       duration_us = end_time - start_time
@@ -651,11 +684,17 @@ defmodule LedgerBankApi.Performance.ObanStressTest do
       IO.puts("\n📊 STATUS QUERY BENCHMARK: 10 Jobs")
       IO.puts("   Total time: #{Float.round(duration_us / 1000, 2)}ms")
       IO.puts("   Per query: #{Float.round(duration_us / 10, 2)}μs")
-      IO.puts("   Results: #{Enum.count(results, &match?({:ok, _}, &1))} found, #{Enum.count(results, &match?({:error, _}, &1))} not found")
+
+      IO.puts(
+        "   Results: #{Enum.count(results, &match?({:ok, _}, &1))} found, #{Enum.count(results, &match?({:error, _}, &1))} not found"
+      )
 
       # Status queries should be reasonably fast (< 5ms per query)
       avg_per_query = duration_us / 10
-      assert avg_per_query < 5000, "Status queries too slow: #{Float.round(avg_per_query, 2)}μs per query"
+
+      assert avg_per_query < 5000,
+             "Status queries too slow: #{Float.round(avg_per_query, 2)}μs per query"
+
       IO.puts("   ✅ Status queries performant")
     end
   end

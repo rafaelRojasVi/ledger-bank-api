@@ -4,9 +4,9 @@ import Config
 db_name = System.get_env("DB_NAME", "ledger_bank_api_dev")
 
 config :ledger_bank_api, LedgerBankApi.Repo,
-  username: System.get_env("DB_USER",  "postgres"),
-  password: System.get_env("DB_PASS",  "postgres"),
-  hostname: System.get_env("DB_HOST",  "localhost"),
+  username: System.get_env("DB_USER", "postgres"),
+  password: System.get_env("DB_PASS", "postgres"),
+  hostname: System.get_env("DB_HOST", "localhost"),
   database: db_name,
   pool_size: 10,
   port: String.to_integer(System.get_env("DB_PORT", "5432"))
@@ -41,12 +41,27 @@ config :swoosh, :api_client, false
 
 # JWT Configuration for development
 # Generate a strong secret: openssl rand -base64 48
-config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET", "dev-secret-please-change-this-to-a-strong-64-char-secret-in-development")
+config :ledger_bank_api,
+       :jwt_secret,
+       System.get_env(
+         "JWT_SECRET",
+         "dev-secret-please-change-this-to-a-strong-64-char-secret-in-development"
+       )
 
 # Joken default signer for development
-config :joken, default_signer: System.get_env("JWT_SECRET", "dev-secret-please-change-this-to-a-strong-64-char-secret-in-development")
+config :joken,
+  default_signer:
+    System.get_env(
+      "JWT_SECRET",
+      "dev-secret-please-change-this-to-a-strong-64-char-secret-in-development"
+    )
 
-# Configure Oban for development
+# ============================================================================
+# OBAN CONFIGURATION (Development)
+# ============================================================================
+# Development-specific Oban overrides
+# - Manual testing mode for better debugging
+# - Reduced queue concurrency for development
 config :ledger_bank_api, Oban,
   testing: :manual,
   queues: [

@@ -15,7 +15,8 @@ defmodule LedgerBankApi.Accounts.NormalizeTest do
 
       assert result["email"] == "user@example.com"
       assert result["full_name"] == "John Doe"
-      assert result["role"] == "user"  # ← Always forced to "user"
+      # ← Always forced to "user"
+      assert result["role"] == "user"
       assert result["password"] == "password123"
       assert result["password_confirmation"] == "password123"
     end
@@ -24,42 +25,48 @@ defmodule LedgerBankApi.Accounts.NormalizeTest do
       attrs = %{
         "email" => "hacker@example.com",
         "full_name" => "Attempted Admin",
-        "role" => "admin",  # ← Attempting to set admin role
+        # ← Attempting to set admin role
+        "role" => "admin",
         "password" => "password123",
         "password_confirmation" => "password123"
       }
 
       result = Normalize.user_attrs(attrs)
 
-      assert result["role"] == "user"  # ← Role is FORCED to "user", ignoring input
+      # ← Role is FORCED to "user", ignoring input
+      assert result["role"] == "user"
     end
 
     test "SECURITY: forces role to user even when support role is provided" do
       attrs = %{
         "email" => "hacker@example.com",
         "full_name" => "Attempted Support",
-        "role" => "support",  # ← Attempting to set support role
+        # ← Attempting to set support role
+        "role" => "support",
         "password" => "password123",
         "password_confirmation" => "password123"
       }
 
       result = Normalize.user_attrs(attrs)
 
-      assert result["role"] == "user"  # ← Role is FORCED to "user", ignoring input
+      # ← Role is FORCED to "user", ignoring input
+      assert result["role"] == "user"
     end
 
     test "SECURITY: role parameter is completely ignored and not processed" do
       attrs = %{
         "email" => "user@example.com",
         "full_name" => "John Doe",
-        "role" => "INVALID_ROLE_ATTEMPT",  # ← Even invalid role input
+        # ← Even invalid role input
+        "role" => "INVALID_ROLE_ATTEMPT",
         "password" => "password123",
         "password_confirmation" => "password123"
       }
 
       result = Normalize.user_attrs(attrs)
 
-      assert result["role"] == "user"  # ← Still forced to "user"
+      # ← Still forced to "user"
+      assert result["role"] == "user"
     end
 
     test "adds default role when not provided" do
@@ -106,7 +113,8 @@ defmodule LedgerBankApi.Accounts.NormalizeTest do
 
       assert result["email"] == "admin@example.com"
       assert result["full_name"] == "Admin User"
-      assert result["role"] == "admin"  # ← Admin role is preserved
+      # ← Admin role is preserved
+      assert result["role"] == "admin"
       assert result["password"] == "password123456789"
     end
 
@@ -121,7 +129,8 @@ defmodule LedgerBankApi.Accounts.NormalizeTest do
 
       result = Normalize.admin_user_attrs(attrs)
 
-      assert result["role"] == "admin"  # ← Admin role is allowed
+      # ← Admin role is allowed
+      assert result["role"] == "admin"
     end
 
     test "allows support role for admin-initiated creation" do
@@ -135,7 +144,8 @@ defmodule LedgerBankApi.Accounts.NormalizeTest do
 
       result = Normalize.admin_user_attrs(attrs)
 
-      assert result["role"] == "support"  # ← Support role is allowed
+      # ← Support role is allowed
+      assert result["role"] == "support"
     end
 
     test "defaults to user role when not provided" do
@@ -390,7 +400,8 @@ defmodule LedgerBankApi.Accounts.NormalizeTest do
         attrs = %{"role" => role, "email" => "test@example.com", "full_name" => "Test"}
         result = Normalize.user_attrs(attrs)
 
-        assert result["role"] == "user", "user_attrs should always return 'user' role, got #{result["role"]} for input #{role}"
+        assert result["role"] == "user",
+               "user_attrs should always return 'user' role, got #{result["role"]} for input #{role}"
       end
     end
 

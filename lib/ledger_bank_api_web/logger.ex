@@ -168,7 +168,9 @@ defmodule LedgerBankApiWeb.Logger do
 
   defp get_remote_ip(conn) do
     case get_req_header(conn, "x-forwarded-for") do
-      [ip | _] -> ip
+      [ip | _] ->
+        ip
+
       _ ->
         case get_req_header(conn, "x-real-ip") do
           [ip] -> ip
@@ -193,18 +195,27 @@ defmodule LedgerBankApiWeb.Logger do
 
   defp sanitize_audit_data(data) do
     data
-    |> Map.drop([:password, :password_hash, :access_token, :refresh_token, :secret, :private_key, :api_key])
+    |> Map.drop([
+      :password,
+      :password_hash,
+      :access_token,
+      :refresh_token,
+      :secret,
+      :private_key,
+      :api_key
+    ])
     |> Enum.reduce(%{}, fn {key, value}, acc ->
       # Convert atom keys to strings and sanitize values
       string_key = if is_atom(key), do: Atom.to_string(key), else: key
 
       # Sanitize potentially sensitive values
-      sanitized_value = case value do
-        %{password: _} -> "[REDACTED: contains password]"
-        %{access_token: _} -> "[REDACTED: contains token]"
-        %{secret: _} -> "[REDACTED: contains secret]"
-        _ -> value
-      end
+      sanitized_value =
+        case value do
+          %{password: _} -> "[REDACTED: contains password]"
+          %{access_token: _} -> "[REDACTED: contains token]"
+          %{secret: _} -> "[REDACTED: contains secret]"
+          _ -> value
+        end
 
       Map.put(acc, string_key, sanitized_value)
     end)
@@ -212,18 +223,27 @@ defmodule LedgerBankApiWeb.Logger do
 
   defp sanitize_security_data(data) do
     data
-    |> Map.drop([:password, :password_hash, :access_token, :refresh_token, :secret, :private_key, :api_key])
+    |> Map.drop([
+      :password,
+      :password_hash,
+      :access_token,
+      :refresh_token,
+      :secret,
+      :private_key,
+      :api_key
+    ])
     |> Enum.reduce(%{}, fn {key, value}, acc ->
       # Convert atom keys to strings and sanitize values
       string_key = if is_atom(key), do: Atom.to_string(key), else: key
 
       # Sanitize potentially sensitive values
-      sanitized_value = case value do
-        %{password: _} -> "[REDACTED: contains password]"
-        %{access_token: _} -> "[REDACTED: contains token]"
-        %{secret: _} -> "[REDACTED: contains secret]"
-        _ -> value
-      end
+      sanitized_value =
+        case value do
+          %{password: _} -> "[REDACTED: contains password]"
+          %{access_token: _} -> "[REDACTED: contains token]"
+          %{secret: _} -> "[REDACTED: contains secret]"
+          _ -> value
+        end
 
       Map.put(acc, string_key, sanitized_value)
     end)

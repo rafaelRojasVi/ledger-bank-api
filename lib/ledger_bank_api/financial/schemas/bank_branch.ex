@@ -4,17 +4,28 @@ defmodule LedgerBankApi.Financial.Schemas.BankBranch do
   """
   use LedgerBankApi.Core.SchemaHelpers
 
-  @derive {Jason.Encoder, only: [:id, :name, :iban, :country, :routing_number, :swift_code, :bank_id, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :name,
+             :iban,
+             :country,
+             :routing_number,
+             :swift_code,
+             :bank_id,
+             :inserted_at,
+             :updated_at
+           ]}
 
   schema "bank_branches" do
-    field :name, :string
-    field :iban, :string
-    field :country, :string
-    field :routing_number, :string
-    field :swift_code, :string
+    field(:name, :string)
+    field(:iban, :string)
+    field(:country, :string)
+    field(:routing_number, :string)
+    field(:swift_code, :string)
 
-    belongs_to :bank, LedgerBankApi.Financial.Schemas.Bank
-    has_many :user_bank_logins, LedgerBankApi.Financial.Schemas.UserBankLogin
+    belongs_to(:bank, LedgerBankApi.Financial.Schemas.Bank)
+    has_many(:user_bank_logins, LedgerBankApi.Financial.Schemas.UserBankLogin)
 
     timestamps(type: :utc_datetime)
   end

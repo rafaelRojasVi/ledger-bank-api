@@ -24,7 +24,8 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
 
     test "accepts future expiration time" do
       user = UsersFixtures.user_fixture()
-      future_time = DateTime.add(DateTime.utc_now(), 7 * 24 * 3600, :second)  # 7 days
+      # 7 days
+      future_time = DateTime.add(DateTime.utc_now(), 7 * 24 * 3600, :second)
 
       attrs = %{
         user_id: user.id,
@@ -39,7 +40,8 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
 
     test "accepts very far future expiration time" do
       user = UsersFixtures.user_fixture()
-      far_future = DateTime.add(DateTime.utc_now(), 365 * 24 * 3600, :second)  # 1 year
+      # 1 year
+      far_future = DateTime.add(DateTime.utc_now(), 365 * 24 * 3600, :second)
 
       attrs = %{
         user_id: user.id,
@@ -114,7 +116,8 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
   describe "changeset/2 - expiration validation" do
     test "rejects expiration time in the past" do
       user = UsersFixtures.user_fixture()
-      past_time = DateTime.add(DateTime.utc_now(), -3600, :second)  # 1 hour ago
+      # 1 hour ago
+      past_time = DateTime.add(DateTime.utc_now(), -3600, :second)
 
       attrs = %{
         user_id: user.id,
@@ -167,22 +170,26 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       jti = Ecto.UUID.generate()
 
       # Create first token
-      _token1 = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: jti,
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      _token1 =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: jti,
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       # Try to create second token with same JTI
-      changeset = RefreshToken.changeset(%RefreshToken{}, %{
-        user_id: user.id,
-        jti: jti,  # Same JTI
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
+      changeset =
+        RefreshToken.changeset(%RefreshToken{}, %{
+          user_id: user.id,
+          # Same JTI
+          jti: jti,
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
 
-      assert changeset.valid?  # Valid before insert
+      # Valid before insert
+      assert changeset.valid?
 
       # Should fail on insert
       assert {:error, failed_changeset} = Repo.insert(changeset)
@@ -193,15 +200,16 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       user = UsersFixtures.user_fixture()
 
       # Create multiple tokens for same user
-      tokens = Enum.map(1..5, fn _i ->
-        %RefreshToken{}
-        |> RefreshToken.changeset(%{
-          user_id: user.id,
-          jti: Ecto.UUID.generate(),
-          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-        })
-        |> Repo.insert!()
-      end)
+      tokens =
+        Enum.map(1..5, fn _i ->
+          %RefreshToken{}
+          |> RefreshToken.changeset(%{
+            user_id: user.id,
+            jti: Ecto.UUID.generate(),
+            expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+          })
+          |> Repo.insert!()
+        end)
 
       assert length(tokens) == 5
 
@@ -215,13 +223,15 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "validates user_id references existing user" do
       fake_user_id = Ecto.UUID.generate()
 
-      changeset = RefreshToken.changeset(%RefreshToken{}, %{
-        user_id: fake_user_id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
+      changeset =
+        RefreshToken.changeset(%RefreshToken{}, %{
+          user_id: fake_user_id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
 
-      assert changeset.valid?  # Valid before insert
+      # Valid before insert
+      assert changeset.valid?
 
       # Should fail on insert due to foreign key constraint
       assert {:error, failed_changeset} = Repo.insert(changeset)
@@ -269,7 +279,8 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       # Current time should be considered expired
       # Note: May occasionally fail due to microsecond precision
       result = RefreshToken.expired?(token)
-      assert result == true or result == false  # Allow both due to timing
+      # Allow both due to timing
+      assert result == true or result == false
     end
 
     test "returns true for expiration 1 second ago" do
@@ -291,13 +302,14 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "creates non-revoked token by default" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       assert RefreshToken.revoked?(token) == false
       assert token.revoked_at == nil
@@ -306,18 +318,20 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "token can be revoked by setting revoked_at" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       # Revoke token (truncate microseconds for :utc_datetime compatibility)
-      updated_token = token
-      |> Ecto.Changeset.change(%{revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)})
-      |> Repo.update!()
+      updated_token =
+        token
+        |> Ecto.Changeset.change(%{revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+        |> Repo.update!()
 
       assert RefreshToken.revoked?(updated_token) == true
       assert updated_token.revoked_at != nil
@@ -327,13 +341,14 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       user = UsersFixtures.user_fixture()
       expires_soon = DateTime.add(DateTime.utc_now(), 1, :second)
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: expires_soon
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: expires_soon
+        })
+        |> Repo.insert!()
 
       # Should not be expired immediately
       assert RefreshToken.expired?(token) == false
@@ -402,13 +417,14 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "sets inserted_at and updated_at on creation" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       assert token.inserted_at != nil
       assert token.updated_at != nil
@@ -417,22 +433,24 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "updates updated_at on modification" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       original_updated_at = token.updated_at
 
       # Wait and update
       Process.sleep(100)
 
-      updated_token = token
-      |> Ecto.Changeset.change(%{revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)})
-      |> Repo.update!()
+      updated_token =
+        token
+        |> Ecto.Changeset.change(%{revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+        |> Repo.update!()
 
       assert DateTime.compare(updated_token.updated_at, original_updated_at) in [:gt, :eq]
     end
@@ -442,13 +460,14 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "loads user association" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       # Preload user
       token_with_user = Repo.preload(token, :user)
@@ -460,13 +479,14 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "cascades delete when user is deleted" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       # Delete user
       Repo.delete!(user)
@@ -482,23 +502,26 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "user can have multiple active tokens" do
       user = UsersFixtures.user_fixture()
 
-      tokens = Enum.map(1..5, fn _i ->
-        %RefreshToken{}
-        |> RefreshToken.changeset(%{
-          user_id: user.id,
-          jti: Ecto.UUID.generate(),
-          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-        })
-        |> Repo.insert!()
-      end)
+      tokens =
+        Enum.map(1..5, fn _i ->
+          %RefreshToken{}
+          |> RefreshToken.changeset(%{
+            user_id: user.id,
+            jti: Ecto.UUID.generate(),
+            expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+          })
+          |> Repo.insert!()
+        end)
 
       assert length(tokens) == 5
 
       # Query tokens for user
-      user_tokens = Repo.all(
-        from t in RefreshToken,
-        where: t.user_id == ^user.id
-      )
+      user_tokens =
+        Repo.all(
+          from(t in RefreshToken,
+            where: t.user_id == ^user.id
+          )
+        )
 
       assert length(user_tokens) >= 5
     end
@@ -507,34 +530,40 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       user = UsersFixtures.user_fixture()
 
       # Create 3 active tokens
-      _active_tokens = Enum.map(1..3, fn _i ->
-        %RefreshToken{}
-        |> RefreshToken.changeset(%{
-          user_id: user.id,
-          jti: Ecto.UUID.generate(),
-          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-        })
-        |> Repo.insert!()
-      end)
+      _active_tokens =
+        Enum.map(1..3, fn _i ->
+          %RefreshToken{}
+          |> RefreshToken.changeset(%{
+            user_id: user.id,
+            jti: Ecto.UUID.generate(),
+            expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+          })
+          |> Repo.insert!()
+        end)
 
       # Create 2 revoked tokens
-      _revoked_tokens = Enum.map(1..2, fn _i ->
-        %RefreshToken{}
-        |> RefreshToken.changeset(%{
-          user_id: user.id,
-          jti: Ecto.UUID.generate(),
-          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-        })
-        |> Repo.insert!()
-        |> Ecto.Changeset.change(%{revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)})
-        |> Repo.update!()
-      end)
+      _revoked_tokens =
+        Enum.map(1..2, fn _i ->
+          %RefreshToken{}
+          |> RefreshToken.changeset(%{
+            user_id: user.id,
+            jti: Ecto.UUID.generate(),
+            expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+          })
+          |> Repo.insert!()
+          |> Ecto.Changeset.change(%{
+            revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)
+          })
+          |> Repo.update!()
+        end)
 
       # Verify counts
-      all_tokens = Repo.all(
-        from t in RefreshToken,
-        where: t.user_id == ^user.id
-      )
+      all_tokens =
+        Repo.all(
+          from(t in RefreshToken,
+            where: t.user_id == ^user.id
+          )
+        )
 
       active_count = Enum.count(all_tokens, &(not RefreshToken.revoked?(&1)))
       revoked_count = Enum.count(all_tokens, &RefreshToken.revoked?(&1))
@@ -612,13 +641,14 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "active non-expired token is usable" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
 
       assert RefreshToken.revoked?(token) == false
       assert RefreshToken.expired?(token) == false
@@ -627,15 +657,16 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
     test "revoked but not expired token is unusable" do
       user = UsersFixtures.user_fixture()
 
-      token = %RefreshToken{}
-      |> RefreshToken.changeset(%{
-        user_id: user.id,
-        jti: Ecto.UUID.generate(),
-        expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-      })
-      |> Repo.insert!()
-      |> Ecto.Changeset.change(%{revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)})
-      |> Repo.update!()
+      token =
+        %RefreshToken{}
+        |> RefreshToken.changeset(%{
+          user_id: user.id,
+          jti: Ecto.UUID.generate(),
+          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+        |> Repo.insert!()
+        |> Ecto.Changeset.change(%{revoked_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+        |> Repo.update!()
 
       assert RefreshToken.revoked?(token) == true
       assert RefreshToken.expired?(token) == false
@@ -676,15 +707,16 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       user = UsersFixtures.user_fixture()
 
       # Create 100 tokens
-      tokens = Enum.map(1..100, fn _i ->
-        %RefreshToken{}
-        |> RefreshToken.changeset(%{
-          user_id: user.id,
-          jti: Ecto.UUID.generate(),
-          expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
-        })
-        |> Repo.insert!()
-      end)
+      tokens =
+        Enum.map(1..100, fn _i ->
+          %RefreshToken{}
+          |> RefreshToken.changeset(%{
+            user_id: user.id,
+            jti: Ecto.UUID.generate(),
+            expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+          })
+          |> Repo.insert!()
+        end)
 
       # Query by JTI should be fast (indexed)
       target_jti = hd(tokens).jti
@@ -696,7 +728,8 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       duration = System.monotonic_time(:microsecond) - start_time
 
       assert result != nil
-      assert duration < 200_000  # Should be under 100ms (increased for test environment overhead)
+      # Should be under 100ms (increased for test environment overhead)
+      assert duration < 200_000
     end
 
     test "querying by user_id returns all user tokens" do
@@ -714,10 +747,12 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       end)
 
       # Query all tokens for user
-      tokens = Repo.all(
-        from t in RefreshToken,
-        where: t.user_id == ^user.id
-      )
+      tokens =
+        Repo.all(
+          from(t in RefreshToken,
+            where: t.user_id == ^user.id
+          )
+        )
 
       assert length(tokens) >= 10
     end

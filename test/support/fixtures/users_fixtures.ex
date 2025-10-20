@@ -22,9 +22,14 @@ defmodule LedgerBankApi.UsersFixtures do
   end
 
   def user_with_password_fixture(password, attrs \\ %{}) do
-    user_fixture(Map.merge(%{
-      password: password,
-      password_confirmation: password
-    }, attrs))
+    user_fixture(
+      Map.merge(
+        %{
+          password: password,
+          password_confirmation: password
+        },
+        attrs
+      )
+    )
   end
 end

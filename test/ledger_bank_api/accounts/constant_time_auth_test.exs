@@ -97,10 +97,11 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
         "test5@example.com"
       ]
 
-      errors = Enum.map(unknown_emails, fn email ->
-        {:error, error} = UserService.authenticate_user(email, "password123!")
-        error
-      end)
+      errors =
+        Enum.map(unknown_emails, fn email ->
+          {:error, error} = UserService.authenticate_user(email, "password123!")
+          error
+        end)
 
       # All errors should be identical (prevents email enumeration)
       Enum.each(errors, fn error ->
@@ -117,10 +118,11 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
   describe "SECURITY: Password verification happens BEFORE status check" do
     test "inactive user with VALID password returns :account_inactive (not :invalid_credentials)" do
       # Create inactive user
-      _user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "inactive@example.com",
-        status: "SUSPENDED"
-      })
+      _user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "inactive@example.com",
+          status: "SUSPENDED"
+        })
 
       {:error, error} = UserService.authenticate_user("inactive@example.com", "ValidPassword123!")
 
@@ -132,12 +134,14 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
 
     test "inactive user with INVALID password returns :invalid_credentials" do
       # Create inactive user
-      _user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "inactive2@example.com",
-        status: "SUSPENDED"
-      })
+      _user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "inactive2@example.com",
+          status: "SUSPENDED"
+        })
 
-      {:error, error} = UserService.authenticate_user("inactive2@example.com", "WrongPassword123!")
+      {:error, error} =
+        UserService.authenticate_user("inactive2@example.com", "WrongPassword123!")
 
       # Password check failed, so we return :invalid_credentials
       # (not :account_inactive, because password is wrong)
@@ -146,10 +150,11 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
     end
 
     test "suspended user with valid password returns :account_inactive" do
-      user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "suspended@example.com",
-        suspended: true
-      })
+      user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "suspended@example.com",
+          suspended: true
+        })
 
       {:error, error} = UserService.authenticate_user(user.email, "ValidPassword123!")
 
@@ -157,10 +162,11 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
     end
 
     test "deleted user with valid password returns :account_inactive" do
-      user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "deleted@example.com",
-        deleted: true
-      })
+      user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "deleted@example.com",
+          deleted: true
+        })
 
       {:error, error} = UserService.authenticate_user(user.email, "ValidPassword123!")
 
@@ -168,13 +174,14 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
     end
 
     test "active user with valid password succeeds" do
-      user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "active@example.com",
-        status: "ACTIVE",
-        active: true,
-        suspended: false,
-        deleted: false
-      })
+      user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "active@example.com",
+          status: "ACTIVE",
+          active: true,
+          suspended: false,
+          deleted: false
+        })
 
       {:ok, authenticated_user} = UserService.authenticate_user(user.email, "ValidPassword123!")
 
@@ -186,19 +193,23 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
   describe "SECURITY: Timing attack resistance (behavior verification)" do
     test "active vs inactive account return same error when password is WRONG" do
       # Create active user
-      active_user = UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
-        email: "active@example.com",
-        status: "ACTIVE"
-      })
+      active_user =
+        UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
+          email: "active@example.com",
+          status: "ACTIVE"
+        })
 
       # Create inactive user
-      _inactive_user = UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
-        email: "inactive@example.com",
-        status: "SUSPENDED"
-      })
+      _inactive_user =
+        UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
+          email: "inactive@example.com",
+          status: "SUSPENDED"
+        })
 
       {:error, error1} = UserService.authenticate_user(active_user.email, "WrongPassword123!")
-      {:error, error2} = UserService.authenticate_user("inactive@example.com", "WrongPassword123!")
+
+      {:error, error2} =
+        UserService.authenticate_user("inactive@example.com", "WrongPassword123!")
 
       # CRITICAL: Both should return :invalid_credentials (password check happens first)
       assert error1.reason == :invalid_credentials
@@ -210,9 +221,10 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
 
     test "known vs unknown email return same error when password is wrong" do
       # Create a user
-      user = UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
-        email: "known@example.com"
-      })
+      user =
+        UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
+          email: "known@example.com"
+        })
 
       {:error, error1} = UserService.authenticate_user(user.email, "WrongPassword123!")
       {:error, error2} = UserService.authenticate_user("unknown@example.com", "WrongPassword123!")
@@ -247,10 +259,11 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
     end
 
     test "inactive account error is different (only when password is correct)" do
-      user = UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
-        email: "inactive@example.com",
-        status: "SUSPENDED"
-      })
+      user =
+        UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
+          email: "inactive@example.com",
+          status: "SUSPENDED"
+        })
 
       {:error, error} = UserService.authenticate_user(user.email, "CorrectPassword123!")
 
@@ -276,15 +289,17 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
       user = UsersFixtures.user_with_password_fixture("Password123!")
 
       # Collect errors from both scenarios
-      known_errors = for _ <- 1..5 do
-        {:error, error} = UserService.authenticate_user(user.email, "WrongPass!")
-        {error.reason, error.type}
-      end
+      known_errors =
+        for _ <- 1..5 do
+          {:error, error} = UserService.authenticate_user(user.email, "WrongPass!")
+          {error.reason, error.type}
+        end
 
-      unknown_errors = for i <- 1..5 do
-        {:error, error} = UserService.authenticate_user("unknown#{i}@example.com", "WrongPass!")
-        {error.reason, error.type}
-      end
+      unknown_errors =
+        for i <- 1..5 do
+          {:error, error} = UserService.authenticate_user("unknown#{i}@example.com", "WrongPass!")
+          {error.reason, error.type}
+        end
 
       # All known email errors should be identical
       assert Enum.uniq(known_errors) == [{:invalid_credentials, :unauthorized}]
@@ -298,10 +313,11 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
 
     test "old vulnerability: status check before password is fixed" do
       # Create inactive user with a known password
-      _user = UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
-        email: "inactive@example.com",
-        status: "SUSPENDED"
-      })
+      _user =
+        UsersFixtures.user_with_password_fixture("CorrectPassword123!", %{
+          email: "inactive@example.com",
+          status: "SUSPENDED"
+        })
 
       # With WRONG password on inactive account
       {:error, error} = UserService.authenticate_user("inactive@example.com", "WrongPassword!")
@@ -317,25 +333,28 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
 
   describe "SECURITY: Valid authentication flow" do
     test "valid credentials with active account succeeds" do
-      user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "valid@example.com",
-        status: "ACTIVE",
-        active: true,
-        suspended: false,
-        deleted: false
-      })
+      user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "valid@example.com",
+          status: "ACTIVE",
+          active: true,
+          suspended: false,
+          deleted: false
+        })
 
-      {:ok, authenticated_user} = UserService.authenticate_user("valid@example.com", "ValidPassword123!")
+      {:ok, authenticated_user} =
+        UserService.authenticate_user("valid@example.com", "ValidPassword123!")
 
       assert authenticated_user.id == user.id
       assert authenticated_user.email == user.email
     end
 
     test "valid credentials with inactive account returns :account_inactive" do
-      _user = UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
-        email: "inactive@example.com",
-        status: "SUSPENDED"
-      })
+      _user =
+        UsersFixtures.user_with_password_fixture("ValidPassword123!", %{
+          email: "inactive@example.com",
+          status: "SUSPENDED"
+        })
 
       {:error, error} = UserService.authenticate_user("inactive@example.com", "ValidPassword123!")
 
@@ -401,7 +420,7 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
         {:error, error} = UserService.authenticate_user(email, password)
 
         assert error.reason == expected_reason,
-          "Failed for scenario: #{description}. Expected #{expected_reason}, got #{error.reason}"
+               "Failed for scenario: #{description}. Expected #{expected_reason}, got #{error.reason}"
 
         # In production, these would take 100-300ms due to Argon2
         # In tests, PasswordHelper is fast but still executes hashing logic

@@ -717,6 +717,216 @@ open https://yourdomain.com/api/docs
 
 ---
 
+## ⚙️ Oban Configuration
+
+### Configuration Precedence
+
+Oban configuration follows this precedence order (later overrides earlier):
+
+1. **Base Configuration** (`config/config.exs`) - Conservative defaults
+2. **Environment Overrides** (`config/dev.exs`, `config/test.exs`) - Environment-specific settings
+3. **Runtime Overrides** (`config/runtime.exs`) - Production environment variables
+
+### Queue Configuration
+
+#### **Base Queues** (config/config.exs)
+```elixir
+queues: [
+  banking: 3,      # Bank API calls (external, rate-limited)
+  payments: 2,     # Payment processing (critical)
+  notifications: 3, # Email/SMS notifications
+  default: 1       # Miscellaneous tasks
+]
+```
+
+#### **Environment-Specific Overrides**
+
+**Development** (`config/dev.exs`):
+- `testing: :manual` - Manual job execution for debugging
+- Reduced concurrency for development
+
+**Testing** (`config/test.exs`):
+- `testing: :inline` - Synchronous execution for faster tests
+- Higher concurrency for test performance
+
+**Production** (`config/runtime.exs`):
+- Environment-driven via `OBAN_QUEUES` variable
+- Format: `"banking:3,payments:2,notifications:3,default:1"`
+
+### Environment Variable Configuration
+
+#### **OBAN_QUEUES** (Production)
+```bash
+# Format: "queue_name:concurrency,queue_name:concurrency"
+OBAN_QUEUES="banking:5,payments:3,notifications:2,default:1"
+```
+
+#### **Queue Concurrency Guidelines**
+
+| Queue | Purpose | Recommended Concurrency | Rationale |
+|-------|---------|------------------------|-----------|
+| `banking` | External bank API calls | 3-5 | Rate-limited by external APIs |
+| `payments` | Payment processing | 2-3 | Critical, requires careful handling |
+| `notifications` | Email/SMS | 3-5 | External service rate limits |
+| `default` | General tasks | 1-2 | Low priority, resource conservation |
+
+### Production Optimization
+
+#### **High-Volume Scenarios**
+```bash
+# For high-volume deployments
+OBAN_QUEUES="banking:10,payments:5,notifications:8,default:3"
+```
+
+#### **Resource-Constrained Scenarios**
+```bash
+# For limited resources
+OBAN_QUEUES="banking:2,payments:1,notifications:2,default:1"
+```
+
+### Monitoring and Maintenance
+
+#### **Job Cleanup**
+- Automatic cleanup after 7 days (configured in all environments)
+- Prevents database bloat from old job records
+
+#### **Queue Health Monitoring**
+```bash
+# Check queue status
+curl https://your-api.com/api/health/ready
+
+# Monitor job processing
+# (Use your monitoring platform to track Oban metrics)
+```
+
+---
+
+## 🔐 JWT Configuration
+
+### Configuration Precedence
+
+JWT configuration follows this precedence order (later overrides earlier):
+
+1. **Base Configuration** (`config/config.exs`) - Default JWT settings
+2. **Environment Overrides** (`config/dev.exs`, `config/test.exs`) - Environment-specific settings
+3. **Runtime Overrides** (`config/runtime.exs`) - Production environment variables
+
+### JWT Configuration Structure
+
+#### **Base JWT Settings** (config/config.exs)
+```elixir
+# JWT Configuration
+config :ledger_bank_api, :jwt,
+  algorithm: "HS256",
+  issuer: "ledger-bank-api",
+  audience: "ledger-bank-api",
+  access_token_expiry: 3600,  # 1 hour
+  refresh_token_expiry: 7 * 24 * 3600  # 7 days
+
+# JWT Secret (must be 64+ characters)
+config :ledger_bank_api, :jwt_secret, System.get_env("JWT_SECRET")
+```
+
+#### **Environment-Specific Overrides**
+
+**Development** (`config/dev.exs`):
+- Uses development-specific JWT secret
+- Shorter token expiry for development
+
+**Testing** (`config/test.exs`):
+- Uses test-specific JWT secret
+- Very short token expiry for testing
+
+**Production** (`config/runtime.exs`):
+- Uses environment variable for JWT secret
+- Production-optimized settings
+
+### JWT Secret Configuration
+
+#### **Secret Requirements**
+- **Minimum Length**: 32 characters (enforced by application)
+- **Recommended Length**: 64 characters
+- **Generation**: `mix phx.gen.secret 64`
+
+#### **Environment Variable Configuration**
+
+**Development**:
+```bash
+# Generate a strong secret
+JWT_SECRET=$(mix phx.gen.secret 64)
+export JWT_SECRET
+```
+
+**Production**:
+```bash
+# Use a strong, unique secret
+JWT_SECRET="your-production-secret-here-64-chars-minimum"
+```
+
+### JWT Token Configuration
+
+#### **Access Token Settings**
+- **Expiry**: 1 hour (3600 seconds)
+- **Algorithm**: HS256
+- **Issuer**: "ledger-bank-api"
+- **Audience**: "ledger-bank-api"
+
+#### **Refresh Token Settings**
+- **Expiry**: 7 days (604800 seconds)
+- **Algorithm**: HS256
+- **Issuer**: "ledger-bank-api"
+- **Audience**: "ledger-bank-api"
+
+### Security Considerations
+
+#### **Token Security**
+- **Short Access Token TTL**: 1 hour reduces exposure window
+- **Refresh Token Rotation**: New refresh token issued on use
+- **Secure Storage**: Tokens stored in HTTP-only cookies
+- **HTTPS Only**: Tokens only transmitted over HTTPS in production
+
+#### **Secret Management**
+- **Environment Variables**: Never hardcode secrets
+- **Secret Rotation**: Regular rotation of JWT secrets
+- **Length Validation**: Application enforces minimum 32 characters
+- **Production Secrets**: Use strong, unique secrets in production
+
+### Configuration Validation
+
+The application validates JWT configuration at startup:
+
+```elixir
+# This will fail fast if JWT_SECRET is not configured or too short
+LedgerBankApi.Accounts.Token.ensure_jwt_secret!()
+```
+
+### Troubleshooting JWT Issues
+
+#### **Common JWT Errors**
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `JWT_SECRET not configured` | Missing environment variable | Set `JWT_SECRET` environment variable |
+| `JWT_SECRET must be at least 32 characters` | Secret too short | Use `mix phx.gen.secret 64` |
+| `Invalid token` | Token expired or malformed | Check token expiry and format |
+| `Token verification failed` | Secret mismatch | Ensure same secret for signing/verification |
+
+#### **JWT Debugging**
+
+```bash
+# Check JWT secret is set
+echo $JWT_SECRET
+
+# Verify secret length
+echo $JWT_SECRET | wc -c
+
+# Test JWT generation (development only)
+iex -S mix
+LedgerBankApi.Accounts.Token.ensure_jwt_secret!()
+```
+
+---
+
 ## 🩺 Health Checks
 
 All platforms should configure health checks:

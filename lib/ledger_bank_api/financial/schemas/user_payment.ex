@@ -4,28 +4,55 @@ defmodule LedgerBankApi.Financial.Schemas.UserPayment do
   """
   use LedgerBankApi.Core.SchemaHelpers
 
-  @derive {Jason.Encoder, only: [:id, :amount, :direction, :description, :payment_type, :status, :posted_at, :external_transaction_id, :user_bank_account_id, :user_id, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :amount,
+             :direction,
+             :description,
+             :payment_type,
+             :status,
+             :posted_at,
+             :external_transaction_id,
+             :user_bank_account_id,
+             :user_id,
+             :inserted_at,
+             :updated_at
+           ]}
 
   schema "user_payments" do
-    field :amount, :decimal
-    field :direction, :string # "CREDIT" or "DEBIT"
-    field :description, :string
-    field :payment_type, :string
-    field :status, :string, default: "PENDING"
-    field :posted_at, :utc_datetime
-    field :external_transaction_id, :string
+    field(:amount, :decimal)
+    # "CREDIT" or "DEBIT"
+    field(:direction, :string)
+    field(:description, :string)
+    field(:payment_type, :string)
+    field(:status, :string, default: "PENDING")
+    field(:posted_at, :utc_datetime)
+    field(:external_transaction_id, :string)
 
-    belongs_to :user_bank_account, LedgerBankApi.Financial.Schemas.UserBankAccount
-    belongs_to :user, LedgerBankApi.Accounts.Schemas.User
+    belongs_to(:user_bank_account, LedgerBankApi.Financial.Schemas.UserBankAccount)
+    belongs_to(:user, LedgerBankApi.Accounts.Schemas.User)
 
     timestamps(type: :utc_datetime)
   end
 
   @fields [
-    :user_bank_account_id, :user_id, :amount, :direction, :description, :payment_type, :status, :posted_at, :external_transaction_id
+    :user_bank_account_id,
+    :user_id,
+    :amount,
+    :direction,
+    :description,
+    :payment_type,
+    :status,
+    :posted_at,
+    :external_transaction_id
   ]
   @required_fields [
-    :user_bank_account_id, :user_id, :amount, :direction, :payment_type
+    :user_bank_account_id,
+    :user_id,
+    :amount,
+    :direction,
+    :payment_type
   ]
 
   def base_changeset(user_payment, attrs) do
@@ -45,20 +72,24 @@ defmodule LedgerBankApi.Financial.Schemas.UserPayment do
     |> validate_not_future(:posted_at)
     |> foreign_key_constraint(:user_bank_account_id)
     |> foreign_key_constraint(:user_id)
-    |> unique_constraint(:external_transaction_id, name: :user_payments_external_transaction_id_index)
+    |> unique_constraint(:external_transaction_id,
+      name: :user_payments_external_transaction_id_index
+    )
     |> validate_user_owns_account()
   end
 
   defp validate_payment_type(changeset) do
     changeset
     |> validate_inclusion(:payment_type, ["TRANSFER", "PAYMENT", "DEPOSIT", "WITHDRAWAL"],
-      message: "must be TRANSFER, PAYMENT, DEPOSIT, or WITHDRAWAL")
+      message: "must be TRANSFER, PAYMENT, DEPOSIT, or WITHDRAWAL"
+    )
   end
 
   defp validate_status(changeset) do
     changeset
     |> validate_inclusion(:status, ["PENDING", "COMPLETED", "FAILED", "CANCELLED"],
-      message: "must be PENDING, COMPLETED, FAILED, or CANCELLED")
+      message: "must be PENDING, COMPLETED, FAILED, or CANCELLED"
+    )
   end
 
   defp validate_user_owns_account(changeset) do

@@ -15,5 +15,4 @@ defmodule LedgerBankApiWeb.Plugs.Tracing do
     # TODO: Re-enable when OpenTelemetry dependencies are configured
     conn
   end
-
 end

@@ -34,7 +34,8 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
 
   def call(conn, _opts) do
     with {:ok, token} <- get_auth_header(conn),
-         {:ok, _validated_token} <- LedgerBankApiWeb.Validation.InputValidator.validate_access_token(token),
+         {:ok, _validated_token} <-
+           LedgerBankApiWeb.Validation.InputValidator.validate_access_token(token),
          {:ok, user} <- AuthService.get_user_from_token(token) do
       # Add user and token info to conn assigns
       conn
@@ -44,6 +45,7 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
     else
       {:error, %LedgerBankApi.Core.Error{} = error} ->
         handle_auth_error(conn, error, %{source: "authenticate_plug"})
+
       {:error, reason} ->
         handle_auth_error(conn, reason, %{reason: reason, source: "authenticate_plug"})
     end
@@ -61,19 +63,33 @@ defmodule LedgerBankApiWeb.Plugs.Authenticate do
   end
 
   defp handle_auth_error(conn, reason, context) do
-    error = case reason do
-      %LedgerBankApi.Core.Error{} = error ->
-        # Already a proper Error struct, use as is
-        error
-      %{reason: :token_expired} ->
-        ErrorHandler.business_error(:token_expired, Map.put(context, :message, "Token has expired"))
-      %{reason: :invalid_token} ->
-        ErrorHandler.business_error(:invalid_token, Map.put(context, :message, "Invalid token"))
-      %{reason: :token_revoked} ->
-        ErrorHandler.business_error(:token_revoked, Map.put(context, :message, "Token has been revoked"))
-      _ ->
-        ErrorHandler.business_error(:invalid_token, Map.put(context, :message, "Authentication failed"))
-    end
+    error =
+      case reason do
+        %LedgerBankApi.Core.Error{} = error ->
+          # Already a proper Error struct, use as is
+          error
+
+        %{reason: :token_expired} ->
+          ErrorHandler.business_error(
+            :token_expired,
+            Map.put(context, :message, "Token has expired")
+          )
+
+        %{reason: :invalid_token} ->
+          ErrorHandler.business_error(:invalid_token, Map.put(context, :message, "Invalid token"))
+
+        %{reason: :token_revoked} ->
+          ErrorHandler.business_error(
+            :token_revoked,
+            Map.put(context, :message, "Token has been revoked")
+          )
+
+        _ ->
+          ErrorHandler.business_error(
+            :invalid_token,
+            Map.put(context, :message, "Authentication failed")
+          )
+      end
 
     # Use ErrorAdapter for consistent error handling
     ErrorAdapter.handle_error(conn, error)

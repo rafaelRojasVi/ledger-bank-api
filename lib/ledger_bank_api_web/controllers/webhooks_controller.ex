@@ -9,7 +9,6 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
   use LedgerBankApiWeb.Controllers.BaseController
   require Logger
 
-
   @doc """
   Handle incoming webhook from external services.
 
@@ -24,7 +23,10 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
         process_webhook(conn, provider, params, context)
 
       {:error, reason} ->
-        Logger.warning("Webhook signature verification failed for #{provider}: #{inspect(reason)}")
+        Logger.warning(
+          "Webhook signature verification failed for #{provider}: #{inspect(reason)}"
+        )
+
         context = build_context(conn, :handle_webhook, %{provider: provider, error: reason})
         error = LedgerBankApi.Core.ErrorHandler.business_error(:unauthorized, context)
         handle_error(conn, error)
@@ -43,7 +45,6 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
          :ok <- validate_webhook_provider(conn),
          {:ok, validated_params} <- validate_payment_webhook_params(params),
          {:ok, payment} <- process_payment_status_update(validated_params) do
-
       # Broadcast real-time notification
       LedgerBankApi.Financial.PaymentNotifications.broadcast_payment_status_change(payment)
 
@@ -77,13 +78,22 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
       {:error, %Ecto.Changeset{} = changeset} ->
         Logger.warning("Payment status webhook validation failed: #{inspect(changeset.errors)}")
         context = build_context(conn, :handle_payment_status, %{errors: changeset.errors})
-        error = LedgerBankApi.Core.ErrorHandler.business_error(:validation_error, Map.put(context, :changeset, changeset))
+
+        error =
+          LedgerBankApi.Core.ErrorHandler.business_error(
+            :validation_error,
+            Map.put(context, :changeset, changeset)
+          )
+
         handle_error(conn, error)
 
       {:error, reason} ->
         Logger.error("Payment status webhook processing failed: #{inspect(reason)}")
         context = build_context(conn, :handle_payment_status, %{error: reason})
-        error = LedgerBankApi.Core.ErrorHandler.business_error(:webhook_processing_failed, context)
+
+        error =
+          LedgerBankApi.Core.ErrorHandler.business_error(:webhook_processing_failed, context)
+
         handle_error(conn, error)
     end
   end
@@ -98,7 +108,6 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
 
     with {:ok, validated_params} <- validate_account_sync_webhook_params(params),
          {:ok, sync_result} <- process_account_sync(validated_params) do
-
       # Broadcast real-time notification
       LedgerBankApi.Financial.PaymentNotifications.broadcast_account_sync(
         sync_result.user_id,
@@ -117,13 +126,22 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
       {:error, %Ecto.Changeset{} = changeset} ->
         Logger.warning("Account sync webhook validation failed: #{inspect(changeset.errors)}")
         context = build_context(conn, :handle_account_sync, %{errors: changeset.errors})
-        error = LedgerBankApi.Core.ErrorHandler.business_error(:validation_error, Map.put(context, :changeset, changeset))
+
+        error =
+          LedgerBankApi.Core.ErrorHandler.business_error(
+            :validation_error,
+            Map.put(context, :changeset, changeset)
+          )
+
         handle_error(conn, error)
 
       {:error, reason} ->
         Logger.error("Account sync webhook processing failed: #{inspect(reason)}")
         context = build_context(conn, :handle_account_sync, %{error: reason})
-        error = LedgerBankApi.Core.ErrorHandler.business_error(:webhook_processing_failed, context)
+
+        error =
+          LedgerBankApi.Core.ErrorHandler.business_error(:webhook_processing_failed, context)
+
         handle_error(conn, error)
     end
   end
@@ -138,8 +156,9 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
 
     with {:ok, validated_params} <- validate_fraud_webhook_params(params),
          {:ok, fraud_result} <- process_fraud_detection(validated_params) do
-
-      Logger.warning("Fraud detection webhook processed: #{fraud_result.severity} for payment #{fraud_result.payment_id}")
+      Logger.warning(
+        "Fraud detection webhook processed: #{fraud_result.severity} for payment #{fraud_result.payment_id}"
+      )
 
       handle_success(conn, %{
         message: "Fraud detection processed successfully",
@@ -152,13 +171,22 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
       {:error, %Ecto.Changeset{} = changeset} ->
         Logger.warning("Fraud detection webhook validation failed: #{inspect(changeset.errors)}")
         context = build_context(conn, :handle_fraud_detection, %{errors: changeset.errors})
-        error = LedgerBankApi.Core.ErrorHandler.business_error(:validation_error, Map.put(context, :changeset, changeset))
+
+        error =
+          LedgerBankApi.Core.ErrorHandler.business_error(
+            :validation_error,
+            Map.put(context, :changeset, changeset)
+          )
+
         handle_error(conn, error)
 
       {:error, reason} ->
         Logger.error("Fraud detection webhook processing failed: #{inspect(reason)}")
         context = build_context(conn, :handle_fraud_detection, %{error: reason})
-        error = LedgerBankApi.Core.ErrorHandler.business_error(:webhook_processing_failed, context)
+
+        error =
+          LedgerBankApi.Core.ErrorHandler.business_error(:webhook_processing_failed, context)
+
         handle_error(conn, error)
     end
   end
@@ -232,7 +260,8 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
     end
   end
 
-  defp validate_payment_status(status) when status in ["pending", "completed", "failed", "cancelled"] do
+  defp validate_payment_status(status)
+       when status in ["pending", "completed", "failed", "cancelled"] do
     :ok
   end
 
@@ -244,9 +273,11 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
     provider = get_req_header(conn, "x-webhook-provider") |> List.first()
 
     case provider do
-      nil -> :ok  # No provider header means it's from the default payment processor
+      # No provider header means it's from the default payment processor
+      nil -> :ok
       "unknown_provider" -> {:error, :unknown_provider}
-      _ -> :ok  # Any other provider is allowed
+      # Any other provider is allowed
+      _ -> :ok
     end
   end
 
@@ -304,21 +335,27 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
     else
       signature = get_req_header(conn, "x-webhook-signature") |> List.first()
       # Use the raw body if available, otherwise encode the params
-      body = case conn.assigns[:raw_body] do
-        nil -> Jason.encode!(conn.params)
-        raw_body -> raw_body
-      end
+      body =
+        case conn.assigns[:raw_body] do
+          nil -> Jason.encode!(conn.params)
+          raw_body -> raw_body
+        end
+
       verify_payment_webhook_signature(signature, body)
     end
   end
 
   defp verify_payment_webhook_signature(signature, body) when is_binary(signature) do
     secret = get_webhook_secret(:payment)
-    expected_signature = "sha256=" <> :crypto.mac(:hmac, :sha256, secret, body) |> Base.encode16(case: :lower)
+
+    expected_signature =
+      ("sha256=" <> :crypto.mac(:hmac, :sha256, secret, body)) |> Base.encode16(case: :lower)
 
     # Debug logging for test environment
     if Mix.env() == :test do
-      Logger.debug("Webhook signature verification: received=#{signature}, expected=#{expected_signature}, body=#{body}")
+      Logger.debug(
+        "Webhook signature verification: received=#{signature}, expected=#{expected_signature}, body=#{body}"
+      )
     end
 
     if Plug.Crypto.secure_compare(signature, expected_signature) do
@@ -334,7 +371,9 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
 
   defp verify_bank_webhook_signature(signature, body) when is_binary(signature) do
     secret = get_webhook_secret(:bank)
-    expected_signature = "sha256=" <> :crypto.mac(:hmac, :sha256, secret, body) |> Base.encode16(case: :lower)
+
+    expected_signature =
+      ("sha256=" <> :crypto.mac(:hmac, :sha256, secret, body)) |> Base.encode16(case: :lower)
 
     if Plug.Crypto.secure_compare(signature, expected_signature) do
       :ok
@@ -349,7 +388,9 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
 
   defp verify_fraud_webhook_signature(signature, body) when is_binary(signature) do
     secret = get_webhook_secret(:fraud)
-    expected_signature = "sha256=" <> :crypto.mac(:hmac, :sha256, secret, body) |> Base.encode16(case: :lower)
+
+    expected_signature =
+      ("sha256=" <> :crypto.mac(:hmac, :sha256, secret, body)) |> Base.encode16(case: :lower)
 
     if Plug.Crypto.secure_compare(signature, expected_signature) do
       :ok
@@ -364,8 +405,15 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
 
   defp get_webhook_secret(provider) do
     case Application.get_env(:ledger_bank_api, :webhook_secrets) do
-      nil -> System.get_env("#{String.upcase(to_string(provider))}_WEBHOOK_SECRET")
-      secrets -> Map.get(secrets, provider, System.get_env("#{String.upcase(to_string(provider))}_WEBHOOK_SECRET"))
+      nil ->
+        System.get_env("#{String.upcase(to_string(provider))}_WEBHOOK_SECRET")
+
+      secrets ->
+        Map.get(
+          secrets,
+          provider,
+          System.get_env("#{String.upcase(to_string(provider))}_WEBHOOK_SECRET")
+        )
     end
   end
 
@@ -391,34 +439,38 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
   defp process_payment_status_update(params) do
     # TODO: Integrate with actual payment service
     # Currently returns mock data for development
-    {:ok, %{
-      id: params["payment_id"],
-      status: params["status"],
-      amount: params["amount"],
-      direction: params["direction"] || "outbound",
-      user_id: "user_123",  # TODO: Extract from payment record
-      description: params["description"] || "Webhook payment update",
-      updated_at: DateTime.utc_now()
-    }}
+    {:ok,
+     %{
+       id: params["payment_id"],
+       status: params["status"],
+       amount: params["amount"],
+       direction: params["direction"] || "outbound",
+       # TODO: Extract from payment record
+       user_id: "user_123",
+       description: params["description"] || "Webhook payment update",
+       updated_at: DateTime.utc_now()
+     }}
   end
 
   defp process_account_sync(params) do
     # TODO: Integrate with actual bank sync service
     # Currently returns mock data for development
-    {:ok, %{
-      user_id: params["user_id"],
-      accounts_synced: params["accounts_synced"],
-      sync_timestamp: params["sync_timestamp"]
-    }}
+    {:ok,
+     %{
+       user_id: params["user_id"],
+       accounts_synced: params["accounts_synced"],
+       sync_timestamp: params["sync_timestamp"]
+     }}
   end
 
   defp process_fraud_detection(params) do
     # TODO: Integrate with actual fraud detection service
     # Currently returns mock data for development
-    {:ok, %{
-      payment_id: params["payment_id"],
-      severity: params["severity"],
-      action_taken: params["recommended_action"]
-    }}
+    {:ok,
+     %{
+       payment_id: params["payment_id"],
+       severity: params["severity"],
+       action_taken: params["recommended_action"]
+     }}
   end
 end

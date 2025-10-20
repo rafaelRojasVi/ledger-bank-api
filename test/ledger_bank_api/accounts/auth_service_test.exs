@@ -34,7 +34,8 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       iat_time = DateTime.from_unix!(claims["iat"])
       duration = DateTime.diff(exp_time, iat_time, :second)
 
-      assert duration == 900  # 15 minutes
+      # 15 minutes
+      assert duration == 900
     end
 
     test "generates token with unique JTI for each call" do
@@ -71,7 +72,8 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       user = UsersFixtures.user_fixture()
 
       {:ok, token1} = AuthService.generate_access_token(user)
-      Process.sleep(1000)  # Wait 1 second
+      # Wait 1 second
+      Process.sleep(1000)
       {:ok, token2} = AuthService.generate_access_token(user)
 
       assert token1 != token2
@@ -108,7 +110,8 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       iat_time = DateTime.from_unix!(claims["iat"])
       duration = DateTime.diff(exp_time, iat_time, :second)
 
-      assert duration == 604800  # 7 days
+      # 7 days
+      assert duration == 604_800
     end
 
     test "stores refresh token in database" do
@@ -188,8 +191,10 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "sub" => to_string(user.id),
         "email" => user.email,
         "role" => user.role,
-        "exp" => System.system_time(:second) - 3600,  # 1 hour ago
-        "iat" => System.system_time(:second) - 7200,  # 2 hours ago
+        # 1 hour ago
+        "exp" => System.system_time(:second) - 3600,
+        # 2 hours ago
+        "iat" => System.system_time(:second) - 7200,
         "type" => "access",
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
@@ -197,7 +202,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
       {:error, error} = AuthService.verify_access_token(token)
       assert error.type == :unauthorized
@@ -238,11 +248,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
 
   describe "login_user/2" do
     test "successfully logs in a user with valid credentials" do
-      user = UsersFixtures.user_fixture(%{
-        email: "test@example.com",
-        password: "ValidPassword123!",
-        password_confirmation: "ValidPassword123!"
-      })
+      user =
+        UsersFixtures.user_fixture(%{
+          email: "test@example.com",
+          password: "ValidPassword123!",
+          password_confirmation: "ValidPassword123!"
+        })
 
       {:ok, result} = AuthService.login_user("test@example.com", "ValidPassword123!")
 
@@ -261,12 +272,13 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
     end
 
     test "successfully logs in admin user with valid credentials" do
-      _user = UsersFixtures.user_fixture(%{
-        email: "admin@example.com",
-        password: "AdminPassword123!",
-        password_confirmation: "AdminPassword123!",
-        role: "admin"
-      })
+      _user =
+        UsersFixtures.user_fixture(%{
+          email: "admin@example.com",
+          password: "AdminPassword123!",
+          password_confirmation: "AdminPassword123!",
+          role: "admin"
+        })
 
       {:ok, result} = AuthService.login_user("admin@example.com", "AdminPassword123!")
 
@@ -431,8 +443,10 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       # Create an expired refresh token manually
       payload = %{
         "sub" => to_string(user.id),
-        "exp" => System.system_time(:second) - 3600,  # 1 hour ago
-        "iat" => System.system_time(:second) - 7200,  # 2 hours ago
+        # 1 hour ago
+        "exp" => System.system_time(:second) - 3600,
+        # 2 hours ago
+        "iat" => System.system_time(:second) - 7200,
         "type" => "refresh",
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
@@ -440,7 +454,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = AuthService.refresh_access_token(expired_token)
@@ -580,8 +599,10 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "sub" => to_string(user.id),
         "email" => user.email,
         "role" => user.role,
-        "exp" => System.system_time(:second) - 3600,  # 1 hour ago
-        "iat" => System.system_time(:second) - 7200,  # 2 hours ago
+        # 1 hour ago
+        "exp" => System.system_time(:second) - 3600,
+        # 2 hours ago
+        "iat" => System.system_time(:second) - 7200,
         "type" => "access",
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
@@ -589,7 +610,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = AuthService.get_user_from_token(expired_token)
@@ -621,7 +647,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "nbf" => System.system_time(:second)
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = AuthService.get_user_from_token(token)
@@ -678,8 +709,10 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "sub" => to_string(user.id),
         "email" => user.email,
         "role" => user.role,
-        "exp" => System.system_time(:second) - 3600,  # 1 hour ago
-        "iat" => System.system_time(:second) - 7200,  # 2 hours ago
+        # 1 hour ago
+        "exp" => System.system_time(:second) - 3600,
+        # 2 hours ago
+        "iat" => System.system_time(:second) - 7200,
         "type" => "access",
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
@@ -687,7 +720,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       {:error, error} = AuthService.get_token_expiration(expired_token)
@@ -725,8 +763,10 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "sub" => to_string(user.id),
         "email" => user.email,
         "role" => user.role,
-        "exp" => System.system_time(:second) - 3600,  # 1 hour ago
-        "iat" => System.system_time(:second) - 7200,  # 2 hours ago
+        # 1 hour ago
+        "exp" => System.system_time(:second) - 3600,
+        # 2 hours ago
+        "iat" => System.system_time(:second) - 7200,
         "type" => "access",
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
@@ -734,7 +774,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       assert AuthService.authenticated?(expired_token) == false
@@ -779,8 +824,10 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "sub" => to_string(user.id),
         "email" => user.email,
         "role" => user.role,
-        "exp" => System.system_time(:second) - 3600,  # 1 hour ago
-        "iat" => System.system_time(:second) - 7200,  # 2 hours ago
+        # 1 hour ago
+        "exp" => System.system_time(:second) - 3600,
+        # 2 hours ago
+        "iat" => System.system_time(:second) - 7200,
         "type" => "access",
         "iss" => "ledger-bank-api",
         "aud" => "ledger-bank-api",
@@ -788,7 +835,12 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
         "nbf" => System.system_time(:second) - 7200
       }
 
-      signer = Joken.Signer.create("HS256", System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long"))
+      signer =
+        Joken.Signer.create(
+          "HS256",
+          System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
+        )
+
       expired_token = Joken.generate_and_sign!(payload, signer)
 
       assert AuthService.has_role?(expired_token, "admin") == false

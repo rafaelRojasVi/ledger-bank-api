@@ -138,7 +138,9 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       args = %{input: input}
       context = %{}
 
-      assert {:ok, %{success: false, user: nil, errors: errors}} = UserResolver.create(args, context)
+      assert {:ok, %{success: false, user: nil, errors: errors}} =
+               UserResolver.create(args, context)
+
       assert length(errors) > 0
     end
 
@@ -153,7 +155,9 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       args = %{input: input}
       context = %{}
 
-      assert {:ok, %{success: false, user: nil, errors: errors}} = UserResolver.create(args, context)
+      assert {:ok, %{success: false, user: nil, errors: errors}} =
+               UserResolver.create(args, context)
+
       assert length(errors) > 0
     end
 
@@ -166,7 +170,9 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       args = %{input: input}
       context = %{}
 
-      assert {:ok, %{success: false, user: nil, errors: errors}} = UserResolver.create(args, context)
+      assert {:ok, %{success: false, user: nil, errors: errors}} =
+               UserResolver.create(args, context)
+
       assert length(errors) > 0
     end
 
@@ -183,7 +189,9 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       args = %{input: input}
       context = %{}
 
-      assert {:ok, %{success: false, user: nil, errors: errors}} = UserResolver.create(args, context)
+      assert {:ok, %{success: false, user: nil, errors: errors}} =
+               UserResolver.create(args, context)
+
       assert length(errors) > 0
     end
   end

@@ -18,7 +18,8 @@ defmodule LedgerBankApiWeb.ApiDocsController do
       openapi: "3.0.0",
       info: %{
         title: "LedgerBank API",
-        description: "A comprehensive banking API with user management, authentication, and financial operations.",
+        description:
+          "A comprehensive banking API with user management, authentication, and financial operations.",
         version: "1.0.0",
         contact: %{
           name: "API Support",

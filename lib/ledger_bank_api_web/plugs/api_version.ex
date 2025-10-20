@@ -35,7 +35,8 @@ defmodule LedgerBankApiWeb.Plugs.ApiVersion do
         type: "https://api.ledgerbank.com/problems/unsupported_api_version",
         title: "Unsupported API Version",
         status: 400,
-        detail: "API version '#{version}' is not supported. Supported versions: #{Enum.join(@supported_versions, ", ")}",
+        detail:
+          "API version '#{version}' is not supported. Supported versions: #{Enum.join(@supported_versions, ", ")}",
         instance: conn.request_path,
         supported_versions: @supported_versions
       })
@@ -46,7 +47,8 @@ defmodule LedgerBankApiWeb.Plugs.ApiVersion do
   defp extract_version(conn) do
     cond do
       # Check Accept header first
-      (accept_header = get_req_header(conn, "accept") |> List.first()) != nil and version_from_accept(accept_header) != nil ->
+      (accept_header = get_req_header(conn, "accept") |> List.first()) != nil and
+          version_from_accept(accept_header) != nil ->
         version_from_accept(accept_header)
 
       # Check custom API version header

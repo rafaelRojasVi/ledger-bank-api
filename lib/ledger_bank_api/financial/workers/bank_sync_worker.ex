@@ -44,30 +44,52 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorker do
 
   defp sync_bank_login(login_id, context) do
     try do
-      financial_service = Application.get_env(:ledger_bank_api, :financial_service, LedgerBankApi.Financial.FinancialService)
+      financial_service =
+        Application.get_env(
+          :ledger_bank_api,
+          :financial_service,
+          LedgerBankApi.Financial.FinancialService
+        )
+
       case financial_service.sync_login(login_id) do
-        {:ok, result} -> {:ok, result}
-        {:error, %Error{} = error} -> {:error, error}
+        {:ok, result} ->
+          {:ok, result}
+
+        {:error, %Error{} = error} ->
+          {:error, error}
+
         {:error, reason} when is_atom(reason) ->
-          {:error, ErrorHandler.business_error(reason, Map.put(context, :source, "bank_sync_worker"))}
+          {:error,
+           ErrorHandler.business_error(reason, Map.put(context, :source, "bank_sync_worker"))}
+
         {:error, reason} when is_binary(reason) ->
-          {:error, ErrorHandler.business_error(:internal_server_error, Map.put(Map.put(context, :original_message, reason), :source, "bank_sync_worker"))}
+          {:error,
+           ErrorHandler.business_error(
+             :internal_server_error,
+             Map.put(Map.put(context, :original_message, reason), :source, "bank_sync_worker")
+           )}
       end
     rescue
       error ->
-        {:error, ErrorHandler.business_error(:internal_server_error, Map.put(Map.put(context, :exception, inspect(error)), :source, "bank_sync_worker"))}
+        {:error,
+         ErrorHandler.business_error(
+           :internal_server_error,
+           Map.put(Map.put(context, :exception, inspect(error)), :source, "bank_sync_worker")
+         )}
     end
   end
-
 
   @doc false
   def backoff(%Oban.Job{attempt: attempt, args: %{"error_category" => category}}) do
     # Custom backoff based on error category
-    base_delay = case category do
-      "external_dependency" -> 1000  # 1 second for external deps
-      "system" -> 500               # 500ms for system errors
-      _ -> 1000
-    end
+    base_delay =
+      case category do
+        # 1 second for external deps
+        "external_dependency" -> 1000
+        # 500ms for system errors
+        "system" -> 500
+        _ -> 1000
+      end
 
     # Exponential backoff: base_delay * 2^(attempt - 1)
     trunc(base_delay * :math.pow(2, attempt - 1))
@@ -84,9 +106,11 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorker do
   """
   def schedule_sync(login_id, opts \\ []) when is_binary(login_id) do
     %{"login_id" => login_id}
-    |> new(Keyword.merge(opts, [
-      unique: [period: 300, fields: [:args], keys: [:login_id]]
-    ]))
+    |> new(
+      Keyword.merge(opts,
+        unique: [period: 300, fields: [:args], keys: [:login_id]]
+      )
+    )
     |> Oban.insert()
   end
 
@@ -96,11 +120,12 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorker do
   def schedule_sync_with_delay(login_id, delay_seconds, opts \\ [])
       when is_binary(login_id) and is_integer(delay_seconds) and delay_seconds > 0 do
     %{"login_id" => login_id}
-    |> new(Keyword.merge(opts, [
-      schedule_in: delay_seconds,
-      unique: [period: 300, fields: [:args], keys: [:login_id]]
-    ]))
+    |> new(
+      Keyword.merge(opts,
+        schedule_in: delay_seconds,
+        unique: [period: 300, fields: [:args], keys: [:login_id]]
+      )
+    )
     |> Oban.insert()
   end
-
 end

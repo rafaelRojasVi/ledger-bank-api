@@ -102,7 +102,9 @@ defmodule LedgerBankApiWeb.Resolvers.PaymentResolverTest do
       args = %{input: input}
       context = %{context: %{current_user: user}}
 
-      assert {:ok, %{success: false, payment: nil, errors: errors}} = PaymentResolver.create(args, context)
+      assert {:ok, %{success: false, payment: nil, errors: errors}} =
+               PaymentResolver.create(args, context)
+
       assert length(errors) > 0
     end
   end
@@ -117,7 +119,9 @@ defmodule LedgerBankApiWeb.Resolvers.PaymentResolverTest do
       args = %{id: payment.id}
       context = %{context: %{current_user: user}}
 
-      assert {:ok, %{success: true, payment: updated_payment}} = PaymentResolver.cancel(args, context)
+      assert {:ok, %{success: true, payment: updated_payment}} =
+               PaymentResolver.cancel(args, context)
+
       assert updated_payment.id == payment.id
     end
 

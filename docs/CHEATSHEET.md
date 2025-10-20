@@ -999,8 +999,12 @@ Brief description of module purpose.
 
 ## Examples
 
-    # Create a user
-    {:ok, user} = UserService.create_user(%{...})
+> **📝 Example Usage**
+> 
+> ```elixir
+> # Create a user
+> {:ok, user} = UserService.create_user(%{...})
+> ```
 """
 
 @doc """
@@ -1010,8 +1014,12 @@ Returns `{:ok, result}` on success or `{:error, %Error{}}` on failure.
 
 ## Examples
 
-    iex> create_user(%{email: "test@example.com"})
-    {:ok, %User{}}
+> **📝 Example Usage**
+> 
+> ```elixir
+> iex> create_user(%{email: "test@example.com"})
+> {:ok, %User{}}
+> ```
 """
 ```
 

@@ -64,7 +64,9 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAudit do
               value: value
             })
           end
-        _ -> :ok
+
+        _ ->
+          :ok
       end
     end)
   end
@@ -77,7 +79,9 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAudit do
             user_agent: user_agent
           })
         end
-      _ -> :ok
+
+      _ ->
+        :ok
     end
   end
 
@@ -89,7 +93,9 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAudit do
             content_type: content_type
           })
         end
-      _ -> :ok
+
+      _ ->
+        :ok
     end
   end
 
@@ -99,6 +105,7 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAudit do
       "json" ->
         # Check if it's a JSON parsing error
         log_security_event("malformed_json_request", conn)
+
       _ ->
         # Check for other suspicious patterns
         if contains_suspicious_patterns(conn.request_path) do
@@ -112,15 +119,21 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAudit do
   defp is_suspicious_ip(ip) do
     # Check for private IPs, localhost, or known malicious IPs
     case :inet.parse_address(String.to_charlist(ip)) do
-      {:ok, {127, 0, 0, 1}} -> true  # localhost
-      {:ok, {10, _, _, _}} -> true   # private network
-      {:ok, {172, b, _, _}} when b >= 16 and b <= 31 -> true  # private network
-      {:ok, {192, 168, _, _}} -> true  # private network
-      {:ok, {0, 0, 0, 0}} -> true   # invalid IP
+      # localhost
+      {:ok, {127, 0, 0, 1}} -> true
+      # private network
+      {:ok, {10, _, _, _}} -> true
+      # private network
+      {:ok, {172, b, _, _}} when b >= 16 and b <= 31 -> true
+      # private network
+      {:ok, {192, 168, _, _}} -> true
+      # invalid IP
+      {:ok, {0, 0, 0, 0}} -> true
       _ -> false
     end
   rescue
-    _ -> true  # Invalid IP format is suspicious
+    # Invalid IP format is suspicious
+    _ -> true
   end
 
   defp is_suspicious_user_agent(user_agent) do
@@ -193,14 +206,19 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAudit do
   end
 
   defp log_security_event(event_type, conn, data \\ %{}) do
-    AppLogger.log_security_event(event_type, "medium", %{
-      method: conn.method,
-      path: conn.request_path,
-      remote_ip: get_remote_ip(conn),
-      user_agent: get_req_header(conn, "user-agent") |> List.first(),
-      correlation_id: conn.assigns[:correlation_id],
-      timestamp: DateTime.utc_now()
-    } |> Map.merge(data))
+    AppLogger.log_security_event(
+      event_type,
+      "medium",
+      %{
+        method: conn.method,
+        path: conn.request_path,
+        remote_ip: get_remote_ip(conn),
+        user_agent: get_req_header(conn, "user-agent") |> List.first(),
+        correlation_id: conn.assigns[:correlation_id],
+        timestamp: DateTime.utc_now()
+      }
+      |> Map.merge(data)
+    )
   end
 
   defp get_req_header(conn, header) do
@@ -209,7 +227,9 @@ defmodule LedgerBankApiWeb.Plugs.SecurityAudit do
 
   defp get_remote_ip(conn) do
     case get_req_header(conn, "x-forwarded-for") do
-      [ip | _] -> ip
+      [ip | _] ->
+        ip
+
       _ ->
         case get_req_header(conn, "x-real-ip") do
           [ip] -> ip

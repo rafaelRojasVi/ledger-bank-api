@@ -85,11 +85,31 @@ defmodule LedgerBankApi.MixProject do
       "docs.generate": ["swagger.generate"],
       "docs.validate": ["swagger.validate"],
       # Test aliases for easier test running
-      "test:auth": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/auth/"],
-      "test:banking": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/banking/"],
-      "test:users": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/users/"],
-      "test:cache": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/cache_test.exs"],
-      "test:integration": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/integration/"],
+      "test:auth": [
+        "ecto.create --quiet",
+        "ecto.migrate --quiet",
+        "test test/ledger_bank_api/auth/"
+      ],
+      "test:banking": [
+        "ecto.create --quiet",
+        "ecto.migrate --quiet",
+        "test test/ledger_bank_api/banking/"
+      ],
+      "test:users": [
+        "ecto.create --quiet",
+        "ecto.migrate --quiet",
+        "test test/ledger_bank_api/users/"
+      ],
+      "test:cache": [
+        "ecto.create --quiet",
+        "ecto.migrate --quiet",
+        "test test/ledger_bank_api/cache_test.exs"
+      ],
+      "test:integration": [
+        "ecto.create --quiet",
+        "ecto.migrate --quiet",
+        "test test/ledger_bank_api/integration/"
+      ],
       "test:unit": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/"]
     ]
   end

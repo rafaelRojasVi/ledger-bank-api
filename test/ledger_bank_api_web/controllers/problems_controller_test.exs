@@ -7,14 +7,25 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       response = json_response(conn, 200)
 
       assert %{
-        "data" => problems,
-        "success" => true,
-        "metadata" => metadata
-      } = response
+               "data" => problems,
+               "success" => true,
+               "metadata" => metadata
+             } = response
 
       # Verify metadata
       assert metadata["total_errors"] > 0
-      assert metadata["categories"] == ["validation", "not_found", "authentication", "authorization", "conflict", "business_rule", "external_dependency", "system"]
+
+      assert metadata["categories"] == [
+               "validation",
+               "not_found",
+               "authentication",
+               "authorization",
+               "conflict",
+               "business_rule",
+               "external_dependency",
+               "system"
+             ]
+
       assert metadata["api_version"] == "v1"
       assert is_binary(metadata["last_updated"])
 
@@ -23,9 +34,14 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       assert length(problems) > 0
 
       # Check a specific error
-      validation_error = Enum.find(problems, fn problem -> problem["code"] == "invalid_email_format" end)
+      validation_error =
+        Enum.find(problems, fn problem -> problem["code"] == "invalid_email_format" end)
+
       assert validation_error != nil
-      assert validation_error["type"] == "https://api.ledgerbank.com/problems/invalid_email_format"
+
+      assert validation_error["type"] ==
+               "https://api.ledgerbank.com/problems/invalid_email_format"
+
       assert validation_error["status"] == 400
       assert validation_error["title"] == "Invalid email format"
       assert validation_error["category"] == "validation"
@@ -34,7 +50,9 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       assert validation_error["max_retry_attempts"] == 0
 
       # Check a retryable error
-      system_error = Enum.find(problems, fn problem -> problem["code"] == "internal_server_error" end)
+      system_error =
+        Enum.find(problems, fn problem -> problem["code"] == "internal_server_error" end)
+
       assert system_error != nil
       assert system_error["retryable"] == true
       assert system_error["retry_delay_ms"] == 500
@@ -48,9 +66,9 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       response = json_response(conn, 200)
 
       assert %{
-        "data" => problem,
-        "success" => true
-      } = response
+               "data" => problem,
+               "success" => true
+             } = response
 
       assert problem["code"] == "insufficient_funds"
       assert problem["type"] == "https://api.ledgerbank.com/problems/insufficient_funds"
@@ -67,7 +85,9 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       response = json_response(conn, 400)
 
       # Should return RFC 9457 format
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/invalid_reason_format"
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/invalid_reason_format"
+
       assert response["error"]["status"] == 400
       assert response["error"]["title"] == "Invalid error reason format"
       assert response["error"]["reason"] == "invalid_reason_format"
@@ -78,7 +98,9 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       conn = get(conn, ~p"/api/problems/123invalid")
       response = json_response(conn, 400)
 
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/invalid_reason_format"
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/invalid_reason_format"
+
       assert response["error"]["status"] == 400
       assert response["error"]["title"] == "Invalid error reason format"
       assert response["error"]["reason"] == "invalid_reason_format"
@@ -92,10 +114,10 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       response = json_response(conn, 200)
 
       assert %{
-        "data" => problems,
-        "success" => true,
-        "metadata" => metadata
-      } = response
+               "data" => problems,
+               "success" => true,
+               "metadata" => metadata
+             } = response
 
       assert metadata["category"] == "validation"
       assert metadata["total_errors"] > 0
@@ -119,10 +141,10 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       response = json_response(conn, 200)
 
       assert %{
-        "data" => problems,
-        "success" => true,
-        "metadata" => metadata
-      } = response
+               "data" => problems,
+               "success" => true,
+               "metadata" => metadata
+             } = response
 
       assert metadata["category"] == "business_rule"
       assert metadata["http_status"] == 422
@@ -155,7 +177,9 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       conn = get(conn, ~p"/api/problems/category/123invalid")
       response = json_response(conn, 400)
 
-      assert response["error"]["type"] == "https://api.ledgerbank.com/problems/invalid_category_format"
+      assert response["error"]["type"] ==
+               "https://api.ledgerbank.com/problems/invalid_category_format"
+
       assert response["error"]["status"] == 400
       assert response["error"]["title"] == "Invalid error category format"
       assert response["error"]["reason"] == "invalid_category_format"

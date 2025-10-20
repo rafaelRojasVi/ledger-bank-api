@@ -162,7 +162,16 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
   Get all available categories.
   """
   def categories do
-    [:validation, :not_found, :authentication, :authorization, :conflict, :business_rule, :external_dependency, :system]
+    [
+      :validation,
+      :not_found,
+      :authentication,
+      :authorization,
+      :conflict,
+      :business_rule,
+      :external_dependency,
+      :system
+    ]
   end
 
   @doc """
@@ -216,23 +225,21 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_payment_type -> "Invalid payment type"
       :invalid_currency_format -> "Invalid currency format"
       :invalid_account_type -> "Invalid account type"
-    :invalid_description_format -> "Invalid description format"
-    :invalid_account_name_format -> "Invalid account name format"
-    :amount_too_small -> "Amount is too small"
-    :account_frozen -> "Account is frozen"
-    :account_suspended -> "Account is suspended"
-    :description_required -> "Description is required"
-    :description_too_long -> "Description is too long"
-    :webhook_processing_failed -> "Webhook processing failed"
-    :unauthorized_access -> "Unauthorized access to account"
-
+      :invalid_description_format -> "Invalid description format"
+      :invalid_account_name_format -> "Invalid account name format"
+      :amount_too_small -> "Amount is too small"
+      :account_frozen -> "Account is frozen"
+      :account_suspended -> "Account is suspended"
+      :description_required -> "Description is required"
+      :description_too_long -> "Description is too long"
+      :webhook_processing_failed -> "Webhook processing failed"
+      :unauthorized_access -> "Unauthorized access to account"
       # Not found errors
       :user_not_found -> "User not found"
       :account_not_found -> "Account not found"
       :payment_not_found -> "Payment not found"
       :token_not_found -> "Token not found"
       :bank_not_found -> "Bank not found"
-
       # Authentication errors
       :invalid_credentials -> "Invalid credentials"
       :invalid_password -> "Invalid password"
@@ -246,16 +253,13 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :token_not_yet_valid -> "Token not yet valid"
       :missing_required_claims -> "Missing required token claims"
       :unauthorized -> "Unauthorized access"
-
       # Authorization errors
       :forbidden -> "Access forbidden"
       :insufficient_permissions -> "Insufficient permissions"
-
       # Conflict errors
       :email_already_exists -> "Email already exists"
       :already_processed -> "Resource has already been processed"
       :duplicate_transaction -> "Duplicate transaction"
-
       # Business rule errors
       :insufficient_funds -> "Insufficient funds for this transaction"
       :account_inactive -> "Account is inactive"
@@ -264,23 +268,19 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :negative_amount -> "Payment amount cannot be negative"
       :negative_balance -> "Account balance cannot be negative"
       :currency_mismatch -> "Payment currency does not match account currency"
-
       # External dependency errors
       :timeout -> "Request timeout"
       :service_unavailable -> "Service temporarily unavailable"
       :bank_api_error -> "Bank API error"
       :payment_provider_error -> "Payment provider error"
-
       # System errors
       :internal_server_error -> "An unexpected error occurred"
       :database_error -> "Database error"
       :configuration_error -> "Configuration error"
-
       # Additional error reasons for problems endpoint
       :invalid_reason_format -> "Invalid error reason format"
       :invalid_category -> "Invalid error category"
       :invalid_category_format -> "Invalid error category format"
-
       _ -> "An unexpected error occurred"
     end
   end

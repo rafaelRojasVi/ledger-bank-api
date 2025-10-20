@@ -45,11 +45,12 @@ defmodule LedgerBankApiWeb.HealthController do
     }
 
     # Determine overall status
-    overall_status = if all_checks_healthy?(health_status.checks) do
-      "ok"
-    else
-      "degraded"
-    end
+    overall_status =
+      if all_checks_healthy?(health_status.checks) do
+        "ok"
+      else
+        "degraded"
+      end
 
     status_code = if overall_status == "ok", do: 200, else: 503
 
@@ -74,11 +75,12 @@ defmodule LedgerBankApiWeb.HealthController do
       }
     }
 
-    overall_status = if all_checks_healthy?(ready_status.checks) do
-      "ready"
-    else
-      "not_ready"
-    end
+    overall_status =
+      if all_checks_healthy?(ready_status.checks) do
+        "ready"
+      else
+        "not_ready"
+      end
 
     status_code = if overall_status == "ready", do: 200, else: 503
 

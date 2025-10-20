@@ -11,8 +11,9 @@ defmodule LedgerBankApiWeb.Plugs.RateLimitTest do
 
   describe "rate limiting" do
     test "allows requests within limit" do
-      conn = build_conn()
-      |> put_req_header("x-forwarded-for", "192.168.1.1")
+      conn =
+        build_conn()
+        |> put_req_header("x-forwarded-for", "192.168.1.1")
 
       # First request should be allowed
       result_conn = RateLimit.call(conn, RateLimit.init(max_requests: 2, window_size: 60_000))
@@ -23,8 +24,9 @@ defmodule LedgerBankApiWeb.Plugs.RateLimitTest do
     end
 
     test "blocks requests when limit exceeded" do
-      conn = build_conn()
-      |> put_req_header("x-forwarded-for", "192.168.1.2")
+      conn =
+        build_conn()
+        |> put_req_header("x-forwarded-for", "192.168.1.2")
 
       # Make requests up to the limit
       for _i <- 1..2 do
@@ -40,8 +42,9 @@ defmodule LedgerBankApiWeb.Plugs.RateLimitTest do
     end
 
     test "uses IP address as default key" do
-      conn = build_conn()
-      |> put_req_header("x-forwarded-for", "192.168.1.3")
+      conn =
+        build_conn()
+        |> put_req_header("x-forwarded-for", "192.168.1.3")
 
       result_conn = RateLimit.call(conn, RateLimit.init(max_requests: 1, window_size: 60_000))
 
@@ -50,8 +53,9 @@ defmodule LedgerBankApiWeb.Plugs.RateLimitTest do
     end
 
     test "includes proper rate limit headers" do
-      conn = build_conn()
-      |> put_req_header("x-forwarded-for", "192.168.1.4")
+      conn =
+        build_conn()
+        |> put_req_header("x-forwarded-for", "192.168.1.4")
 
       result_conn = RateLimit.call(conn, RateLimit.init(max_requests: 5, window_size: 60_000))
 

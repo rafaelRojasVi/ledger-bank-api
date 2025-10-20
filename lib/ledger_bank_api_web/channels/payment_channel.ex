@@ -9,7 +9,6 @@ defmodule LedgerBankApiWeb.PaymentChannel do
   use Phoenix.Channel
   require Logger
 
-
   # Join channel with authentication
   def join("payment:" <> user_id, _payload, socket) do
     case authenticate_user(socket, user_id) do
@@ -116,29 +115,38 @@ defmodule LedgerBankApiWeb.PaymentChannel do
   end
 
   # Handle incoming payment notifications from PubSub
-  def handle_info(%Phoenix.Socket.Broadcast{
-    topic: "payment_updates:" <> _user_id,
-    event: "payment_status_changed",
-    payload: payload
-  }, socket) do
+  def handle_info(
+        %Phoenix.Socket.Broadcast{
+          topic: "payment_updates:" <> _user_id,
+          event: "payment_status_changed",
+          payload: payload
+        },
+        socket
+      ) do
     push(socket, "payment_notification", payload)
     {:noreply, socket}
   end
 
-  def handle_info(%Phoenix.Socket.Broadcast{
-    topic: "payment:" <> _payment_id,
-    event: "payment_updated",
-    payload: payload
-  }, socket) do
+  def handle_info(
+        %Phoenix.Socket.Broadcast{
+          topic: "payment:" <> _payment_id,
+          event: "payment_updated",
+          payload: payload
+        },
+        socket
+      ) do
     push(socket, "payment_update", payload)
     {:noreply, socket}
   end
 
-  def handle_info(%Phoenix.Socket.Broadcast{
-    topic: "balance_updates:" <> _user_id,
-    event: "balance_changed",
-    payload: payload
-  }, socket) do
+  def handle_info(
+        %Phoenix.Socket.Broadcast{
+          topic: "balance_updates:" <> _user_id,
+          event: "balance_changed",
+          payload: payload
+        },
+        socket
+      ) do
     push(socket, "balance_notification", payload)
     {:noreply, socket}
   end

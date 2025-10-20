@@ -53,6 +53,7 @@ defmodule LedgerBankApi.Accounts.PolicyTest do
   describe "can_change_password?/2" do
     test "user can change password with valid attributes" do
       user = %{id: "user-1", role: "user"}
+
       attrs = %{
         current_password: "old_password",
         password: "new_password"
@@ -77,6 +78,7 @@ defmodule LedgerBankApi.Accounts.PolicyTest do
 
     test "user cannot use same password as current" do
       user = %{id: "user-1", role: "user"}
+
       attrs = %{
         current_password: "same_password",
         password: "same_password"
@@ -87,6 +89,7 @@ defmodule LedgerBankApi.Accounts.PolicyTest do
 
     test "works with string keys" do
       user = %{id: "user-1", role: "user"}
+
       attrs = %{
         "current_password" => "old_password",
         "new_password" => "new_password"
@@ -215,6 +218,218 @@ defmodule LedgerBankApi.Accounts.PolicyTest do
     test "support user cannot access user statistics" do
       support = %{id: "support-1", role: "support"}
       assert Policy.can_access_user_stats?(support) == false
+    end
+  end
+
+  # ============================================================================
+  # POLICY COMBINATOR TESTS
+  # ============================================================================
+
+  describe "Policy Combinators" do
+    test "all/1 returns true when all policies are true" do
+      policies = [
+        fn -> true end,
+        fn -> true end,
+        fn -> true end
+      ]
+
+      assert Policy.all(policies) == true
+    end
+
+    test "all/1 returns false when any policy is false" do
+      policies = [
+        fn -> true end,
+        fn -> false end,
+        fn -> true end
+      ]
+
+      assert Policy.all(policies) == false
+    end
+
+    test "all/1 works with boolean values" do
+      policies = [true, true, true]
+      assert Policy.all(policies) == true
+
+      policies = [true, false, true]
+      assert Policy.all(policies) == false
+    end
+
+    test "any/1 returns true when any policy is true" do
+      policies = [
+        fn -> false end,
+        fn -> true end,
+        fn -> false end
+      ]
+
+      assert Policy.any(policies) == true
+    end
+
+    test "any/1 returns false when all policies are false" do
+      policies = [
+        fn -> false end,
+        fn -> false end,
+        fn -> false end
+      ]
+
+      assert Policy.any(policies) == false
+    end
+
+    test "any/1 works with boolean values" do
+      policies = [false, true, false]
+      assert Policy.any(policies) == true
+
+      policies = [false, false, false]
+      assert Policy.any(policies) == false
+    end
+
+    test "negate/1 inverts function results" do
+      assert Policy.negate(fn -> true end) == false
+      assert Policy.negate(fn -> false end) == true
+    end
+
+    test "negate/1 inverts boolean values" do
+      assert Policy.negate(true) == false
+      assert Policy.negate(false) == true
+    end
+
+    test "negate/1 handles invalid input gracefully" do
+      assert Policy.negate(:invalid) == true
+    end
+  end
+
+  describe "Role-based Policy Checkers" do
+    test "has_role?/2 checks specific role" do
+      admin = %{role: "admin"}
+      user = %{role: "user"}
+
+      assert Policy.has_role?(admin, "admin") == true
+      assert Policy.has_role?(admin, "user") == false
+      assert Policy.has_role?(user, "user") == true
+      assert Policy.has_role?(user, "admin") == false
+    end
+
+    test "has_any_role?/2 checks multiple roles" do
+      admin = %{role: "admin"}
+      support = %{role: "support"}
+      user = %{role: "user"}
+
+      assert Policy.has_any_role?(admin, ["admin", "support"]) == true
+      assert Policy.has_any_role?(support, ["admin", "support"]) == true
+      assert Policy.has_any_role?(user, ["admin", "support"]) == false
+      assert Policy.has_any_role?(user, ["user"]) == true
+    end
+
+    test "is_admin?/1 checks admin role" do
+      admin = %{role: "admin"}
+      user = %{role: "user"}
+
+      assert Policy.is_admin?(admin) == true
+      assert Policy.is_admin?(user) == false
+    end
+
+    test "is_support?/1 checks support role" do
+      support = %{role: "support"}
+      user = %{role: "user"}
+
+      assert Policy.is_support?(support) == true
+      assert Policy.is_support?(user) == false
+    end
+
+    test "is_user?/1 checks user role" do
+      user = %{role: "user"}
+      admin = %{role: "admin"}
+
+      assert Policy.is_user?(user) == true
+      assert Policy.is_user?(admin) == false
+    end
+  end
+
+  describe "Action-based Policy Checkers" do
+    test "is_self_action?/2 checks if acting on self" do
+      user1 = %{id: "user-1"}
+      user2 = %{id: "user-2"}
+
+      assert Policy.is_self_action?(user1, user1) == true
+      assert Policy.is_self_action?(user1, user2) == false
+    end
+
+    test "is_other_user_action?/2 checks if acting on other user" do
+      user1 = %{id: "user-1"}
+      user2 = %{id: "user-2"}
+
+      assert Policy.is_other_user_action?(user1, user1) == false
+      assert Policy.is_other_user_action?(user1, user2) == true
+    end
+  end
+
+  describe "Field-based Policy Checkers" do
+    test "has_only_allowed_fields?/2 checks field restrictions" do
+      attrs = %{"name" => "John", "email" => "john@example.com"}
+      allowed_fields = ["name", "email", "password"]
+
+      assert Policy.has_only_allowed_fields?(attrs, allowed_fields) == true
+    end
+
+    test "has_only_allowed_fields?/2 rejects restricted fields" do
+      attrs = %{"name" => "John", "role" => "admin"}
+      allowed_fields = ["name", "email", "password"]
+
+      assert Policy.has_only_allowed_fields?(attrs, allowed_fields) == false
+    end
+
+    test "has_restricted_fields?/2 detects restricted fields" do
+      attrs = %{"name" => "John", "role" => "admin"}
+      restricted_fields = ["role", "status"]
+
+      assert Policy.has_restricted_fields?(attrs, restricted_fields) == true
+    end
+
+    test "has_restricted_fields?/2 allows non-restricted fields" do
+      attrs = %{"name" => "John", "email" => "john@example.com"}
+      restricted_fields = ["role", "status"]
+
+      assert Policy.has_restricted_fields?(attrs, restricted_fields) == false
+    end
+  end
+
+  describe "Complex Policy Composition" do
+    test "can_perform_sensitive_operation?/3 allows admin to perform operation" do
+      admin = %{id: "admin-1", role: "admin"}
+      target = %{id: "user-1", role: "user"}
+      attrs = %{"name" => "John"}
+
+      assert Policy.can_perform_sensitive_operation?(admin, target, attrs) == true
+    end
+
+    test "can_perform_sensitive_operation?/3 allows support to perform operation on others" do
+      support = %{id: "support-1", role: "support"}
+      target = %{id: "user-1", role: "user"}
+      attrs = %{"name" => "John"}
+
+      assert Policy.can_perform_sensitive_operation?(support, target, attrs) == true
+    end
+
+    test "can_perform_sensitive_operation?/3 denies support performing operation on themselves" do
+      support = %{id: "support-1", role: "support"}
+      attrs = %{"name" => "John"}
+
+      assert Policy.can_perform_sensitive_operation?(support, support, attrs) == false
+    end
+
+    test "can_perform_sensitive_operation?/3 denies regular users" do
+      user = %{id: "user-1", role: "user"}
+      target = %{id: "user-2", role: "user"}
+      attrs = %{"name" => "John"}
+
+      assert Policy.can_perform_sensitive_operation?(user, target, attrs) == false
+    end
+
+    test "can_perform_sensitive_operation?/3 denies operation with restricted fields" do
+      admin = %{id: "admin-1", role: "admin"}
+      target = %{id: "user-1", role: "user"}
+      attrs = %{"name" => "John", "role" => "admin"}
+
+      assert Policy.can_perform_sensitive_operation?(admin, target, attrs) == false
     end
   end
 end

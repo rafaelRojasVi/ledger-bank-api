@@ -34,12 +34,13 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
 
       # Mock sync failure
       expect(FinancialServiceMock, :sync_login, fn ^login_id ->
-        {:error, %Error{
-          reason: :service_unavailable,
-          category: :external_dependency,
-          retryable: true,
-          message: "Bank API temporarily unavailable"
-        }}
+        {:error,
+         %Error{
+           reason: :service_unavailable,
+           category: :external_dependency,
+           retryable: true,
+           message: "Bank API temporarily unavailable"
+         }}
       end)
 
       job = %Oban.Job{
@@ -58,12 +59,13 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
 
       # Mock non-retryable error
       expect(FinancialServiceMock, :sync_login, fn ^login_id ->
-        {:error, %Error{
-          reason: :bank_not_found,
-          category: :not_found,
-          retryable: false,
-          message: "Bank login not found"
-        }}
+        {:error,
+         %Error{
+           reason: :bank_not_found,
+           category: :not_found,
+           retryable: false,
+           message: "Bank login not found"
+         }}
       end)
 
       job = %Oban.Job{
@@ -120,11 +122,12 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
 
       # Mock retryable error
       expect(FinancialServiceMock, :sync_login, fn ^login_id ->
-        {:error, %Error{
-          reason: :timeout,
-          category: :external_dependency,
-          retryable: true
-        }}
+        {:error,
+         %Error{
+           reason: :timeout,
+           category: :external_dependency,
+           retryable: true
+         }}
       end)
 
       job = %Oban.Job{
@@ -145,11 +148,12 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
 
       # Mock non-retryable error
       expect(FinancialServiceMock, :sync_login, fn ^login_id ->
-        {:error, %Error{
-          reason: :bank_not_found,
-          category: :not_found,
-          retryable: false
-        }}
+        {:error,
+         %Error{
+           reason: :bank_not_found,
+           category: :not_found,
+           retryable: false
+         }}
       end)
 
       job = %Oban.Job{
@@ -302,7 +306,10 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
       assert :ok = BankSyncWorker.perform(job)
 
       # Verify telemetry event was emitted
-      assert_receive {:telemetry_event, [:ledger_bank_api, :worker, :bank_sync, :success], measurements, metadata}, 1000
+      assert_receive {:telemetry_event, [:ledger_bank_api, :worker, :bank_sync, :success],
+                      measurements, metadata},
+                     1000
+
       assert measurements.count == 1
       assert is_integer(measurements.duration)
       assert metadata.worker == "BankSyncWorker"
@@ -328,11 +335,12 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
       )
 
       expect(FinancialServiceMock, :sync_login, fn ^login_id ->
-        {:error, %Error{
-          reason: :service_unavailable,
-          category: :external_dependency,
-          retryable: true
-        }}
+        {:error,
+         %Error{
+           reason: :service_unavailable,
+           category: :external_dependency,
+           retryable: true
+         }}
       end)
 
       job = %Oban.Job{
@@ -347,7 +355,10 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
       assert {:error, %Error{}} = BankSyncWorker.perform(job)
 
       # Verify telemetry event was emitted
-      assert_receive {:telemetry_event, [:ledger_bank_api, :worker, :bank_sync, :failure], measurements, metadata}, 1000
+      assert_receive {:telemetry_event, [:ledger_bank_api, :worker, :bank_sync, :failure],
+                      measurements, metadata},
+                     1000
+
       assert measurements.count == 1
       assert metadata.error_reason == :service_unavailable
 
@@ -371,11 +382,12 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
       )
 
       expect(FinancialServiceMock, :sync_login, fn ^login_id ->
-        {:error, %Error{
-          reason: :bank_not_found,
-          category: :not_found,
-          retryable: false
-        }}
+        {:error,
+         %Error{
+           reason: :bank_not_found,
+           category: :not_found,
+           retryable: false
+         }}
       end)
 
       job = %Oban.Job{
@@ -390,7 +402,10 @@ defmodule LedgerBankApi.Financial.Workers.BankSyncWorkerTest do
       assert {:error, %Error{retryable: false}} = BankSyncWorker.perform(job)
 
       # Verify dead-letter telemetry was emitted
-      assert_receive {:telemetry_event, [:ledger_bank_api, :worker, :dead_letter], measurements, metadata}, 1000
+      assert_receive {:telemetry_event, [:ledger_bank_api, :worker, :dead_letter], measurements,
+                      metadata},
+                     1000
+
       assert measurements.count == 1
       assert metadata.worker == "BankSyncWorker"
       assert metadata.error_reason == :bank_not_found

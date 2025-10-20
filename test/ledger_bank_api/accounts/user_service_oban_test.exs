@@ -39,7 +39,9 @@ defmodule LedgerBankApi.Accounts.UserServiceObanTest do
       payment_id = Ecto.UUID.generate()
       priority = 5
 
-      assert {:ok, job} = UserService.schedule_payment_processing_with_priority(payment_id, priority)
+      assert {:ok, job} =
+               UserService.schedule_payment_processing_with_priority(payment_id, priority)
+
       assert job.worker == "LedgerBankApi.Financial.Workers.PaymentWorker"
       assert job.args["payment_id"] == payment_id
       assert job.queue == "payments"

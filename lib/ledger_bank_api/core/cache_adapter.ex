@@ -75,8 +75,12 @@ defmodule LedgerBankApi.Core.CacheAdapter do
 
   The function should return {:ok, value} or {:error, reason}.
   """
-  @callback get_or_put(key :: String.t(), fun :: (-> {:ok, term()} | {:error, term()}), opts :: keyword()) ::
-    {:ok, term()} | {:error, term()}
+  @callback get_or_put(
+              key :: String.t(),
+              fun :: (-> {:ok, term()} | {:error, term()}),
+              opts :: keyword()
+            ) ::
+              {:ok, term()} | {:error, term()}
 
   @doc """
   Delete a value from the cache.
@@ -125,8 +129,6 @@ defmodule LedgerBankApi.Core.CacheAdapter do
   Defaults to EtsAdapter if not configured.
   """
   def adapter do
-    Application.get_env(:ledger_bank_api, :cache_adapter,
-      LedgerBankApi.Core.Cache.EtsAdapter)
+    Application.get_env(:ledger_bank_api, :cache_adapter, LedgerBankApi.Core.Cache.EtsAdapter)
   end
 end
-

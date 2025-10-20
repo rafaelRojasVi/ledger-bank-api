@@ -42,17 +42,19 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapter do
     log_error(error)
 
     # Return HTTP response with JSON content type
-    conn = conn
-    |> put_resp_content_type("application/json")
-    |> put_status(status_code)
+    conn =
+      conn
+      |> put_resp_content_type("application/json")
+      |> put_status(status_code)
 
     # Add Retry-After header for retryable errors
-    conn = if Error.should_retry?(error) do
-      retry_delay = Error.retry_delay(error)
-      put_resp_header(conn, "retry-after", "#{retry_delay}")
-    else
-      conn
-    end
+    conn =
+      if Error.should_retry?(error) do
+        retry_delay = Error.retry_delay(error)
+        put_resp_header(conn, "retry-after", "#{retry_delay}")
+      else
+        conn
+      end
 
     # Wrap response in "error" object for API consistency
     json(conn, %{"error" => problem_response})
@@ -63,9 +65,10 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapter do
   """
   def handle_errors(conn, errors) when is_list(errors) do
     # Find the error with the highest priority status code
-    primary_error = Enum.max_by(errors, fn %Error{} = error ->
-      ErrorCatalog.http_status_for_category(error.category)
-    end)
+    primary_error =
+      Enum.max_by(errors, fn %Error{} = error ->
+        ErrorCatalog.http_status_for_category(error.category)
+      end)
 
     handle_error(conn, primary_error)
   end
@@ -83,19 +86,29 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapter do
   Handles generic errors (atoms, strings, exceptions) by converting them to canonical Error structs.
   """
   def handle_generic_error(conn, reason, context \\ %{}) do
-    error = case reason do
-      %Error{} = error -> error
-      reason when is_atom(reason) ->
-        LedgerBankApi.Core.ErrorHandler.business_error(reason, context)
-      reason when is_binary(reason) ->
-        LedgerBankApi.Core.ErrorHandler.business_error(:internal_server_error,
-          Map.put(context, :original_message, reason))
-      %Ecto.Changeset{} = changeset ->
-        LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, context)
-      exception ->
-        LedgerBankApi.Core.ErrorHandler.business_error(:internal_server_error,
-          Map.put(context, :exception, inspect(exception)))
-    end
+    error =
+      case reason do
+        %Error{} = error ->
+          error
+
+        reason when is_atom(reason) ->
+          LedgerBankApi.Core.ErrorHandler.business_error(reason, context)
+
+        reason when is_binary(reason) ->
+          LedgerBankApi.Core.ErrorHandler.business_error(
+            :internal_server_error,
+            Map.put(context, :original_message, reason)
+          )
+
+        %Ecto.Changeset{} = changeset ->
+          LedgerBankApi.Core.ErrorHandler.handle_changeset_error(changeset, context)
+
+        exception ->
+          LedgerBankApi.Core.ErrorHandler.business_error(
+            :internal_server_error,
+            Map.put(context, :exception, inspect(exception))
+          )
+      end
 
     handle_error(conn, error)
   end
@@ -123,21 +136,29 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapter do
     }
 
     # Add retry information for retryable errors
-    base_response = if Error.should_retry?(error) do
-      Map.merge(base_response, %{
-        retry_after_ms: Error.retry_delay(error),
-        max_retry_attempts: Error.max_retry_attempts(error)
-      })
-    else
-      base_response
-    end
+    base_response =
+      if Error.should_retry?(error) do
+        Map.merge(base_response, %{
+          retry_after_ms: Error.retry_delay(error),
+          max_retry_attempts: Error.max_retry_attempts(error)
+        })
+      else
+        base_response
+      end
 
     # Add sanitized context details
-    details = cond do
-      is_nil(error.context) -> nil
-      is_map(error.context) and map_size(error.context) > 0 -> sanitize_context_for_problem(error.context)
-      true -> %{}  # empty map for empty context
-    end
+    details =
+      cond do
+        is_nil(error.context) ->
+          nil
+
+        is_map(error.context) and map_size(error.context) > 0 ->
+          sanitize_context_for_problem(error.context)
+
+        # empty map for empty context
+        true ->
+          %{}
+      end
 
     Map.put(base_response, :details, details)
   end
@@ -159,7 +180,8 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapter do
   end
 
   defp log_error(%Error{} = error) do
-    Logger.error("Error handled by web adapter",
+    Logger.error(
+      "Error handled by web adapter",
       Map.merge(Error.to_log_map(error), %{
         http_status: ErrorCatalog.http_status_for_category(error.category),
         adapter: "web_error_adapter"
@@ -169,7 +191,15 @@ defmodule LedgerBankApiWeb.Adapters.ErrorAdapter do
 
   defp sanitize_context_for_problem(context) when is_map(context) do
     context
-    |> Map.drop([:password, :password_hash, :access_token, :refresh_token, :secret, :private_key, :api_key])
+    |> Map.drop([
+      :password,
+      :password_hash,
+      :access_token,
+      :refresh_token,
+      :secret,
+      :private_key,
+      :api_key
+    ])
     |> Enum.reduce(%{}, fn {key, value}, acc ->
       # Convert atom keys to strings for JSON serialization
       string_key = if is_atom(key), do: Atom.to_string(key), else: key

@@ -59,15 +59,17 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     with {:ok, email} <- validate_email(params["email"], context),
          {:ok, full_name} <- validate_full_name(params["full_name"], context),
          {:ok, password} <- validate_password(params["password"], context, "user"),
-         {:ok, password_confirmation} <- validate_password_confirmation(params["password_confirmation"], context),
+         {:ok, password_confirmation} <-
+           validate_password_confirmation(params["password_confirmation"], context),
          :ok <- validate_password_match(password, password_confirmation, context) do
-      {:ok, %{
-        email: email,
-        full_name: full_name,
-        password: password,
-        password_confirmation: password_confirmation
-        # NOTE: No role in output - forced to "user" in Normalize.user_attrs
-      }}
+      {:ok,
+       %{
+         email: email,
+         full_name: full_name,
+         password: password,
+         password_confirmation: password_confirmation
+         # NOTE: No role in output - forced to "user" in Normalize.user_attrs
+       }}
     else
       {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
     end
@@ -87,15 +89,17 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
          {:ok, full_name} <- validate_full_name(params["full_name"], context),
          {:ok, role} <- validate_role(params["role"] || "user", context),
          {:ok, password} <- validate_password(params["password"], context, role),
-         {:ok, password_confirmation} <- validate_password_confirmation(params["password_confirmation"], context),
+         {:ok, password_confirmation} <-
+           validate_password_confirmation(params["password_confirmation"], context),
          :ok <- validate_password_match(password, password_confirmation, context) do
-      {:ok, %{
-        email: email,
-        full_name: full_name,
-        password: password,
-        password_confirmation: password_confirmation,
-        role: role
-      }}
+      {:ok,
+       %{
+         email: email,
+         full_name: full_name,
+         password: password,
+         password_confirmation: password_confirmation,
+         role: role
+       }}
     else
       {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
     end
@@ -110,7 +114,11 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
 
     with {:ok, validated_fields} <- validate_user_update_fields(params, context) do
       if map_size(validated_fields) == 0 do
-        {:error, ErrorHandler.business_error(:missing_fields, Map.put(context, :message, "At least one field must be provided for update"))}
+        {:error,
+         ErrorHandler.business_error(
+           :missing_fields,
+           Map.put(context, :message, "At least one field must be provided for update")
+         )}
       else
         {:ok, validated_fields}
       end
@@ -120,16 +128,46 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   defp validate_user_update_fields(params, context) do
     validated_fields = %{}
 
-    case maybe_validate_field(validated_fields, :email, params["email"], &validate_email/2, context) do
-      {:error, error} -> {:error, error}
+    case maybe_validate_field(
+           validated_fields,
+           :email,
+           params["email"],
+           &validate_email/2,
+           context
+         ) do
+      {:error, error} ->
+        {:error, error}
+
       validated_fields ->
-        case maybe_validate_field(validated_fields, :full_name, params["full_name"], &validate_full_name/2, context) do
-          {:error, error} -> {:error, error}
+        case maybe_validate_field(
+               validated_fields,
+               :full_name,
+               params["full_name"],
+               &validate_full_name/2,
+               context
+             ) do
+          {:error, error} ->
+            {:error, error}
+
           validated_fields ->
-            case maybe_validate_field(validated_fields, :role, params["role"], &validate_role/2, context) do
-              {:error, error} -> {:error, error}
+            case maybe_validate_field(
+                   validated_fields,
+                   :role,
+                   params["role"],
+                   &validate_role/2,
+                   context
+                 ) do
+              {:error, error} ->
+                {:error, error}
+
               validated_fields ->
-                case maybe_validate_field(validated_fields, :status, params["status"], &validate_status/2, context) do
+                case maybe_validate_field(
+                       validated_fields,
+                       :status,
+                       params["status"],
+                       &validate_status/2,
+                       context
+                     ) do
                   {:error, error} -> {:error, error}
                   validated_fields -> {:ok, validated_fields}
                 end
@@ -145,15 +183,19 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   def validate_password_change(params, user_role \\ "user") do
     context = %{source: "input_validator", action: :password_change}
 
-    with {:ok, current_password} <- validate_current_password(params["current_password"], context),
+    with {:ok, current_password} <-
+           validate_current_password(params["current_password"], context),
          {:ok, new_password} <- validate_password(params["new_password"], context, user_role),
-         {:ok, password_confirmation} <- validate_password_confirmation(params["password_confirmation"], context),
+         {:ok, password_confirmation} <-
+           validate_password_confirmation(params["password_confirmation"], context),
          :ok <- validate_password_match(new_password, password_confirmation, context) do
-      {:ok, %{
-        current_password: current_password,
-        password: new_password,  # Map new_password to password for schema
-        password_confirmation: password_confirmation
-      }}
+      {:ok,
+       %{
+         current_password: current_password,
+         # Map new_password to password for schema
+         password: new_password,
+         password_confirmation: password_confirmation
+       }}
     else
       {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
     end
@@ -174,7 +216,9 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
           {:ok, password} -> {:ok, %{email: email, password: password}}
           {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
         end
-      {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
+
+      {:error, %LedgerBankApi.Core.Error{} = error} ->
+        {:error, error}
     end
   end
 
@@ -188,8 +232,14 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     case params["refresh_token"] do
       refresh_token when is_binary(refresh_token) and byte_size(refresh_token) > 0 ->
         {:ok, %{refresh_token: refresh_token}}
+
       _ ->
-        {:error, ErrorHandler.business_error(:missing_fields, Map.put(context, :field, "refresh_token") |> Map.put(:message, "Refresh token is required and must be a non-empty string"))}
+        {:error,
+         ErrorHandler.business_error(
+           :missing_fields,
+           Map.put(context, :field, "refresh_token")
+           |> Map.put(:message, "Refresh token is required and must be a non-empty string")
+         )}
     end
   end
 
@@ -202,18 +252,33 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
       {:ok, token}
     else
       context = %{source: "input_validator", action: :access_token}
-      {:error, ErrorHandler.business_error(:invalid_token, Map.put(context, :message, "Access token cannot be empty"))}
+
+      {:error,
+       ErrorHandler.business_error(
+         :invalid_token,
+         Map.put(context, :message, "Access token cannot be empty")
+       )}
     end
   end
 
   def validate_access_token(nil) do
     context = %{source: "input_validator", action: :access_token}
-    {:error, ErrorHandler.business_error(:invalid_token, Map.put(context, :message, "Access token is required"))}
+
+    {:error,
+     ErrorHandler.business_error(
+       :invalid_token,
+       Map.put(context, :message, "Access token is required")
+     )}
   end
 
   def validate_access_token(_) do
     context = %{source: "input_validator", action: :access_token}
-    {:error, ErrorHandler.business_error(:invalid_token, Map.put(context, :message, "Access token must be a string"))}
+
+    {:error,
+     ErrorHandler.business_error(
+       :invalid_token,
+       Map.put(context, :message, "Access token must be a string")
+     )}
   end
 
   @doc """
@@ -224,7 +289,9 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     context = %{source: "input_validator", action: :user_id}
 
     case Validator.validate_uuid(user_id) do
-      :ok -> {:ok, user_id}
+      :ok ->
+        {:ok, user_id}
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "user_id"))}
     end
@@ -236,7 +303,9 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   """
   def validate_uuid(uuid, context \\ %{source: "input_validator"}) do
     case Validator.validate_uuid(uuid) do
-      :ok -> {:ok, uuid}
+      :ok ->
+        {:ok, uuid}
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "uuid"))}
     end
@@ -250,16 +319,18 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   Extract and validate pagination parameters with consistent error format.
   """
   def extract_pagination_params(params, _context \\ %{source: "input_validator"}) do
-    page = case Integer.parse(params["page"] || "1") do
-      {page, ""} when page >= 1 -> page
-      _ -> 1
-    end
+    page =
+      case Integer.parse(params["page"] || "1") do
+        {page, ""} when page >= 1 -> page
+        _ -> 1
+      end
 
-    page_size = case Integer.parse(params["page_size"] || "20") do
-      {page_size, ""} when page_size >= 1 and page_size <= 100 -> page_size
-      {page_size, ""} when page_size > 100 -> 100
-      _ -> 20
-    end
+    page_size =
+      case Integer.parse(params["page_size"] || "20") do
+        {page_size, ""} when page_size >= 1 and page_size <= 100 -> page_size
+        {page_size, ""} when page_size > 100 -> 100
+        _ -> 20
+      end
 
     {:ok, %{page: page, page_size: page_size}}
   end
@@ -269,15 +340,20 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   """
   def extract_sort_params(params, _context \\ %{source: "input_validator"}) do
     case Map.get(params, "sort") do
-      nil -> {:ok, []}
+      nil ->
+        {:ok, []}
+
       sort_string when is_binary(sort_string) ->
-        sort_fields = sort_string
-        |> String.split(",")
-        |> Enum.map(&parse_sort_field/1)
-        |> Enum.reject(&is_nil/1)
+        sort_fields =
+          sort_string
+          |> String.split(",")
+          |> Enum.map(&parse_sort_field/1)
+          |> Enum.reject(&is_nil/1)
 
         {:ok, sort_fields}
-      _ -> {:ok, []}
+
+      _ ->
+        {:ok, []}
     end
   end
 
@@ -285,15 +361,16 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   Extract and validate filter parameters with consistent error format.
   """
   def extract_filter_params(params, _context \\ %{source: "input_validator"}) do
-    filters = params
-    |> Map.drop(["page", "page_size", "sort"])
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
-      if is_binary(value) and String.length(value) > 0 do
-        Map.put(acc, String.to_atom(key), value)
-      else
-        acc
-      end
-    end)
+    filters =
+      params
+      |> Map.drop(["page", "page_size", "sort"])
+      |> Enum.reduce(%{}, fn {key, value}, acc ->
+        if is_binary(value) and String.length(value) > 0 do
+          Map.put(acc, String.to_atom(key), value)
+        else
+          acc
+        end
+      end)
 
     {:ok, filters}
   end
@@ -314,13 +391,14 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
          {:ok, payment_type} <- validate_payment_type(params["payment_type"], context),
          {:ok, description} <- validate_description(params["description"], context),
          {:ok, user_bank_account_id} <- validate_uuid(params["user_bank_account_id"], context) do
-      {:ok, %{
-        amount: amount,
-        direction: direction,
-        payment_type: payment_type,
-        description: description,
-        user_bank_account_id: user_bank_account_id
-      }}
+      {:ok,
+       %{
+         amount: amount,
+         direction: direction,
+         payment_type: payment_type,
+         description: description,
+         user_bank_account_id: user_bank_account_id
+       }}
     else
       {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
     end
@@ -337,14 +415,15 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
          {:ok, account_type} <- validate_account_type(params["account_type"], context),
          {:ok, account_name} <- validate_account_name(params["account_name"], context),
          {:ok, user_bank_login_id} <- validate_uuid(params["user_bank_login_id"], context) do
-      {:ok, %{
-        currency: currency,
-        account_type: account_type,
-        account_name: account_name,
-        user_bank_login_id: user_bank_login_id,
-        last_four: params["last_four"],
-        external_account_id: params["external_account_id"]
-      }}
+      {:ok,
+       %{
+         currency: currency,
+         account_type: account_type,
+         account_name: account_name,
+         user_bank_login_id: user_bank_login_id,
+         last_four: params["last_four"],
+         external_account_id: params["external_account_id"]
+       }}
     else
       {:error, %LedgerBankApi.Core.Error{} = error} -> {:error, error}
     end
@@ -363,13 +442,13 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
          {:ok, payment_type} <- maybe_validate_payment_type(params["payment_type"], context),
          {:ok, date_from} <- maybe_validate_date(params["date_from"], context),
          {:ok, date_to} <- maybe_validate_date(params["date_to"], context) do
-
-      validated_params = pagination
-      |> maybe_put(:direction, direction)
-      |> maybe_put(:status, status)
-      |> maybe_put(:payment_type, payment_type)
-      |> maybe_put(:date_from, date_from)
-      |> maybe_put(:date_to, date_to)
+      validated_params =
+        pagination
+        |> maybe_put(:direction, direction)
+        |> maybe_put(:status, status)
+        |> maybe_put(:payment_type, payment_type)
+        |> maybe_put(:date_from, date_from)
+        |> maybe_put(:date_to, date_to)
 
       {:ok, validated_params}
     else
@@ -387,10 +466,11 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     with {:ok, direction} <- maybe_validate_direction(params["direction"], context),
          {:ok, date_from} <- maybe_validate_date(params["date_from"], context),
          {:ok, date_to} <- maybe_validate_date(params["date_to"], context) do
-      filters = %{}
-      |> maybe_put(:direction, direction)
-      |> maybe_put(:date_from, date_from)
-      |> maybe_put(:date_to, date_to)
+      filters =
+        %{}
+        |> maybe_put(:direction, direction)
+        |> maybe_put(:date_from, date_from)
+        |> maybe_put(:date_to, date_to)
 
       {:ok, filters}
     else
@@ -404,7 +484,9 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
 
   defp validate_email(email, context) do
     case Validator.validate_email(email) do
-      :ok -> {:ok, email}
+      :ok ->
+        {:ok, email}
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "email"))}
     end
@@ -415,10 +497,16 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
       :ok ->
         # Additional length validation for names
         if String.length(full_name) > 255 do
-          {:error, ErrorHandler.business_error(:invalid_name_format, Map.put(context, :field, "full_name") |> Map.put(:message, "Full name cannot exceed 255 characters"))}
+          {:error,
+           ErrorHandler.business_error(
+             :invalid_name_format,
+             Map.put(context, :field, "full_name")
+             |> Map.put(:message, "Full name cannot exceed 255 characters")
+           )}
         else
           {:ok, full_name}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "full_name"))}
     end
@@ -429,11 +517,18 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
       :ok ->
         # Additional role-based length validation
         min_length = if role in ["admin", "support"], do: 15, else: 8
+
         if String.length(password) < min_length do
-          {:error, ErrorHandler.business_error(:invalid_password_format, Map.put(context, :field, "password") |> Map.put(:message, "Password must be at least #{min_length} characters long"))}
+          {:error,
+           ErrorHandler.business_error(
+             :invalid_password_format,
+             Map.put(context, :field, "password")
+             |> Map.put(:message, "Password must be at least #{min_length} characters long")
+           )}
         else
           {:ok, password}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "password"))}
     end
@@ -441,17 +536,23 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
 
   defp validate_password_confirmation(password_confirmation, context) do
     case Validator.validate_password(password_confirmation) do
-      :ok -> {:ok, password_confirmation}
+      :ok ->
+        {:ok, password_confirmation}
+
       {:error, reason} ->
-        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "password_confirmation"))}
+        {:error,
+         ErrorHandler.business_error(reason, Map.put(context, :field, "password_confirmation"))}
     end
   end
 
   defp validate_current_password(current_password, context) do
     case Validator.validate_password(current_password) do
-      :ok -> {:ok, current_password}
+      :ok ->
+        {:ok, current_password}
+
       {:error, reason} ->
-        {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "current_password"))}
+        {:error,
+         ErrorHandler.business_error(reason, Map.put(context, :field, "current_password"))}
     end
   end
 
@@ -459,38 +560,64 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     if role in ["user", "admin", "support"] do
       {:ok, role}
     else
-      {:error, ErrorHandler.business_error(:invalid_role, Map.put(context, :field, "role") |> Map.put(:value, role) |> Map.put(:message, "Role must be one of: user, admin, support"))}
+      {:error,
+       ErrorHandler.business_error(
+         :invalid_role,
+         Map.put(context, :field, "role")
+         |> Map.put(:value, role)
+         |> Map.put(:message, "Role must be one of: user, admin, support")
+       )}
     end
   end
 
   defp validate_role(_, context) do
-    {:error, ErrorHandler.business_error(:invalid_role, Map.put(context, :field, "role") |> Map.put(:message, "Role must be a string"))}
+    {:error,
+     ErrorHandler.business_error(
+       :invalid_role,
+       Map.put(context, :field, "role") |> Map.put(:message, "Role must be a string")
+     )}
   end
 
   defp validate_status(status, context) when is_binary(status) do
     if status in ["ACTIVE", "SUSPENDED", "DELETED"] do
       {:ok, status}
     else
-      {:error, ErrorHandler.business_error(:invalid_status, Map.put(context, :field, "status") |> Map.put(:value, status) |> Map.put(:message, "Status must be one of: ACTIVE, SUSPENDED, DELETED"))}
+      {:error,
+       ErrorHandler.business_error(
+         :invalid_status,
+         Map.put(context, :field, "status")
+         |> Map.put(:value, status)
+         |> Map.put(:message, "Status must be one of: ACTIVE, SUSPENDED, DELETED")
+       )}
     end
   end
 
   defp validate_status(_, context) do
-    {:error, ErrorHandler.business_error(:invalid_status, Map.put(context, :field, "status") |> Map.put(:message, "Status must be a string"))}
+    {:error,
+     ErrorHandler.business_error(
+       :invalid_status,
+       Map.put(context, :field, "status") |> Map.put(:message, "Status must be a string")
+     )}
   end
 
   defp validate_password_match(password, password_confirmation, context) do
     if password == password_confirmation do
       :ok
     else
-      {:error, ErrorHandler.business_error(:invalid_password_format, Map.put(context, :message, "Password confirmation does not match"))}
+      {:error,
+       ErrorHandler.business_error(
+         :invalid_password_format,
+         Map.put(context, :message, "Password confirmation does not match")
+       )}
     end
   end
 
   defp maybe_validate_field(map, field, value, validator_fun, context) do
     if value do
       case validator_fun.(value, context) do
-        {:ok, validated_value} -> Map.put(map, field, validated_value)
+        {:ok, validated_value} ->
+          Map.put(map, field, validated_value)
+
         {:error, %LedgerBankApi.Core.Error{} = error} ->
           # Return the error immediately - this will be caught by the calling function
           {:error, error}
@@ -502,10 +629,14 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
 
   defp parse_sort_field(field_string) do
     case String.split(field_string, ":") do
-      [field] -> {String.to_atom(field), :asc}
+      [field] ->
+        {String.to_atom(field), :asc}
+
       [field, direction] when direction in ["asc", "desc"] ->
         {String.to_atom(field), String.to_atom(direction)}
-      _ -> nil
+
+      _ ->
+        nil
     end
   end
 
@@ -521,11 +652,18 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
             if Decimal.gt?(decimal_amount, Decimal.new(0)) do
               {:ok, decimal_amount}
             else
-              {:error, ErrorHandler.business_error(:negative_amount, Map.put(context, :field, "amount"))}
+              {:error,
+               ErrorHandler.business_error(:negative_amount, Map.put(context, :field, "amount"))}
             end
+
           _ ->
-            {:error, ErrorHandler.business_error(:invalid_amount_format, Map.put(context, :field, "amount"))}
+            {:error,
+             ErrorHandler.business_error(
+               :invalid_amount_format,
+               Map.put(context, :field, "amount")
+             )}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "amount"))}
     end
@@ -535,11 +673,14 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     case Validator.validate_required(direction) do
       :ok ->
         normalized_direction = String.upcase(String.trim(direction))
+
         if normalized_direction in ["CREDIT", "DEBIT"] do
           {:ok, normalized_direction}
         else
-          {:error, ErrorHandler.business_error(:invalid_direction, Map.put(context, :field, "direction"))}
+          {:error,
+           ErrorHandler.business_error(:invalid_direction, Map.put(context, :field, "direction"))}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "direction"))}
     end
@@ -549,11 +690,17 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     case Validator.validate_required(payment_type) do
       :ok ->
         normalized_type = String.upcase(String.trim(payment_type))
+
         if normalized_type in ["TRANSFER", "PAYMENT", "DEPOSIT", "WITHDRAWAL"] do
           {:ok, normalized_type}
         else
-          {:error, ErrorHandler.business_error(:invalid_payment_type, Map.put(context, :field, "payment_type"))}
+          {:error,
+           ErrorHandler.business_error(
+             :invalid_payment_type,
+             Map.put(context, :field, "payment_type")
+           )}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "payment_type"))}
     end
@@ -563,11 +710,17 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     case Validator.validate_required(currency) do
       :ok ->
         normalized_currency = String.upcase(String.trim(currency))
+
         if String.match?(normalized_currency, ~r/^[A-Z]{3}$/) do
           {:ok, normalized_currency}
         else
-          {:error, ErrorHandler.business_error(:invalid_currency_format, Map.put(context, :field, "currency"))}
+          {:error,
+           ErrorHandler.business_error(
+             :invalid_currency_format,
+             Map.put(context, :field, "currency")
+           )}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "currency"))}
     end
@@ -577,11 +730,17 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     case Validator.validate_required(account_type) do
       :ok ->
         normalized_type = String.upcase(String.trim(account_type))
+
         if normalized_type in ["CHECKING", "SAVINGS", "CREDIT", "INVESTMENT"] do
           {:ok, normalized_type}
         else
-          {:error, ErrorHandler.business_error(:invalid_account_type, Map.put(context, :field, "account_type"))}
+          {:error,
+           ErrorHandler.business_error(
+             :invalid_account_type,
+             Map.put(context, :field, "account_type")
+           )}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "account_type"))}
     end
@@ -591,10 +750,15 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     case Validator.validate_required(description) do
       :ok ->
         if String.length(description) > 255 do
-          {:error, ErrorHandler.business_error(:invalid_description_format, Map.put(context, :field, "description"))}
+          {:error,
+           ErrorHandler.business_error(
+             :invalid_description_format,
+             Map.put(context, :field, "description")
+           )}
         else
           {:ok, String.trim(description)}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "description"))}
     end
@@ -604,10 +768,15 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
     case Validator.validate_required(account_name) do
       :ok ->
         if String.length(account_name) > 100 do
-          {:error, ErrorHandler.business_error(:invalid_account_name_format, Map.put(context, :field, "account_name"))}
+          {:error,
+           ErrorHandler.business_error(
+             :invalid_account_name_format,
+             Map.put(context, :field, "account_name")
+           )}
         else
           {:ok, String.trim(account_name)}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "account_name"))}
     end
@@ -618,28 +787,39 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   defp maybe_validate_direction(direction, context), do: validate_direction(direction, context)
 
   defp maybe_validate_payment_type(nil, _context), do: {:ok, nil}
-  defp maybe_validate_payment_type(payment_type, context), do: validate_payment_type(payment_type, context)
+
+  defp maybe_validate_payment_type(payment_type, context),
+    do: validate_payment_type(payment_type, context)
 
   defp maybe_validate_payment_status(nil, _context), do: {:ok, nil}
+
   defp maybe_validate_payment_status(status, context) do
     case Validator.validate_required(status) do
       :ok ->
         normalized_status = String.upcase(String.trim(status))
+
         if normalized_status in ["PENDING", "COMPLETED", "FAILED", "CANCELLED"] do
           {:ok, normalized_status}
         else
-          {:error, ErrorHandler.business_error(:invalid_status, Map.put(context, :field, "status"))}
+          {:error,
+           ErrorHandler.business_error(:invalid_status, Map.put(context, :field, "status"))}
         end
+
       {:error, reason} ->
         {:error, ErrorHandler.business_error(reason, Map.put(context, :field, "status"))}
     end
   end
 
   defp maybe_validate_date(nil, _context), do: {:ok, nil}
+
   defp maybe_validate_date(date_string, context) do
     case DateTime.from_iso8601(date_string) do
-      {:ok, _datetime, _offset} -> {:ok, date_string}
-      _ -> {:error, ErrorHandler.business_error(:invalid_datetime_format, Map.put(context, :field, "date"))}
+      {:ok, _datetime, _offset} ->
+        {:ok, date_string}
+
+      _ ->
+        {:error,
+         ErrorHandler.business_error(:invalid_datetime_format, Map.put(context, :field, "date"))}
     end
   end
 

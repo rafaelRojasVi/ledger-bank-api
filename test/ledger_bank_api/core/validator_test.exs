@@ -21,10 +21,14 @@ defmodule LedgerBankApi.Core.ValidatorTest do
     test "rejects invalid UUID format" do
       invalid_uuids = [
         "not-a-uuid",
-        "123e4567-e89b-12d3-a456",  # Too short
-        "123e4567-e89b-12d3-a456-42661417400g",  # Invalid character
-        "123e4567e89b12d3a456426614174000",  # Missing hyphens
-        "123e4567-e89b-12d3-a456-426614174000-extra"  # Too long
+        # Too short
+        "123e4567-e89b-12d3-a456",
+        # Invalid character
+        "123e4567-e89b-12d3-a456-42661417400g",
+        # Missing hyphens
+        "123e4567e89b12d3a456426614174000",
+        # Too long
+        "123e4567-e89b-12d3-a456-426614174000-extra"
       ]
 
       Enum.each(invalid_uuids, fn uuid ->
@@ -151,7 +155,8 @@ defmodule LedgerBankApi.Core.ValidatorTest do
     test "SECURITY: accepts emails up to 255 characters" do
       # Create exactly 255 char email
       local_part = String.duplicate("a", 240)
-      email = "#{local_part}@example.com"  # Exactly 255 chars
+      # Exactly 255 chars
+      email = "#{local_part}@example.com"
 
       if String.length(email) <= 255 do
         assert Validator.validate_email_secure(email) == :ok
@@ -211,7 +216,9 @@ defmodule LedgerBankApi.Core.ValidatorTest do
 
     test "rejects datetime in the past" do
       past_datetime = DateTime.add(DateTime.utc_now(), -3600, :second)
-      assert Validator.validate_future_datetime(past_datetime) == {:error, :invalid_datetime_format}
+
+      assert Validator.validate_future_datetime(past_datetime) ==
+               {:error, :invalid_datetime_format}
     end
 
     test "rejects current datetime (boundary case)" do
@@ -228,12 +235,15 @@ defmodule LedgerBankApi.Core.ValidatorTest do
     end
 
     test "rejects non-DateTime value" do
-      assert Validator.validate_future_datetime("2023-01-01") == {:error, :invalid_datetime_format}
+      assert Validator.validate_future_datetime("2023-01-01") ==
+               {:error, :invalid_datetime_format}
+
       assert Validator.validate_future_datetime(123) == {:error, :invalid_datetime_format}
     end
 
     test "accepts datetime far in the future" do
-      far_future = DateTime.add(DateTime.utc_now(), 365 * 24 * 3600, :second)  # 1 year
+      # 1 year
+      far_future = DateTime.add(DateTime.utc_now(), 365 * 24 * 3600, :second)
       assert Validator.validate_future_datetime(far_future) == :ok
     end
   end
@@ -297,7 +307,8 @@ defmodule LedgerBankApi.Core.ValidatorTest do
       validations = [
         :ok,
         {:error, :early_error},
-        :ok  # This should not matter since we hit error above
+        # This should not matter since we hit error above
+        :ok
       ]
 
       assert Validator.validate_all(validations) == {:error, :early_error}
@@ -405,13 +416,18 @@ defmodule LedgerBankApi.Core.ValidatorTest do
     end
 
     test "rejects UUID with special characters" do
-      assert Validator.validate_uuid("550e8400-e29b-41d4-a716-44665544000!") == {:error, :invalid_uuid_format}
-      assert Validator.validate_uuid("550e8400-e29b-41d4-a716-44665544000 ") == {:error, :invalid_uuid_format}
+      assert Validator.validate_uuid("550e8400-e29b-41d4-a716-44665544000!") ==
+               {:error, :invalid_uuid_format}
+
+      assert Validator.validate_uuid("550e8400-e29b-41d4-a716-44665544000 ") ==
+               {:error, :invalid_uuid_format}
     end
 
     test "rejects UUID-like strings with wrong length" do
       assert Validator.validate_uuid("550e8400-e29b-41d4-a716") == {:error, :invalid_uuid_format}
-      assert Validator.validate_uuid("550e8400-e29b-41d4-a716-446655440000-extra") == {:error, :invalid_uuid_format}
+
+      assert Validator.validate_uuid("550e8400-e29b-41d4-a716-446655440000-extra") ==
+               {:error, :invalid_uuid_format}
     end
   end
 
@@ -460,13 +476,16 @@ defmodule LedgerBankApi.Core.ValidatorTest do
         "invalid",
         "@example.com",
         "user@",
-        "user\0@example.com",  # Null byte
-        String.duplicate("a", 300) <> "@example.com"  # Too long
+        # Null byte
+        "user\0@example.com",
+        # Too long
+        String.duplicate("a", 300) <> "@example.com"
       ]
 
-      errors = Enum.map(invalid_inputs, fn input ->
-        Validator.validate_email_secure(input)
-      end)
+      errors =
+        Enum.map(invalid_inputs, fn input ->
+          Validator.validate_email_secure(input)
+        end)
 
       # All should return :user_not_found (no variation)
       assert Enum.uniq(errors) == [{:error, :user_not_found}]
@@ -536,9 +555,10 @@ defmodule LedgerBankApi.Core.ValidatorTest do
     end
 
     test "handles datetime with microseconds" do
-      future = DateTime.utc_now()
-      |> DateTime.add(1, :second)
-      |> DateTime.truncate(:microsecond)
+      future =
+        DateTime.utc_now()
+        |> DateTime.add(1, :second)
+        |> DateTime.truncate(:microsecond)
 
       assert Validator.validate_future_datetime(future) == :ok
     end

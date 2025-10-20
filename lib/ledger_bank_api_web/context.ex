@@ -25,8 +25,8 @@ defmodule LedgerBankApiWeb.Context do
 
   defp get_authorization_header(headers) do
     case Enum.find(headers, fn {key, _value} ->
-      String.downcase(key) == "authorization"
-    end) do
+           String.downcase(key) == "authorization"
+         end) do
       {_key, value} -> [value]
       nil -> []
     end

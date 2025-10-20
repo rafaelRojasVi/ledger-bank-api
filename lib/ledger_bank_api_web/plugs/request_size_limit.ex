@@ -10,9 +10,12 @@ defmodule LedgerBankApiWeb.Plugs.RequestSizeLimit do
   import Phoenix.Controller, only: [json: 2]
   require Logger
 
-  @default_max_body_length 1_048_576  # 1MB
-  @default_max_header_length 8_192    # 8KB
-  @default_max_url_length 2_048       # 2KB
+  # 1MB
+  @default_max_body_length 1_048_576
+  # 8KB
+  @default_max_header_length 8_192
+  # 2KB
+  @default_max_url_length 2_048
 
   def init(opts) do
     %{
@@ -41,8 +44,9 @@ defmodule LedgerBankApiWeb.Plugs.RequestSizeLimit do
   end
 
   defp validate_url_length(conn, max_length) do
-    full_url = conn.request_path <>
-               if conn.query_string != "", do: "?" <> conn.query_string, else: ""
+    full_url =
+      conn.request_path <>
+        if conn.query_string != "", do: "?" <> conn.query_string, else: ""
 
     if byte_size(full_url) > max_length do
       Logger.warning("Request URL too long: #{byte_size(full_url)} bytes (max: #{max_length})")
@@ -69,11 +73,14 @@ defmodule LedgerBankApiWeb.Plugs.RequestSizeLimit do
     total_header_length =
       conn.req_headers
       |> Enum.reduce(0, fn {key, value}, acc ->
-        acc + byte_size(key) + byte_size(value) + 4  # +4 for ": " and "\r\n"
+        # +4 for ": " and "\r\n"
+        acc + byte_size(key) + byte_size(value) + 4
       end)
 
     if total_header_length > max_length do
-      Logger.warning("Request headers too long: #{total_header_length} bytes (max: #{max_length})")
+      Logger.warning(
+        "Request headers too long: #{total_header_length} bytes (max: #{max_length})"
+      )
 
       conn
       |> put_status(413)
@@ -148,23 +155,32 @@ defmodule LedgerBankApiWeb.Plugs.RequestSizeLimit do
     case endpoint_config do
       :file_upload ->
         %{
-          max_body_length: 10_485_760,  # 10MB
-          max_header_length: 16_384,    # 16KB
-          max_url_length: 4_096         # 4KB
+          # 10MB
+          max_body_length: 10_485_760,
+          # 16KB
+          max_header_length: 16_384,
+          # 4KB
+          max_url_length: 4_096
         }
 
       :api_request ->
         %{
-          max_body_length: 1_048_576,   # 1MB
-          max_header_length: 8_192,     # 8KB
-          max_url_length: 2_048         # 2KB
+          # 1MB
+          max_body_length: 1_048_576,
+          # 8KB
+          max_header_length: 8_192,
+          # 2KB
+          max_url_length: 2_048
         }
 
       :webhook ->
         %{
-          max_body_length: 2_097_152,   # 2MB
-          max_header_length: 16_384,    # 16KB
-          max_url_length: 2_048         # 2KB
+          # 2MB
+          max_body_length: 2_097_152,
+          # 16KB
+          max_header_length: 16_384,
+          # 2KB
+          max_url_length: 2_048
         }
 
       _ ->

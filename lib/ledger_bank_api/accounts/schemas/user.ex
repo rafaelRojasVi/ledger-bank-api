@@ -32,29 +32,53 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @derive {Jason.Encoder, only: [:id, :email, :full_name, :status, :role, :active, :verified, :suspended, :deleted, :inserted_at, :updated_at]}
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :email,
+             :full_name,
+             :status,
+             :role,
+             :active,
+             :verified,
+             :suspended,
+             :deleted,
+             :inserted_at,
+             :updated_at
+           ]}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "users" do
-    field :email, :string
-    field :full_name, :string
-    field :status, :string, default: "ACTIVE"
-    field :role, :string, default: "user"
-    field :password_hash, :string
-    field :active, :boolean, default: true
-    field :verified, :boolean, default: false
-    field :suspended, :boolean, default: false
-    field :deleted, :boolean, default: false
+    field(:email, :string)
+    field(:full_name, :string)
+    field(:status, :string, default: "ACTIVE")
+    field(:role, :string, default: "user")
+    field(:password_hash, :string)
+    field(:active, :boolean, default: true)
+    field(:verified, :boolean, default: false)
+    field(:suspended, :boolean, default: false)
+    field(:deleted, :boolean, default: false)
     # Virtual field for password (not stored in DB)
-    field :password, :string, virtual: true
+    field(:password, :string, virtual: true)
     # Virtual field for password confirmation
-    field :password_confirmation, :string, virtual: true
+    field(:password_confirmation, :string, virtual: true)
 
     timestamps(type: :utc_datetime)
   end
 
-  @fields [:email, :full_name, :status, :role, :password, :password_confirmation, :active, :verified, :suspended, :deleted]
+  @fields [
+    :email,
+    :full_name,
+    :status,
+    :role,
+    :password,
+    :password_confirmation,
+    :active,
+    :verified,
+    :suspended,
+    :deleted
+  ]
   @required_fields [:email, :full_name, :role]
 
   @doc """
@@ -108,7 +132,9 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
 
   defp validate_email(changeset) do
     changeset
-    |> validate_format(:email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "must be a valid email address")
+    |> validate_format(:email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      message: "must be a valid email address"
+    )
     |> validate_length(:email, max: 255)
     |> unique_constraint(:email, name: :users_email_index)
   end
@@ -119,14 +145,18 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
 
   defp validate_password(changeset) do
     password = get_change(changeset, :password)
+
     if is_nil(password) do
       changeset
     else
       # Simple password validation - minimum 8 characters for all users
       # Role-based validation will be handled at the service layer
       changeset
-      |> validate_length(:password, min: 8, max: 255,
-          message: "must be at least 8 characters long")
+      |> validate_length(:password,
+        min: 8,
+        max: 255,
+        message: "must be at least 8 characters long"
+      )
     end
   end
 
@@ -151,15 +181,13 @@ defmodule LedgerBankApi.Accounts.Schemas.User do
 
   defp maybe_hash_password(changeset) do
     case get_change(changeset, :password) do
-      nil -> changeset
-      password ->
-        hash_function = if Mix.env() == :test do
-          &LedgerBankApi.PasswordHelper.hash_pwd_salt/1
-        else
-          &Pbkdf2.hash_pwd_salt/1
-        end
+      nil ->
+        changeset
 
-        put_change(changeset, :password_hash, hash_function.(password))
+      password ->
+        # Use configuration-based password hashing instead of Mix.env()
+        password_hash = LedgerBankApi.Accounts.PasswordService.hash_password(password)
+        put_change(changeset, :password_hash, password_hash)
     end
   end
 

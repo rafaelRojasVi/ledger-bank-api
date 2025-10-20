@@ -88,7 +88,7 @@ curl http://localhost:4000/api/health
 
 Open your browser: **http://localhost:4000/api/docs**
 
-You should see:
+Expected output:
 - 📖 Interactive Swagger UI
 - 🔐 "Authorize" button for JWT authentication
 - 📋 "Try it out" buttons for testing endpoints

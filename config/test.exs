@@ -2,7 +2,7 @@ import Config
 
 # Configure your database
 #
-# The MIX_TEST_PARTITION environment variable can be used
+# MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :ledger_bank_api, LedgerBankApi.Repo,
@@ -19,7 +19,7 @@ config :ledger_bank_api, LedgerBankApi.Repo,
   end),
   port: String.to_integer(System.get_env("DB_PORT", "5432"))
 
-# We don't run a server during test. Configure the endpoint so VerifiedRoutes works in tests
+# No server during test. Configure the endpoint so VerifiedRoutes works in tests
 config :ledger_bank_api, LedgerBankApiWeb.Endpoint,
   server: false,
   check_origin: false,
@@ -43,8 +43,10 @@ config :ledger_bank_api, :bank_client, LedgerBankApi.Banking.BankApiClientMock
 
 # JWT configuration for testing
 config :ledger_bank_api, :jwt,
-  issuer: "ledger:test",
-  audience: "ledger:test",
+  issuer: "ledger-bank-api",
+  audience: "ledger-bank-api",
+  access_token_expiry: 900, # 15 minutes for testing
+  refresh_token_expiry: 7 * 24 * 3600, # 7 days
   secret_key: System.get_env("JWT_SECRET", "test-secret-key-for-testing-only-must-be-64-chars-long")
 
 # JWT secret for testing

@@ -77,7 +77,7 @@ defmodule LedgerBankApiWeb.UserSocket do
 
   defp verify_token(token) when is_binary(token) do
     # For WebSocket connections, we might use a different token format
-    # This could be a session token, API token, or JWT
+    # Could be a session token, API token, or JWT
     case Token.verify_access_token(token) do
       {:ok, %{"sub" => user_id}} ->
         case LedgerBankApi.Accounts.UserService.get_user(user_id) do

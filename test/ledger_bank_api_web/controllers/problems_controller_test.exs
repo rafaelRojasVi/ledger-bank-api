@@ -101,7 +101,7 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       assert metadata["total_errors"] > 0
       assert metadata["http_status"] == 400
 
-      # All problems should be validation errors
+      # Problems should be validation errors
       for problem <- problems do
         assert problem["category"] == "validation"
         assert problem["status"] == 400
@@ -127,7 +127,7 @@ defmodule LedgerBankApiWeb.Controllers.ProblemsControllerTest do
       assert metadata["category"] == "business_rule"
       assert metadata["http_status"] == 422
 
-      # All problems should be business rule errors
+      # Problems should be business rule errors
       for problem <- problems do
         assert problem["category"] == "business_rule"
         assert problem["status"] == 422

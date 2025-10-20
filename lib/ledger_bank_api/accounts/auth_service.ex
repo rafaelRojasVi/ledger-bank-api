@@ -65,12 +65,10 @@ defmodule LedgerBankApi.Accounts.AuthService do
     # Trust that token is valid (web layer already validated)
     context = ServiceBehavior.build_context(__MODULE__, :revoke_refresh_token, %{token_type: "refresh"})
 
-    ServiceBehavior.with_standard_error_handling(context, :token_revocation_failed, fn ->
-      with {:ok, claims} <- verify_refresh_token(token),
-           {:ok, result} <- UserService.revoke_refresh_token(claims["jti"]) do
-        {:ok, result}
-      end
-    end)
+    with {:ok, claims} <- verify_refresh_token(token),
+         {:ok, result} <- UserService.revoke_refresh_token(claims["jti"]) do
+      {:ok, result}
+    end
   end
 
   @doc """
@@ -91,12 +89,10 @@ defmodule LedgerBankApi.Accounts.AuthService do
     # Trust that token is valid (web layer already validated)
     context = ServiceBehavior.build_context(__MODULE__, :get_user_from_token, %{token_type: "access"})
 
-    ServiceBehavior.with_standard_error_handling(context, :token_verification_failed, fn ->
-      with {:ok, claims} <- verify_access_token(token),
-           {:ok, user} <- UserService.get_user(claims["sub"]) do
-        {:ok, user}
-      end
-    end)
+    with {:ok, claims} <- verify_access_token(token),
+         {:ok, user} <- UserService.get_user(claims["sub"]) do
+      {:ok, user}
+    end
   end
 
   @doc """
@@ -151,23 +147,21 @@ defmodule LedgerBankApi.Accounts.AuthService do
     # Trust that email and password are valid (web layer already validated)
     context = ServiceBehavior.build_context(__MODULE__, :login_user, %{email: email})
 
-    ServiceBehavior.with_standard_error_handling(context, :login_failed, fn ->
-      with {:ok, user} <- UserService.authenticate_user(email, password),
-           {:ok, access_token} <- generate_access_token(user),
-           {:ok, refresh_token} <- generate_refresh_token(user) do
-        # Log authentication event
-        AppLogger.log_auth_event("user_login", user.id, %{
-          email: email,
-          correlation_id: context.correlation_id
-        })
+    with {:ok, user} <- UserService.authenticate_user(email, password),
+         {:ok, access_token} <- generate_access_token(user),
+         {:ok, refresh_token} <- generate_refresh_token(user) do
+      # Log authentication event
+      AppLogger.log_auth_event("user_login", user.id, %{
+        email: email,
+        correlation_id: context.correlation_id
+      })
 
-        {:ok, %{
-          access_token: access_token,
-          refresh_token: refresh_token,
-          user: user
-        }}
-      end
-    end)
+      {:ok, %{
+        access_token: access_token,
+        refresh_token: refresh_token,
+        user: user
+      }}
+    end
   end
 
   @doc """
@@ -224,12 +218,10 @@ defmodule LedgerBankApi.Accounts.AuthService do
     # Trust that token is valid (web layer already validated)
     context = ServiceBehavior.build_context(__MODULE__, :get_token_expiration, %{token_type: "access"})
 
-    ServiceBehavior.with_standard_error_handling(context, :token_expiration_failed, fn ->
-      with {:ok, claims} <- verify_access_token(token) do
-        exp = claims["exp"]
-        {:ok, DateTime.from_unix!(exp)}
-      end
-    end)
+    with {:ok, claims} <- verify_access_token(token) do
+      exp = claims["exp"]
+      {:ok, DateTime.from_unix!(exp)}
+    end
   end
 
   @doc """

@@ -22,13 +22,8 @@ defmodule LedgerBankApiWeb.Resolvers.PaymentResolver do
   end
 
   def list(%{limit: limit, offset: offset}, %{context: %{current_user: current_user}}) do
-    case FinancialService.list_user_payments(current_user.id, %{limit: limit, offset: offset}) do
-      {:ok, payments} ->
-        {:ok, payments}
-
-      {:error, _reason} ->
-        {:error, "Failed to fetch payments"}
-    end
+    {payments, _pagination} = FinancialService.list_user_payments(current_user.id, %{limit: limit, offset: offset})
+    {:ok, payments}
   end
 
   def list(_args, _resolution) do
@@ -45,6 +40,9 @@ defmodule LedgerBankApiWeb.Resolvers.PaymentResolver do
         LedgerBankApi.Financial.PaymentNotifications.broadcast_payment_created(payment)
 
         {:ok, %{success: true, payment: payment, errors: []}}
+
+      {:error, %LedgerBankApi.Core.Error{} = error} ->
+        {:ok, %{success: false, payment: nil, errors: [error.message]}}
 
       {:error, changeset} ->
         errors = format_changeset_errors(changeset)

@@ -619,7 +619,7 @@ end
 ```elixir
 # For tests that don't share data
 test "can run in parallel", %{async: true} do
-  # This test won't interfere with others
+  # Test won't interfere with others
 end
 
 # Use in test module
@@ -910,7 +910,7 @@ test "SQL injection prevention via parameterized queries" do
   # Try to inject SQL
   email = "'; DROP TABLE users; --"
   
-  # This should safely return "user not found", not execute SQL
+  # Should safely return "user not found", not execute SQL
   assert {:error, error} = UserService.get_user_by_email(email)
   assert error.reason == :user_not_found
   
@@ -1369,7 +1369,7 @@ describe "authenticate_user/2" do
     # When we authenticate with valid credentials
     result = UserService.authenticate_user("test@example.com", "password123")
     
-    # Then we get the user back
+    # Get the user back
     assert {:ok, authenticated_user} = result
     assert authenticated_user.id == user.id
   end

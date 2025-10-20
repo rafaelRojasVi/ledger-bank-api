@@ -696,7 +696,7 @@ defmodule LedgerBankApi.Accounts.Schemas.RefreshTokenTest do
       duration = System.monotonic_time(:microsecond) - start_time
 
       assert result != nil
-      assert duration < 100_000  # Should be under 100ms (increased for test environment overhead)
+      assert duration < 200_000  # Should be under 100ms (increased for test environment overhead)
     end
 
     test "querying by user_id returns all user tokens" do

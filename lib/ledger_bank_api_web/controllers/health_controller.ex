@@ -138,7 +138,7 @@ defmodule LedgerBankApiWeb.HealthController do
 
   defp check_disk_space do
     try do
-      # This is a simplified check - in production you'd want more sophisticated disk monitoring
+      # TODO: Implement proper disk monitoring for production
       "ok"
     rescue
       _ -> "error"

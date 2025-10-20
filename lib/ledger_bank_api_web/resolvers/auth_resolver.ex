@@ -9,12 +9,12 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolver do
 
   def login(%{email: email, password: password}, _resolution) do
     case AuthService.login_user(email, password) do
-      {:ok, user, tokens} ->
+      {:ok, %{user: user, access_token: access_token, refresh_token: refresh_token}} ->
         {:ok, %{
           success: true,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_in: tokens.expires_in,
+          access_token: access_token,
+          refresh_token: refresh_token,
+          expires_in: nil,
           user: user,
           errors: []
         }}
@@ -33,13 +33,13 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolver do
 
   def refresh(%{refresh_token: refresh_token}, _resolution) do
     case AuthService.refresh_access_token(refresh_token) do
-      {:ok, user, tokens} ->
+      {:ok, %{access_token: access_token, refresh_token: new_refresh_token}} ->
         {:ok, %{
           success: true,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_in: tokens.expires_in,
-          user: user,
+          access_token: access_token,
+          refresh_token: new_refresh_token,
+          expires_in: nil,
+          user: nil,
           errors: []
         }}
 

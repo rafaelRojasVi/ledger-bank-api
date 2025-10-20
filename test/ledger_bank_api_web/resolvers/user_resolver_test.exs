@@ -44,7 +44,7 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       args = %{id: user2.id}
       context = %{context: %{current_user: user1}}
 
-      assert {:error, "Insufficient permissions"} = UserResolver.find(args, context)
+      assert {:error, "Access denied"} = UserResolver.find(args, context)
     end
 
     test "returns error when user not found" do
@@ -83,7 +83,7 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       args = %{limit: 10, offset: 0}
       context = %{context: %{current_user: user}}
 
-      assert {:error, "Admin access required"} = UserResolver.list(args, context)
+      assert {:error, "Access denied"} = UserResolver.list(args, context)
     end
 
     test "handles pagination correctly" do
@@ -238,7 +238,7 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       args = %{id: user2.id, input: input}
       context = %{context: %{current_user: user1}}
 
-      assert {:error, "Insufficient permissions"} = UserResolver.update(args, context)
+      assert {:error, "Access denied"} = UserResolver.update(args, context)
     end
 
     test "returns error when user not found" do

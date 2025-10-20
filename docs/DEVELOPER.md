@@ -210,7 +210,7 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
   end
   
   defp process_payment(payment, context) do
-    # Your business logic here
+    # Business logic here
     # Return: {:ok, result} | {:error, %Error{}}
   end
 end

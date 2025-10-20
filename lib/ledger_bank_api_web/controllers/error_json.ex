@@ -11,8 +11,8 @@ defmodule LedgerBankApiWeb.ErrorJSON do
   # to be handled by the custom error handling system.
 
   def render("500.json", %{conn: _conn}) do
-    # This should not happen in normal operation since we use custom error handling
-    # But if it does, provide a basic error response
+    # Fallback error handler for unexpected 500 errors
+    # Custom error handling should prevent this in normal operation
     %{
       error: %{
         type: "internal_server_error",

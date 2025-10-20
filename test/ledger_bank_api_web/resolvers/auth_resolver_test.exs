@@ -52,10 +52,10 @@ defmodule LedgerBankApiWeb.Resolvers.AuthResolverTest do
       user = user_fixture()
 
       # Create a valid refresh token
-      {:ok, refresh_token} = LedgerBankApi.Accounts.AuthService.generate_refresh_token(user.id)
+      {:ok, refresh_token} = LedgerBankApi.Accounts.AuthService.generate_refresh_token(user)
 
       args = %{
-        refresh_token: refresh_token.token
+        refresh_token: refresh_token
       }
       context = %{}
 

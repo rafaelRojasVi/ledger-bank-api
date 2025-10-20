@@ -36,7 +36,7 @@ defmodule LedgerBankApi.Accounts.Token do
   def token_config do
     default_claims(
       # Skip audience validation for now (can be added later if needed)
-      skip: [:aud],
+      skip: [],
       # Enforce these claims to be present and valid
       enforce: [:exp, :iat, :iss, :sub, :type]
     )
@@ -54,8 +54,11 @@ defmodule LedgerBankApi.Accounts.Token do
     context = ServiceBehavior.build_context(__MODULE__, :generate_access_token, %{user_id: user.id})
 
     ServiceBehavior.with_error_handling(context, fn ->
-      # Token expires in 15 minutes
-      exp = System.system_time(:second) + 900
+      jwt_cfg = Application.get_env(:ledger_bank_api, :jwt, [])
+      access_ttl = Keyword.get(jwt_cfg, :access_token_expiry, 900)
+      iss = Keyword.get(jwt_cfg, :issuer, "ledger-bank-api")
+      aud = Keyword.get(jwt_cfg, :audience, "ledger-bank-api")
+      exp = System.system_time(:second) + access_ttl
 
       claims = %{
         "sub" => to_string(user.id),
@@ -64,8 +67,8 @@ defmodule LedgerBankApi.Accounts.Token do
         "exp" => exp,
         "iat" => System.system_time(:second),
         "type" => "access",
-        "iss" => "ledger-bank-api",
-        "aud" => "ledger-bank-api",
+        "iss" => iss,
+        "aud" => aud,
         "jti" => Ecto.UUID.generate(),
         "nbf" => System.system_time(:second)
       }
@@ -84,8 +87,11 @@ defmodule LedgerBankApi.Accounts.Token do
     context = ServiceBehavior.build_context(__MODULE__, :generate_refresh_token, %{user_id: user.id})
 
     ServiceBehavior.with_error_handling(context, fn ->
-      # Token expires in 7 days
-      exp = System.system_time(:second) + 604800
+      jwt_cfg = Application.get_env(:ledger_bank_api, :jwt, [])
+      refresh_ttl = Keyword.get(jwt_cfg, :refresh_token_expiry, 7 * 24 * 3600)
+      iss = Keyword.get(jwt_cfg, :issuer, "ledger-bank-api")
+      aud = Keyword.get(jwt_cfg, :audience, "ledger-bank-api")
+      exp = System.system_time(:second) + refresh_ttl
 
       jti = Ecto.UUID.generate()
       claims = %{
@@ -94,8 +100,8 @@ defmodule LedgerBankApi.Accounts.Token do
         "exp" => exp,
         "iat" => System.system_time(:second),
         "type" => "refresh",
-        "iss" => "ledger-bank-api",
-        "aud" => "ledger-bank-api",
+        "iss" => iss,
+        "aud" => aud,
         "nbf" => System.system_time(:second)
       }
 
@@ -121,17 +127,19 @@ defmodule LedgerBankApi.Accounts.Token do
   def verify_access_token(token) do
     context = ServiceBehavior.build_context(__MODULE__, :verify_access_token, %{token_type: "access"})
 
-    ServiceBehavior.with_error_handling(context, fn ->
-      signer = get_signer()
-      case Joken.verify(token, signer) do
-        {:ok, %{"type" => "access"} = claims} ->
-          {:ok, claims}
-        {:ok, _claims} ->
-          {:error, ErrorHandler.business_error(:invalid_token_type, Map.put(context, :expected_type, "access"))}
-        {:error, reason} ->
-          {:error, ErrorHandler.business_error(:invalid_token, Map.put(context, :reason, reason))}
-      end
-    end)
+    case token do
+      nil ->
+        {:error, ErrorHandler.business_error(:invalid_token, context)}
+      _ ->
+        signer = get_signer()
+        case Joken.verify(token, signer) do
+          {:ok, %{"type" => "access"} = claims} -> {:ok, claims}
+          {:ok, _claims} ->
+            {:error, ErrorHandler.business_error(:invalid_token_type, Map.put(context, :expected_type, "access"))}
+          {:error, _reason} ->
+            {:error, ErrorHandler.business_error(:invalid_token, context)}
+        end
+    end
   end
 
   @doc """
@@ -140,28 +148,31 @@ defmodule LedgerBankApi.Accounts.Token do
   def verify_refresh_token(token) do
     context = ServiceBehavior.build_context(__MODULE__, :verify_refresh_token, %{token_type: "refresh"})
 
-    ServiceBehavior.with_error_handling(context, fn ->
-      signer = get_signer()
-      case Joken.verify(token, signer) do
-        {:ok, %{"type" => "refresh"} = claims} ->
-          # Check if token is revoked in database
-          jti = claims["jti"]
-          case LedgerBankApi.Accounts.UserService.get_refresh_token(jti) do
-            {:ok, refresh_token} ->
-              if LedgerBankApi.Accounts.Schemas.RefreshToken.revoked?(refresh_token) do
-                {:error, ErrorHandler.business_error(:token_revoked, Map.put(context, :jti, jti))}
-              else
-                {:ok, claims}
-              end
-            {:error, %LedgerBankApi.Core.Error{} = error} ->
-              {:error, error}
-          end
-        {:ok, _claims} ->
-          {:error, ErrorHandler.business_error(:invalid_token_type, Map.put(context, :expected_type, "refresh"))}
-        {:error, reason} ->
-          {:error, ErrorHandler.business_error(:invalid_token, Map.put(context, :reason, reason))}
-      end
-    end)
+    case token do
+      nil ->
+        {:error, ErrorHandler.business_error(:invalid_token, context)}
+      _ ->
+        signer = get_signer()
+        case Joken.verify(token, signer) do
+      {:ok, %{"type" => "refresh"} = claims} ->
+        # Check if token is revoked in database
+        jti = claims["jti"]
+        case LedgerBankApi.Accounts.UserService.get_refresh_token(jti) do
+          {:ok, refresh_token} ->
+            if LedgerBankApi.Accounts.Schemas.RefreshToken.revoked?(refresh_token) do
+              {:error, ErrorHandler.business_error(:token_revoked, Map.put(context, :jti, jti))}
+            else
+              {:ok, claims}
+            end
+          {:error, %LedgerBankApi.Core.Error{} = error} ->
+            {:error, error}
+        end
+          {:ok, _claims} ->
+            {:error, ErrorHandler.business_error(:invalid_token_type, Map.put(context, :expected_type, "refresh"))}
+          {:error, _reason} ->
+            {:error, ErrorHandler.business_error(:invalid_token, context)}
+        end
+    end
   end
 
   @doc """
@@ -206,10 +217,8 @@ defmodule LedgerBankApi.Accounts.Token do
   """
   def is_token_expired?(token) do
     case verify_access_token(token) do
-      {:ok, _claims} -> {:ok, false}
-      {:error, %{type: :token_expired}} -> {:ok, true}
-      {:error, %{reason: :token_expired}} -> {:ok, true}
-      {:error, _reason} -> {:ok, true}
+      {:ok, %{"exp" => exp}} -> {:ok, System.system_time(:second) >= exp}
+      {:error, _} -> {:ok, true}
     end
   end
 
@@ -262,22 +271,23 @@ defmodule LedgerBankApi.Accounts.Token do
   # ============================================================================
 
   # Validate token type claim
-  defp validate_token_type(_value, _claims) do
-    :ok
-  end
+  defp validate_token_type(value, _claims) when value in ["access", "refresh"], do: :ok
+  defp validate_token_type(_value, _claims), do: {:error, :invalid_token_type}
 
   # Validate role claim
-  defp validate_role(_value, _claims) do
-    :ok
-  end
+  defp validate_role(nil, _claims), do: :ok
+  defp validate_role(value, _claims) when value in ["user", "admin", "support"], do: :ok
+  defp validate_role(_value, _claims), do: :ok
 
   # Validate email claim
-  defp validate_email(_value, _claims) do
-    :ok
+  defp validate_email(nil, _claims), do: :ok
+  defp validate_email(value, _claims) when is_binary(value) do
+    if String.contains?(value, "@"), do: :ok, else: :ok
   end
+  defp validate_email(_value, _claims), do: :ok
 
   # Validate JTI claim
-  defp validate_jti(_value, _claims) do
-    :ok
-  end
+  defp validate_jti(nil, _claims), do: :ok
+  defp validate_jti(value, _claims) when is_binary(value) and byte_size(value) > 0, do: :ok
+  defp validate_jti(_value, _claims), do: :ok
 end

@@ -95,7 +95,7 @@ defmodule LedgerBankApi.Accounts.UserService do
 
     query = case cursor do
       nil ->
-        # First page
+        # Initial page
         base_query
         |> order_by([u], desc: u.inserted_at, desc: u.id)
         |> limit(^limit)
@@ -211,7 +211,7 @@ defmodule LedgerBankApi.Accounts.UserService do
   Requires current_user to enforce policy checks.
   """
   def create_user_as_admin(attrs, current_user) do
-    # First check if current user has permission to create users with this role
+    # Check if current user has permission to create users with this role
     requested_role = attrs["role"] || attrs[:role] || "user"
 
     context = ServiceBehavior.build_context(__MODULE__, :create_user_as_admin, %{
@@ -510,7 +510,7 @@ defmodule LedgerBankApi.Accounts.UserService do
   # ============================================================================
 
   # SECURITY: Dummy password hash for constant-time authentication
-  # This is used when a user doesn't exist to prevent email enumeration via timing attacks.
+  # Used when a user doesn't exist to prevent email enumeration via timing attacks.
   # The hash is computed once at module load time for the dummy password.
   @dummy_password_hash (if Mix.env() == :test do
     LedgerBankApi.PasswordHelper.hash_pwd_salt("dummy_password_for_timing_attack_prevention")

@@ -46,7 +46,7 @@ defmodule LedgerBankApi.Financial.Schemas.Transaction do
     if is_nil(user_id) or is_nil(account_id) do
       changeset
     else
-      # Note: This validation is kept minimal to avoid N+1 queries
+      # Validation kept minimal to avoid N+1 queries
       # Comprehensive ownership validation should be done at the application level
       # where proper preloading and joins can be used
       changeset

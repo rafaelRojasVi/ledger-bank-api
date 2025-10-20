@@ -28,13 +28,8 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolver do
 
   def list(%{limit: limit, offset: offset}, %{context: %{current_user: current_user}}) do
     if can_list_users?(current_user) do
-      case UserService.list_users(%{limit: limit, offset: offset}) do
-        {:ok, users} ->
-          {:ok, users}
-
-        {:error, _reason} ->
-          {:error, "Failed to fetch users"}
-      end
+      users = UserService.list_users(%{limit: limit, offset: offset})
+      {:ok, users}
     else
       {:error, "Access denied"}
     end
@@ -56,6 +51,9 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolver do
     case UserService.create_user(input) do
       {:ok, user} ->
         {:ok, %{success: true, user: user, errors: []}}
+
+      {:error, %LedgerBankApi.Core.Error{} = error} ->
+        {:ok, %{success: false, user: nil, errors: [error.message]}}
 
       {:error, changeset} ->
         errors = format_changeset_errors(changeset)

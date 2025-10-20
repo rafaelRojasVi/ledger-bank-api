@@ -876,7 +876,7 @@ services:
 
 **Symptom:** First request after inactivity takes 20-30 seconds
 
-**This is normal** for free tiers. To keep warm:
+**Normal behavior** for free tiers. To keep warm:
 
 ```bash
 # Setup a cron job to ping health endpoint every 10 minutes

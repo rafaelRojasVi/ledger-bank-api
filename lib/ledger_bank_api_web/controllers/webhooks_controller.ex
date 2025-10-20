@@ -322,20 +322,20 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
   end
 
   defp process_payment_status_update(params) do
-    # This would integrate with your payment service
-    # For now, return a mock success
+    # TODO: Integrate with actual payment service
+    # Currently returns mock data for development
     {:ok, %{
       id: params["payment_id"],
       status: params["status"],
       amount: params["amount"],
       direction: params["direction"] || "outbound",
-      user_id: "user_123"  # This would come from the payment record
+      user_id: "user_123"  # TODO: Extract from payment record
     }}
   end
 
   defp process_account_sync(params) do
-    # This would integrate with your bank sync service
-    # For now, return a mock success
+    # TODO: Integrate with actual bank sync service
+    # Currently returns mock data for development
     {:ok, %{
       user_id: params["user_id"],
       accounts_synced: params["accounts_synced"],
@@ -344,8 +344,8 @@ defmodule LedgerBankApiWeb.Controllers.WebhooksController do
   end
 
   defp process_fraud_detection(params) do
-    # This would integrate with your fraud detection service
-    # For now, return a mock success
+    # TODO: Integrate with actual fraud detection service
+    # Currently returns mock data for development
     {:ok, %{
       payment_id: params["payment_id"],
       severity: params["severity"],

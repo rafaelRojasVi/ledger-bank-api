@@ -85,8 +85,8 @@ defmodule LedgerBankApi.Financial.Workers.PaymentWorker do
   # ============================================================================
   # FINANCIAL-SPECIFIC ERROR HANDLING (Enhanced DLQ Logic)
   # ============================================================================
-  # Note: Basic retry logic is handled by WorkerBehavior
-  # This section provides financial-specific dead letter queue actions
+  # Basic retry logic is handled by WorkerBehavior
+  # Provides financial-specific dead letter queue actions
 
   @doc false
   def backoff(%Oban.Job{attempt: attempt, args: %{"error_reason" => reason}}) do

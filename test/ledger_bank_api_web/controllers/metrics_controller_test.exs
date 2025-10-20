@@ -48,7 +48,7 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
     test "returns performance metrics", %{conn: conn} do
       conn = get(conn, ~p"/api/metrics/performance")
 
-      # This endpoint might not exist, so we'll handle 404 gracefully
+      # Endpoint might not exist, so handle 404 gracefully
       case response(conn, :status) do
         200 ->
           assert %{"data" => data} = json_response(conn, 200)
@@ -210,7 +210,7 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
 
       results = Task.await_many(tasks, 5000)
 
-      # All requests should succeed
+      # Requests should succeed
       assert length(results) == 3
       for status <- results do
         assert status in [200, 404]  # 200 for success, 404 if endpoint doesn't exist

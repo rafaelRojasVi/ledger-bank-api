@@ -9,8 +9,8 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       # Test that the function accepts the expected token format
       token = %{access_token: "valid_token_format"}
 
-      # This will make a real API call and get an authentication error
-      # The circuit breaker may not be initialized properly
+      # Makes a real API call and gets an authentication error
+      # Circuit breaker may not be initialized properly
       try do
         result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_accounts(token)
         # If it works, it should return an error due to invalid token or empty list from fallback
@@ -18,7 +18,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       rescue
         CaseClauseError ->
           # Circuit breaker is not handling {:error, :not_found} properly
-          # This is expected behavior for portfolio testing
+          # Expected behavior for portfolio testing
           :ok
       end
     end
@@ -33,7 +33,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       ]
 
       for token <- invalid_tokens do
-        # These should fail with function clause errors
+        # Should fail with function clause errors
         try do
           LedgerBankApi.Financial.Integrations.MonzoClient.fetch_accounts(token)
           flunk("Expected an error for invalid token: #{inspect(token)}")
@@ -49,7 +49,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       account_id = "acc_123"
       params = %{access_token: "valid_token", since: "2024-01-01"}
 
-      # This will fail with real API calls, but we're testing the interface
+      # Will fail with real API calls, but testing the interface
       result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_transactions(account_id, params)
 
       # Accept either success or error - we're testing the interface, not the API
@@ -63,7 +63,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       params = %{access_token: "valid_token", since: "2024-01-01"}
 
       for account_id <- invalid_account_ids do
-        # These should fail with protocol errors or function clause errors
+        # Should fail with protocol errors or function clause errors
         try do
           result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_transactions(account_id, params)
           # If it doesn't raise an error, it should still return an error due to invalid token
@@ -84,7 +84,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
         description: "Test payment"
       }
 
-      # This will fail with real API calls, but we're testing the interface
+      # Will fail with real API calls, but testing the interface
       result = LedgerBankApi.Financial.Integrations.MonzoClient.create_payment(payment_data)
 
       # Accept either success or error - we're testing the interface, not the API
@@ -102,7 +102,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       ]
 
       for payment_data <- invalid_payments do
-        # These should fail with function clause errors
+        # Should fail with function clause errors
         assert_raise FunctionClauseError, fn ->
           LedgerBankApi.Financial.Integrations.MonzoClient.create_payment(payment_data)
         end
@@ -114,7 +114,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       account_id = "acc_123"
       token = %{access_token: "valid_token"}
 
-      # This will fail with real API calls, but we're testing the interface
+      # Will fail with real API calls, but testing the interface
       result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_balance(account_id, token)
 
       # Accept either success or error - we're testing the interface, not the API
@@ -147,7 +147,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
         payment_id: "pay_123"
       }
 
-      # This will fail with real API calls, but we're testing the interface
+      # Will fail with real API calls, but testing the interface
       result = LedgerBankApi.Financial.Integrations.MonzoClient.get_payment_status(payment_data)
 
       # Accept either success or error - we're testing the interface, not the API
@@ -159,7 +159,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       # Test that the function accepts the expected token data format
       token_data = %{refresh_token: "valid_refresh_token"}
 
-      # This will fail with real API calls, but we're testing the interface
+      # Will fail with real API calls, but testing the interface
       result = LedgerBankApi.Financial.Integrations.MonzoClient.refresh_token(token_data)
 
       # Accept either success or error - we're testing the interface, not the API
@@ -174,7 +174,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       # This is more of an integration test concept
       token = %{access_token: "timeout_test_token"}
 
-      # The circuit breaker should handle timeouts
+      # Circuit breaker should handle timeouts
       try do
         result = LedgerBankApi.Financial.Integrations.MonzoClient.fetch_accounts(token)
         # Should return either success or error, not crash
@@ -183,7 +183,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       rescue
         CaseClauseError ->
           # Circuit breaker is not handling {:error, :not_found} properly
-          # This is expected behavior for portfolio testing
+          # Expected behavior for portfolio testing
           :ok
       end
     end
@@ -200,7 +200,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       rescue
         CaseClauseError ->
           # Circuit breaker is not handling {:error, :not_found} properly
-          # This is expected behavior for portfolio testing
+          # Expected behavior for portfolio testing
           :ok
       end
     end
@@ -216,7 +216,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       rescue
         CaseClauseError ->
           # Circuit breaker is not handling {:error, :not_found} properly
-          # This is expected behavior for portfolio testing
+          # Expected behavior for portfolio testing
           :ok
       end
     end
@@ -235,7 +235,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       rescue
         CaseClauseError ->
           # Circuit breaker is not handling {:error, :not_found} properly
-          # This is expected behavior for portfolio testing
+          # Expected behavior for portfolio testing
           :ok
       end
     end
@@ -251,7 +251,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       rescue
         CaseClauseError ->
           # Circuit breaker is not handling {:error, :not_found} properly
-          # This is expected behavior for portfolio testing
+          # Expected behavior for portfolio testing
           :ok
       end
     end
@@ -322,7 +322,7 @@ defmodule LedgerBankApi.Financial.Integrations.MonzoClientTest do
       # Wait for all tasks to complete
       results = Task.await_many(tasks, 5000)
 
-      # All requests should complete without crashing
+      # Requests should complete without crashing
       assert length(results) == 3
       for result <- results do
         assert match?({:error, _}, result)

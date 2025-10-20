@@ -12,7 +12,7 @@ defmodule LedgerBankApiWeb.Plugs.Tracing do
 
   def call(conn, _opts) do
     # Tracing temporarily disabled due to OpenTelemetry API issues
-    # TODO: Re-enable when OpenTelemetry dependencies are properly configured
+    # TODO: Re-enable when OpenTelemetry dependencies are configured
     conn
   end
 

@@ -4,14 +4,12 @@ defmodule LedgerBankApiWeb.Resolvers.TransactionResolver do
   """
 
   def list(%{account_id: _account_id, limit: _limit, offset: _offset}, %{context: %{current_user: _current_user}}) do
-    # This would integrate with your transaction service
-    # For now, return empty list
+    # TODO: Implement transaction service integration
     {:ok, []}
   end
 
   def list(%{limit: _limit, offset: _offset}, %{context: %{current_user: _current_user}}) do
-    # This would integrate with your transaction service
-    # For now, return empty list
+    # TODO: Implement transaction service integration
     {:ok, []}
   end
 

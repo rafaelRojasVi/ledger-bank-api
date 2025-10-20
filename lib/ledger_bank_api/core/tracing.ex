@@ -179,9 +179,8 @@ defmodule LedgerBankApi.Core.Tracing do
         :ok
 
       _traceparent_value ->
-        # For now, just log that we would extract trace context
-        # TODO: Implement proper trace context extraction when OpenTelemetry API is stable
-        Logger.debug("Trace context extraction would be performed here")
+        # TODO: Implement trace context extraction when OpenTelemetry API is stable
+        Logger.debug("Trace context extraction not yet implemented")
         :ok
     end
   end
@@ -195,9 +194,8 @@ defmodule LedgerBankApi.Core.Tracing do
         headers
 
       _span_ctx ->
-        # For now, just return headers as-is
-        # TODO: Implement proper trace context injection when OpenTelemetry API is stable
-        Logger.debug("Trace context injection would be performed here")
+        # TODO: Implement trace context injection when OpenTelemetry API is stable
+        Logger.debug("Trace context injection not yet implemented")
         headers
     end
   end

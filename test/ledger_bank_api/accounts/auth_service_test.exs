@@ -408,7 +408,7 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       # The business layer trusts that inputs are valid. This test verifies the service
       # will fail gracefully when given invalid inputs.
       {:error, error} = AuthService.refresh_access_token(nil)
-      assert error.type == :internal_server_error
+      assert error.type == :unauthorized
     end
 
     test "fails to refresh with revoked refresh token" do
@@ -475,7 +475,7 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       # The business layer trusts that inputs are valid. This test verifies the service
       # will fail gracefully when given invalid inputs.
       {:error, error} = AuthService.logout_user(nil)
-      assert error.type == :internal_server_error
+      assert error.type == :unauthorized
     end
 
     test "fails to logout with empty refresh token" do
@@ -569,7 +569,7 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       # The business layer trusts that inputs are valid. This test verifies the service
       # will fail gracefully when given invalid inputs.
       {:error, error} = AuthService.get_user_from_token(nil)
-      assert error.type == :internal_server_error
+      assert error.type == :unauthorized
     end
 
     test "fails to get user from expired access token" do
@@ -659,7 +659,7 @@ defmodule LedgerBankApi.Accounts.AuthServiceTest do
       # The business layer trusts that inputs are valid. This test verifies the service
       # will fail gracefully when given invalid inputs.
       {:error, error} = AuthService.get_token_expiration(nil)
-      assert error.type == :internal_server_error
+      assert error.type == :unauthorized
     end
 
     test "fails to get expiration from refresh token (wrong type)" do

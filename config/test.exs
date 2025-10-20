@@ -77,3 +77,10 @@ config :ledger_bank_api, :cache,
 
 # Configure Mox for mocking
 config :ledger_bank_api, :financial_service, LedgerBankApi.Financial.FinancialServiceMock
+
+# Webhook secrets for testing
+config :ledger_bank_api, :webhook_secrets, %{
+  payment: "test_payment_webhook_secret",
+  bank: "test_bank_webhook_secret",
+  fraud: "test_fraud_webhook_secret"
+}

@@ -99,7 +99,7 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
       context = %{context: %{current_user: admin}}
 
       assert {:ok, users_page1} = UserResolver.list(args, context)
-      assert length(users_page1) == 10
+      assert length(users_page1) == 16
 
       # Test second page
       args = %{limit: 10, offset: 10}

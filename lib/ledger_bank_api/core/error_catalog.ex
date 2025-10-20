@@ -75,6 +75,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :account_suspended => :business_rule,
       :description_required => :validation,
       :description_too_long => :validation,
+      :webhook_processing_failed => :validation,
       :unauthorized_access => :authorization,
 
       # Not found errors
@@ -96,6 +97,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_audience => :authentication,
       :token_not_yet_valid => :authentication,
       :missing_required_claims => :authentication,
+      :unauthorized => :authentication,
 
       # Authorization errors
       :forbidden => :authorization,
@@ -221,6 +223,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
     :account_suspended -> "Account is suspended"
     :description_required -> "Description is required"
     :description_too_long -> "Description is too long"
+    :webhook_processing_failed -> "Webhook processing failed"
     :unauthorized_access -> "Unauthorized access to account"
 
       # Not found errors
@@ -242,6 +245,7 @@ defmodule LedgerBankApi.Core.ErrorCatalog do
       :invalid_audience -> "Invalid token audience"
       :token_not_yet_valid -> "Token not yet valid"
       :missing_required_claims -> "Missing required token claims"
+      :unauthorized -> "Unauthorized access"
 
       # Authorization errors
       :forbidden -> "Access forbidden"

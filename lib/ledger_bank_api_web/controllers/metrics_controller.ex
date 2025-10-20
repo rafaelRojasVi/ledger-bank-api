@@ -47,10 +47,14 @@ defmodule LedgerBankApiWeb.Controllers.MetricsController do
       _metrics = Prometheus.Format.Text.format()
 
       health_status = %{
-        status: "ok",
+        status: "healthy",
         service: "metrics",
-        timestamp: DateTime.utc_now(),
-        prometheus: "available"
+        timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+        prometheus: "available",
+        checks: %{
+          database: check_database(),
+          cache: check_cache()
+        }
       }
 
       handle_success(conn, health_status)
@@ -60,6 +64,29 @@ defmodule LedgerBankApiWeb.Controllers.MetricsController do
         context = build_context(conn, :metrics_health, %{error: inspect(error)})
         error = LedgerBankApi.Core.ErrorHandler.business_error(:service_unavailable, context)
         handle_error(conn, error)
+    end
+  end
+
+  # Private helper functions
+
+  defp check_database do
+    try do
+      case LedgerBankApi.Repo.query("SELECT 1", []) do
+        {:ok, _} -> "ok"
+        {:error, _} -> "error"
+      end
+    rescue
+      _ -> "error"
+    end
+  end
+
+  defp check_cache do
+    try do
+      # For now, assume cache is always available
+      # In production, this would check Redis or similar
+      "ok"
+    rescue
+      _ -> "error"
     end
   end
 end

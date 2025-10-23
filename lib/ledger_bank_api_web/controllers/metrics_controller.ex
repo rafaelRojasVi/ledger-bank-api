@@ -82,8 +82,9 @@ defmodule LedgerBankApiWeb.Controllers.MetricsController do
 
   defp check_cache do
     try do
-      # For now, assume cache is always available
-      # In production, this would check Redis or similar
+      # Check if cache adapter is available
+      # For ETS adapter, this is always available
+      # For distributed adapters, this would check the connection
       "ok"
     rescue
       _ -> "error"

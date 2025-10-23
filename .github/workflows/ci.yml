@@ -38,23 +38,23 @@ jobs:
           elixir-version: '1.18.4'
           otp-version: '26.2'
 
-      # 4) Spin up Postgres
-      - name: Start Postgres via Compose
-        run: docker compose up -d db
-
-      # 5) Wait until Postgres responds
-      - name: Wait for Postgres
+      # 4) Start services with health dependencies
+      - name: Start services with health checks
         run: |
-          for i in {1..20}; do
-            if docker compose exec -T db pg_isready -h localhost -p 5432 -U postgres; then
-              echo "Postgres is up"
-              exit 0
-            fi
-            echo "Waiting for Postgres…"
-            sleep 2
-          done
-          echo "Postgres never became ready" >&2
-          exit 1
+          # Start db and redis services
+          docker compose up -d db redis
+          
+          # Wait for services to be healthy using compose health dependencies
+          echo "Waiting for services to be healthy..."
+          docker compose ps
+          
+          # Wait for db to be healthy
+          timeout 60 bash -c 'until docker compose ps db | grep -q "healthy"; do sleep 2; done'
+          echo "Database is healthy"
+          
+          # Wait for redis to be healthy  
+          timeout 60 bash -c 'until docker compose ps redis | grep -q "healthy"; do sleep 2; done'
+          echo "Redis is healthy"
 
       # 6) Fetch deps, create DB, migrate, test
       - run: mix deps.get
@@ -64,6 +64,14 @@ jobs:
       - run: mix ecto.migrate
       - run: mix test --warnings-as-errors
 
-      # 7) Build your Docker image (optional)
+      # 7) Test health dependencies by starting web service
+      - name: Test service health dependencies
+        run: |
+          echo "Testing service health dependencies..."
+          # Start web service which depends on db and redis being healthy
+          timeout 120 docker compose up --abort-on-container-exit web
+          echo "Web service started successfully with health dependencies"
+
+      # 8) Build your Docker image (optional)
       - name: Build app image
         run: docker compose build --pull

@@ -24,6 +24,42 @@
 
 This project started as "build a simple banking API" and evolved into a deep dive on **professional Elixir architecture**. Here's what makes this portfolio piece unique:
 
+## 🚀 Recent Architectural Improvements
+
+**Latest Enhancements (January 2025):**
+
+### **Security & Authentication Hardening**
+- ✅ **JWT Verification Bypass Fixed** - Critical security vulnerability resolved
+- ✅ **JWT Configuration Unification** - Standardized issuer, audience, and expiry across environments
+- ✅ **JWT Secret Standardization** - Enforced 64+ character secrets with validation
+- ✅ **JWT Config-Driven Approach** - Removed hardcoded values, made claims configurable
+- ✅ **Password Hashing Decoupling** - Removed Mix.env() dependencies for production flexibility
+
+### **Infrastructure & CI/CD Improvements**
+- ✅ **Oban Configuration Consolidation** - Unified queue management across environments
+- ✅ **CI Database Readiness** - Hardened Postgres health checks with proper dependencies
+- ✅ **OpenTelemetry Optimization** - Disabled unnecessary instrumentation overhead
+- ✅ **CI Quality Gates** - Added format checking and warnings-as-errors enforcement
+- ✅ **Docker Compose Health Dependencies** - Proper service startup ordering
+
+### **Performance & Scalability Enhancements**
+- ✅ **Database Index Audit** - Added 20+ optimized indexes for pagination and queries
+- ✅ **Policy Combinators** - Complex authorization logic with `all/1`, `any/1`, `negate/1`
+- ✅ **Controller Helper Macros** - Standardized CRUD, pagination, and batch operations
+- ✅ **Queryable Extensions** - Advanced filtering, sorting, and aggregation capabilities
+- ✅ **Cache Standardization** - TTL helpers and `get_or_put` variants for consistent caching
+
+### **Worker & Background Job Improvements**
+- ✅ **WorkerBehavior Enhancement** - Custom retry logic, pre/post-work hooks, telemetry
+- ✅ **OpenTelemetry Resource Alignment** - Environment-driven resource attributes
+- ✅ **Redis Adapter Consistency** - Cleaned up stale references, prepared for distributed caching
+
+### **Documentation & Developer Experience**
+- ✅ **JWT Token Tradeoffs Documentation** - Comprehensive analysis of security vs performance
+- ✅ **Configuration Precedence** - Clear documentation of JWT and Oban configuration
+- ✅ **Problem Registry Audit** - Verified RFC 9457 compliance and error discovery
+- ✅ **Documentation Clarity** - Marked pseudo-code examples to prevent copy-paste confusion
+
 ### **Key Achievements**
 
 | **Pattern** | **What I Built** | **Why It Matters** |
@@ -586,10 +622,11 @@ lib/
 - **PostgreSQL 16+** - Primary database
 
 ### Authentication & Security
-- **Joken** - JWT token generation and validation
-- **Argon2** - Password hashing (OWASP recommended)
+- **Joken** - JWT token generation and validation with config-driven claims
+- **Argon2** - Password hashing (OWASP recommended) with environment-specific configuration
 - **CORS** - Cross-origin resource sharing
 - **Security Headers** - CSP, HSTS, X-Frame-Options, etc.
+- **Policy Combinators** - Complex authorization logic with `all/1`, `any/1`, `negate/1`
 
 ### Background Jobs
 - **Oban 2.17+** - Reliable background job processing

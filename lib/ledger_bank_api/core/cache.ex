@@ -28,9 +28,10 @@ defmodule LedgerBankApi.Core.Cache do
       config :ledger_bank_api, :cache_adapter,
         LedgerBankApi.Core.Cache.EtsAdapter
 
+      # For multi-node deployments, implement a distributed cache adapter
       # config/prod.exs (future - for multi-node)
-      config :ledger_bank_api, :cache_adapter,
-        LedgerBankApi.Core.Cache.RedisAdapter
+      # config :ledger_bank_api, :cache_adapter,
+      #   LedgerBankApi.Core.Cache.DistributedAdapter
 
   ## Switching Adapters
 

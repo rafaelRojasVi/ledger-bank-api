@@ -15,7 +15,7 @@ defmodule LedgerBankApi.Core.Cache.EtsAdapter do
 
   ## Limitations
 
-  - Not distributed - Use RedisAdapter for multi-node setups
+  - Not distributed - Use distributed cache adapter for multi-node setups
   - Lost on restart - No persistence
   - Memory limited - Bounded by VM memory
   """

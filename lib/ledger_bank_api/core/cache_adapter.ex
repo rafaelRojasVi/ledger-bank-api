@@ -2,7 +2,7 @@ defmodule LedgerBankApi.Core.CacheAdapter do
   @moduledoc """
   Behaviour for cache implementations.
 
-  Enables switching between different cache backends (ETS, Redis, Memcached)
+  Enables switching between different cache backends (ETS, distributed, etc.)
   without changing application code.
 
   ## Philosophy
@@ -10,7 +10,7 @@ defmodule LedgerBankApi.Core.CacheAdapter do
   - **Adapter pattern** - Swap implementations via configuration
   - **Same interface** - All adapters implement identical API
   - **Testing flexibility** - Mock adapter for tests
-  - **Horizontal scaling** - Redis for distributed caching
+  - **Horizontal scaling** - Distributed adapters for multi-node setups
 
   ## Configuration
 
@@ -18,23 +18,24 @@ defmodule LedgerBankApi.Core.CacheAdapter do
       config :ledger_bank_api, :cache_adapter,
         LedgerBankApi.Core.Cache.EtsAdapter  # Default
 
+      # For multi-node deployments, implement a distributed cache adapter
       # config/prod.exs (future)
-      config :ledger_bank_api, :cache_adapter,
-        LedgerBankApi.Core.Cache.RedisAdapter
+      # config :ledger_bank_api, :cache_adapter,
+      #   LedgerBankApi.Core.Cache.DistributedAdapter
 
   ## Implementing an Adapter
 
-      defmodule MyApp.Cache.RedisAdapter do
+      defmodule MyApp.Cache.DistributedAdapter do
         @behaviour LedgerBankApi.Core.CacheAdapter
 
         @impl true
-        def init, do: # Connect to Redis
+        def init, do: # Connect to distributed cache
 
         @impl true
-        def get(key), do: # Redis GET
+        def get(key), do: # Distributed cache GET
 
         @impl true
-        def put(key, value, opts), do: # Redis SET with TTL
+        def put(key, value, opts), do: # Distributed cache SET with TTL
 
         # ... implement all callbacks
       end

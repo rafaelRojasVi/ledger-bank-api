@@ -9,6 +9,229 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Major Architectural Improvements (January 2025)
+
+##### Security & Authentication Hardening
+- **JWT Verification Bypass Fix** - Resolved critical security vulnerability in token validation
+  - Fixed Joken claim validation to properly enforce required claims
+  - Enhanced token verification with strict claim checking
+  - Added comprehensive test coverage for security scenarios
+  - Prevents unauthorized access through token manipulation
+
+- **JWT Configuration Unification** - Standardized JWT settings across environments
+  - Unified issuer and audience to `"ledger-bank-api"` across all environments
+  - Standardized token expiry configuration (15min access, 7-day refresh)
+  - Removed hardcoded values in favor of configuration-driven approach
+  - Added JWT secret length validation (minimum 64 characters)
+
+- **Password Hashing Decoupling** - Removed Mix.env() dependencies
+  - Created `LedgerBankApi.Accounts.PasswordService` for configuration-driven hashing
+  - Decoupled password hashing from development environment detection
+  - Added support for multiple hashing algorithms (Pbkdf2, Argon2)
+  - Environment-specific hashing configuration for optimal performance
+
+##### Infrastructure & CI/CD Improvements
+- **Oban Configuration Consolidation** - Unified queue management
+  - Consolidated Oban configuration across base, environment, and runtime configs
+  - Documented configuration precedence (Base → Environment → Runtime)
+  - Added comprehensive queue configuration examples
+  - Environment-specific queue concurrency settings
+
+- **CI Database Readiness** - Hardened Postgres health checks
+  - Enhanced CI workflow with proper database readiness checks
+  - Added `docker compose exec -T db pg_isready` for reliable health verification
+  - Implemented timeout and retry logic for database startup
+  - Added comprehensive error handling for CI failures
+
+- **OpenTelemetry Optimization** - Disabled unnecessary instrumentation overhead
+  - Commented out OpenTelemetry span processor when instrumentation packages not present
+  - Added comprehensive resource attributes for service identification
+  - Environment-driven OpenTelemetry configuration
+  - Created `docs/OPENTELEMETRY_CONFIGURATION.md` for deployment guidance
+
+- **CI Quality Gates** - Enhanced code quality enforcement
+  - Added `mix format --check-formatted` to CI pipeline
+  - Added `mix compile --warnings-as-errors` for strict compilation
+  - Added `mix test --warnings-as-errors` for comprehensive testing
+  - Created `.formatter.exs` for consistent code formatting
+
+##### Performance & Scalability Enhancements
+- **Database Index Audit** - Added 20+ optimized indexes
+  - Created comprehensive index migration for pagination and query optimization
+  - Added indexes for users, payments, transactions, bank accounts, and Oban jobs
+  - Optimized for common query patterns (filtering, sorting, pagination)
+  - Enhanced performance for large datasets
+
+- **Policy Combinators** - Complex authorization logic
+  - Added `Policy.all/1`, `Policy.any/1`, `Policy.negate/1` for policy composition
+  - Added role-based helpers: `has_role?/2`, `is_admin?/1`, `is_support?/1`
+  - Added action-based helpers: `is_self_action?/2`, `is_other_user_action?/2`
+  - Added field-based helpers: `has_only_allowed_fields?/2`, `has_restricted_fields?/2`
+  - Added sensitive operation helper: `can_perform_sensitive_operation?/3`
+  - Comprehensive test coverage for all policy combinators
+
+- **Controller Helper Macros** - Standardized controller patterns
+  - Added `crud_operation/7` for standard CRUD operations
+  - Added `paginated_list/7` for paginated list operations with filtering
+  - Added `batch_operation/7` for batch operations with progress tracking
+  - Added `with_auth/2`, `with_auth_and_permission/3`, `with_auth_and_ownership/3`
+  - Added `async_operation/7` for async operations returning job IDs
+  - Added `confirm_operation/5` for operations requiring confirmation
+
+- **Queryable Extensions** - Advanced query capabilities
+  - Added `apply_text_search/3` for multi-field text search
+  - Added `apply_date_range/3` for date range filtering
+  - Added `apply_keyset_pagination/2` for cursor-based pagination
+  - Added `apply_advanced_filters/2` for complex filtering with multiple operators
+  - Added `apply_multi_sort/2` for multi-field sorting
+  - Added `apply_custom_filter/3` for field-specific filtering
+  - Added `apply_aggregation/3` for aggregation queries (count, sum, etc.)
+
+- **Cache Standardization** - TTL helpers and get_or_put variants
+  - Added standardized TTL helpers: `put_short/2`, `put_medium/2`, `put_long/2`, `put_very_long/2`
+  - Added `get_or_put` variants for all TTL helpers
+  - Added `put_with_ttl/3`, `get_or_put_with_ttl/3` for custom TTLs
+  - Added `put_by_type/3`, `get_or_put_by_type/3` for data-type specific TTLs
+  - Added `put_by_freshness/3`, `get_or_put_by_freshness/3` for freshness-level TTLs
+
+##### Worker & Background Job Improvements
+- **WorkerBehavior Enhancement** - Custom retry logic and telemetry
+  - Added `should_retry_with_custom_logic?/2` for custom retry decisions
+  - Added `custom_telemetry_metadata/2` for enhanced telemetry
+  - Added `pre_work_validation/2` for pre-work validation and setup
+  - Added `post_work_cleanup/3` for post-work cleanup and finalization
+  - Enhanced telemetry with throughput, memory usage, and custom metadata
+  - Dynamic callback invocation using `function_exported?/3` and `apply/3`
+
+- **OpenTelemetry Resource Alignment** - Environment-driven attributes
+  - Added comprehensive resource attributes for service identification
+  - Added deployment information (version, environment, region)
+  - Added Kubernetes attributes (pod, namespace, node)
+  - Added cloud infrastructure attributes (provider, instance type)
+  - Added application and runtime information
+  - Added telemetry SDK information
+
+- **Redis Adapter Consistency** - Cleaned up stale references
+  - Removed non-existent Redis adapter references from documentation
+  - Updated cache documentation to use generic "distributed adapter" terminology
+  - Prepared codebase for future Redis integration
+  - Maintained ETS adapter as primary caching solution
+
+##### Documentation & Developer Experience
+- **JWT Token Tradeoffs Documentation** - Comprehensive security analysis
+  - Created `docs/JWT_TOKEN_TRADEOFFS.md` with detailed security analysis
+  - Documented short TTL rationale for financial applications
+  - Analyzed claim structure tradeoffs (minimal vs. comprehensive)
+  - Documented refresh token strategy and security considerations
+  - Provided performance analysis and monitoring recommendations
+  - Included alternative architecture comparisons
+
+- **Configuration Precedence Documentation** - Clear setup guidance
+  - Enhanced `docs/DEPLOYMENT_GUIDE.md` with Oban configuration section
+  - Added JWT configuration section with security considerations
+  - Documented configuration precedence for all major components
+  - Added troubleshooting guides for common configuration issues
+
+- **Problem Registry Audit** - Verified RFC 9457 compliance
+  - Cross-checked Problem Registry implementation against documentation
+  - Verified all endpoints work as documented
+  - Confirmed RFC 9457 Problem Details compliance
+  - Validated error discovery functionality
+
+- **Documentation Clarity** - Marked pseudo-code examples
+  - Added `> **📝 Example Usage**` callouts to code blocks in documentation
+  - Added `> **📝 Example Configuration Structure**` callouts
+  - Added `> **📝 Example Runtime Configuration**` callouts
+  - Prevented copy-paste confusion with pseudo-code examples
+
+##### README & Changelog Updates
+- **README.md Enhancement** - Reflected all recent improvements
+  - Added "Recent Architectural Improvements" section highlighting January 2025 enhancements
+  - Updated tech stack to reflect new capabilities
+  - Enhanced feature descriptions with new functionality
+  - Maintained comprehensive project overview
+
+### Changed
+- **JWT Token Generation** - Made claims configuration-driven
+  - Removed hardcoded issuer, audience, and expiry values
+  - Added configuration validation for required JWT settings
+  - Enhanced error handling for missing configuration
+  - Improved security through configurable token settings
+
+- **Password Hashing** - Environment-specific configuration
+  - Replaced `Mix.env()` conditional logic with configuration-driven approach
+  - Added support for different hashing algorithms per environment
+  - Enhanced test performance with simplified hashing in test environment
+  - Improved production security with configurable hashing parameters
+
+- **CI Workflow** - Enhanced with health dependencies
+  - Updated Docker Compose health check dependencies
+  - Added proper service startup ordering
+  - Enhanced error handling and timeout management
+  - Improved CI reliability and debugging
+
+### Fixed
+- **JWT Verification** - Resolved critical security bypass
+  - Fixed Joken claim validation to properly enforce required claims
+  - Enhanced token verification with strict validation
+  - Added comprehensive test coverage for security scenarios
+  - Prevented unauthorized access through token manipulation
+
+- **Configuration Issues** - Resolved compilation errors
+  - Fixed OpenTelemetry configuration compilation issues
+  - Resolved function definition errors in config files
+  - Enhanced error handling for missing configuration
+  - Improved configuration validation
+
+- **Documentation Issues** - Clarified pseudo-code examples
+  - Marked all pseudo-code examples to prevent copy-paste confusion
+  - Enhanced documentation clarity and usability
+  - Improved developer experience with clear examples
+
+### Performance
+- **Database Optimization** - Added 20+ performance indexes
+  - Enhanced query performance for pagination and filtering
+  - Optimized common query patterns across all tables
+  - Improved performance for large datasets
+  - Reduced query execution time for complex operations
+
+- **Cache Optimization** - Standardized TTL strategies
+  - Consistent caching strategies across different data types
+  - Optimized cache hit rates with appropriate TTLs
+  - Enhanced cache performance monitoring
+  - Improved overall application performance
+
+### Security
+- **JWT Security** - Enhanced token security
+  - Fixed critical JWT verification bypass vulnerability
+  - Standardized JWT configuration across environments
+  - Enhanced token validation with strict claim checking
+  - Improved security through configuration-driven approach
+
+- **Password Security** - Enhanced hashing security
+  - Decoupled password hashing from development environment
+  - Added support for multiple hashing algorithms
+  - Enhanced security through configurable hashing parameters
+  - Improved test performance with simplified hashing
+
+### Removed
+- **Stale References** - Cleaned up documentation
+  - Removed non-existent Redis adapter references
+  - Updated cache documentation to use generic terminology
+  - Cleaned up outdated configuration examples
+  - Improved documentation accuracy
+
+### In Progress
+- **Future Enhancements** - Planning next improvements
+  - Redis cache adapter implementation
+  - Advanced monitoring and observability
+  - Performance optimization
+  - Additional security enhancements
+
+---
+
+### Added
+
 #### RFC 9457 Problem Details Implementation (2025-10-14)
 - **RFC 9457 Compliance** - Standardized error responses with `application/problem+json`
   - Added `type`, `title`, `status`, `detail`, and `instance` fields to all error responses

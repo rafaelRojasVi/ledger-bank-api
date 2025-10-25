@@ -63,7 +63,7 @@ defmodule LedgerBankApi.Accounts.AuthService do
   """
   def revoke_refresh_token(token) do
     # Trust that token is valid (web layer already validated)
-    context =
+    _context =
       ServiceBehavior.build_context(__MODULE__, :revoke_refresh_token, %{token_type: "refresh"})
 
     with {:ok, claims} <- verify_refresh_token(token),
@@ -88,7 +88,7 @@ defmodule LedgerBankApi.Accounts.AuthService do
   """
   def get_user_from_token(token) do
     # Trust that token is valid (web layer already validated)
-    context =
+    _context =
       ServiceBehavior.build_context(__MODULE__, :get_user_from_token, %{token_type: "access"})
 
     with {:ok, claims} <- verify_access_token(token),
@@ -220,7 +220,7 @@ defmodule LedgerBankApi.Accounts.AuthService do
   """
   def get_token_expiration(token) do
     # Trust that token is valid (web layer already validated)
-    context =
+    _context =
       ServiceBehavior.build_context(__MODULE__, :get_token_expiration, %{token_type: "access"})
 
     with {:ok, claims} <- verify_access_token(token) do

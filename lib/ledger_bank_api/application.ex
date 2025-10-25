@@ -14,6 +14,18 @@ defmodule LedgerBankApi.Application do
     # Fail fast if JWT secret is missing or weak
     LedgerBankApi.Accounts.Token.ensure_jwt_secret!()
 
+    # Validate financial configuration before starting
+    case LedgerBankApi.Core.FinancialConfig.validate_configuration() do
+      :ok ->
+        require Logger
+        Logger.info("Financial configuration validated successfully")
+
+      {:error, reason} ->
+        require Logger
+        Logger.error("Financial configuration validation failed: #{reason}")
+        raise "Configuration validation failed: #{reason}"
+    end
+
     base_children = [
       LedgerBankApiWeb.Telemetry,
       LedgerBankApi.Repo,

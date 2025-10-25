@@ -39,7 +39,7 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   - **Web-specific**: Handles web layer concerns like field names and context
   """
 
-  alias LedgerBankApi.Core.{ErrorHandler, Validator}
+  alias LedgerBankApi.Core.{ErrorHandler, Validator, FinancialConfig}
 
   # ============================================================================
   # USER VALIDATION
@@ -515,8 +515,8 @@ defmodule LedgerBankApiWeb.Validation.InputValidator do
   defp validate_password(password, context, role) do
     case Validator.validate_password(password) do
       :ok ->
-        # Additional role-based length validation
-        min_length = if role in ["admin", "support"], do: 15, else: 8
+        # Additional role-based length validation using configuration
+        min_length = FinancialConfig.password_min_length(role)
 
         if String.length(password) < min_length do
           {:error,

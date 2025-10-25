@@ -12,7 +12,7 @@ defmodule LedgerBankApi.Financial.FinancialService do
   import Ecto.Query, warn: false
   require LedgerBankApi.Core.ServiceBehavior
   alias LedgerBankApi.Repo
-  alias LedgerBankApi.Core.{ErrorHandler, ServiceBehavior}
+  alias LedgerBankApi.Core.{ErrorHandler, ServiceBehavior, FinancialConfig}
 
   alias LedgerBankApi.Financial.Schemas.{
     Bank,
@@ -481,8 +481,8 @@ defmodule LedgerBankApi.Financial.FinancialService do
   """
   def check_duplicate_transaction(payment) do
     # Check for duplicate transactions based on amount, description, and time window
-    # Only check for duplicates within the last 5 minutes
-    duplicate_window_minutes = 5
+    # Only check for duplicates within the configured window
+    duplicate_window_minutes = FinancialConfig.duplicate_detection_window_minutes()
 
     query =
       from(up in UserPayment,
@@ -822,20 +822,11 @@ defmodule LedgerBankApi.Financial.FinancialService do
   # ============================================================================
 
   defp get_daily_limit_for_account(account) do
-    # In a real implementation, this would come from account settings or user preferences
-    # For now, return a default daily limit based on account type
-    case account.account_type do
-      "CHECKING" -> Decimal.new("1000.00")
-      "SAVINGS" -> Decimal.new("500.00")
-      "CREDIT" -> Decimal.new("2000.00")
-      "INVESTMENT" -> Decimal.new("5000.00")
-      _ -> Decimal.new("1000.00")
-    end
+    FinancialConfig.daily_limit(account.account_type)
   end
 
   defp get_max_single_transaction_limit do
-    # In a real implementation, this would come from configuration or account settings
-    Decimal.new("10000.00")
+    FinancialConfig.max_single_transaction_limit()
   end
 
   defp calculate_daily_spent(account, _date) do

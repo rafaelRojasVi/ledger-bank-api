@@ -17,6 +17,7 @@ defmodule LedgerBankApi.Accounts.Normalize do
       Normalize.password_attrs(attrs)
   """
 
+
   @doc """
   Normalize user attributes for user creation (public registration).
 
@@ -261,14 +262,19 @@ defmodule LedgerBankApi.Accounts.Normalize do
   defp normalize_page(_), do: 1
 
   defp normalize_page_size(page_size) when is_binary(page_size) do
+    max_page_size = Application.get_env(:ledger_bank_api, :banking)[:max_page_size] || 100
+    default_page_size = Application.get_env(:ledger_bank_api, :banking)[:default_page_size] || 20
+
     case Integer.parse(page_size) do
-      {size, ""} when size >= 1 and size <= 100 -> size
-      {size, ""} when size > 100 -> 100
-      _ -> 20
+      {size, ""} when size >= 1 and size <= max_page_size -> size
+      {size, ""} when size > max_page_size -> max_page_size
+      _ -> default_page_size
     end
   end
 
-  defp normalize_page_size(_), do: 20
+  defp normalize_page_size(_) do
+    Application.get_env(:ledger_bank_api, :banking)[:default_page_size] || 20
+  end
 
   defp parse_sort_field(field_string) do
     case String.split(field_string, ":") do

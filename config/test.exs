@@ -113,3 +113,46 @@ config :ledger_bank_api, :webhook_secrets, %{
   bank: "test_bank_webhook_secret",
   fraud: "test_fraud_webhook_secret"
 }
+
+# Test financial configuration
+config :ledger_bank_api, :financial,
+  # Match original test expectations
+  checking_daily_limit: "1000.00",
+  savings_daily_limit: "500.00",
+  credit_daily_limit: "2000.00",
+  investment_daily_limit: "5000.00",
+  default_daily_limit: "1000.00",
+
+  # Match original test expectations
+  max_single_transaction: "10000.00",
+  duplicate_window_minutes: "5",
+
+  # Match original test expectations for password requirements
+  admin_password_min_length: "15",
+  support_password_min_length: "15",
+  user_password_min_length: "8",
+
+  # Short cache TTL for testing
+  user_cache_ttl: "1",
+  account_cache_ttl: "1",
+  stats_cache_ttl: "1",
+  default_cache_ttl: "1",
+
+  # Test feature flags
+  enable_advanced_validation: false,
+  enable_duplicate_detection: true,
+  enable_circuit_breaker: false,
+  enable_telemetry: false,
+  enable_rate_limiting: false,
+  enable_security_audit: false,
+
+  # Test retry configuration
+  external_max_retries: "1",
+  external_base_delay: "100",
+  external_backoff_multiplier: "1.0",
+  system_max_retries: "1",
+  system_base_delay: "50",
+  system_backoff_multiplier: "1.0",
+  default_max_retries: "1",
+  default_base_delay: "100",
+  default_backoff_multiplier: "1.0"

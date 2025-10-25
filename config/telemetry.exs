@@ -1,23 +1,29 @@
 # OpenTelemetry configuration for distributed tracing
 import Config
 
-# OpenTelemetry configuration - disabled until instrumentation packages are available
+# OpenTelemetry configuration - disabled for development to avoid connection errors
 # config :opentelemetry,
 #   span_processor: :batch,
 #   exporter: :otlp
 
-config :opentelemetry_exporter,
-  otlp_protocol: :http_protobuf,
-  otlp_endpoint: System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+# Disable OTLP exporter in development to prevent connection errors
+if Mix.env() != :dev do
+  config :opentelemetry_exporter,
+    otlp_protocol: :http_protobuf,
+    otlp_endpoint: System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+end
 
-# Service name and version
-config :opentelemetry,
-  service_name: System.get_env("OTEL_SERVICE_NAME", "ledger-bank-api"),
-  service_version: System.get_env("OTEL_SERVICE_VERSION", "1.0.0")
+# Service name and version - only in production
+if Mix.env() != :dev do
+  config :opentelemetry,
+    service_name: System.get_env("OTEL_SERVICE_NAME", "ledger-bank-api"),
+    service_version: System.get_env("OTEL_SERVICE_VERSION", "1.0.0")
+end
 
-# Resource attributes - aligned with deployment environment
-config :opentelemetry,
-  resource_attributes: %{
+# Resource attributes - aligned with deployment environment (production only)
+if Mix.env() != :dev do
+  config :opentelemetry,
+    resource_attributes: %{
     # Service identification
     "service.name" => System.get_env("OTEL_SERVICE_NAME", "ledger-bank-api"),
     "service.version" => System.get_env("OTEL_SERVICE_VERSION", "1.0.0"),
@@ -61,10 +67,13 @@ config :opentelemetry,
   }
   |> Enum.reject(fn {_key, value} -> is_nil(value) end)
   |> Map.new()
+end
 
-# Sampling configuration
-config :opentelemetry,
-  sampler: {:parent_based, %{root: :always_on}}
+# Sampling configuration (production only)
+if Mix.env() != :dev do
+  config :opentelemetry,
+    sampler: {:parent_based, %{root: :always_on}}
+end
 
 # Instrumentation configurations (disabled - packages not available)
 # config :opentelemetry_instrumentation_ecto,

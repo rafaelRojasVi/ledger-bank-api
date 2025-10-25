@@ -20,6 +20,49 @@ config :ledger_bank_api, :banking,
   max_page_size: 100,
   cache_ttl: 30_000
 
+# Financial configuration with environment-driven settings
+config :ledger_bank_api, :financial,
+  # Daily limits by account type (can be overridden by environment variables)
+  checking_daily_limit: "1000.00",
+  savings_daily_limit: "500.00",
+  credit_daily_limit: "2000.00",
+  investment_daily_limit: "5000.00",
+  default_daily_limit: "1000.00",
+
+  # Transaction limits
+  max_single_transaction: "10000.00",
+  duplicate_window_minutes: "5",
+
+  # Password requirements by role
+  admin_password_min_length: "15",
+  support_password_min_length: "15",
+  user_password_min_length: "8",
+
+  # Cache TTL settings (in seconds)
+  user_cache_ttl: "300",
+  account_cache_ttl: "60",
+  stats_cache_ttl: "60",
+  default_cache_ttl: "300",
+
+  # Feature flags
+  enable_advanced_validation: false,
+  enable_duplicate_detection: true,
+  enable_circuit_breaker: true,
+  enable_telemetry: true,
+  enable_rate_limiting: true,
+  enable_security_audit: true,
+
+  # Retry configuration
+  external_max_retries: "3",
+  external_base_delay: "1000",
+  external_backoff_multiplier: "2.0",
+  system_max_retries: "2",
+  system_base_delay: "500",
+  system_backoff_multiplier: "1.5",
+  default_max_retries: "3",
+  default_base_delay: "1000",
+  default_backoff_multiplier: "2.0"
+
 # Fetcher configuration
 config :ledger_bank_api, :fetcher,
   timeout: 15_000,

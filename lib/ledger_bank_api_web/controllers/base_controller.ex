@@ -336,7 +336,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
         end)
       end
   """
-  defmacro crud_operation(conn, action, context, params, validator, service_op, success_handler) do
+  defmacro crud_operation(conn, _action, context, params, validator, service_op, success_handler) do
     quote do
       validate_and_execute(
         unquote(conn),
@@ -363,7 +363,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
         end)
       end
   """
-  defmacro paginated_list(conn, action, context, params, validator, service_op, success_handler) do
+  defmacro paginated_list(conn, _action, context, params, validator, service_op, success_handler) do
     quote do
       with {:ok, validated_params} <- unquote(validator).(unquote(params)) do
         case unquote(service_op).(validated_params, unquote(context)) do
@@ -402,7 +402,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
         end)
       end
   """
-  defmacro batch_operation(conn, action, context, params, validator, service_op, success_handler) do
+  defmacro batch_operation(conn, _action, context, params, validator, service_op, success_handler) do
     quote do
       with {:ok, validated_params} <- unquote(validator).(unquote(params)) do
         case unquote(service_op).(validated_params, unquote(context)) do
@@ -553,7 +553,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
         end)
       end
   """
-  defmacro async_operation(conn, action, context, params, validator, service_op, success_handler) do
+  defmacro async_operation(conn, _action, context, params, validator, service_op, success_handler) do
     quote do
       with {:ok, validated_params} <- unquote(validator).(unquote(params)) do
         case unquote(service_op).(validated_params, unquote(context)) do
@@ -592,7 +592,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
         end)
       end
   """
-  defmacro confirm_operation(conn, action, context, service_op, success_handler) do
+  defmacro confirm_operation(conn, _action, context, service_op, success_handler) do
     quote do
       case unquote(service_op).(unquote(context)) do
         {:ok, result} ->

@@ -11,7 +11,7 @@ defmodule LedgerBankApi.Accounts.UserService do
   import Ecto.Query, warn: false
   require LedgerBankApi.Core.ServiceBehavior
   alias LedgerBankApi.Repo
-  alias LedgerBankApi.Core.{ErrorHandler, ServiceBehavior, Validator}
+  alias LedgerBankApi.Core.{ErrorHandler, ServiceBehavior, Validator, FinancialConfig}
   alias LedgerBankApi.Accounts.Schemas.{User, RefreshToken}
   alias LedgerBankApi.Accounts.Policy
   alias LedgerBankApi.Accounts.Normalize
@@ -936,7 +936,7 @@ defmodule LedgerBankApi.Accounts.UserService do
       attrs["password"] || attrs[:password] || attrs["new_password"] || attrs[:new_password]
 
     if password do
-      min_length = if user_role in ["admin", "support"], do: 15, else: 8
+      min_length = FinancialConfig.password_min_length(user_role)
 
       if String.length(password) < min_length do
         {:error,

@@ -73,7 +73,7 @@ defmodule LedgerBankApi.Repo.Migrations.AuditAndOptimizeIndexes do
 
     # Composite index for account transaction queries
     # Used in: FinancialService.list_account_transactions/2
-    create index(:transactions, [:account_id, :posted_at], name: :transactions_account_id_posted_at_index)
+    # Note: This index already exists from the original migration, skipping to avoid duplicate
 
     # Composite index for direction filtering
     # Used in: FinancialService.list_user_transactions/2 with direction filtering
@@ -113,7 +113,7 @@ defmodule LedgerBankApi.Repo.Migrations.AuditAndOptimizeIndexes do
 
     # Composite index for token cleanup
     # Used in: UserService.cleanup_expired_tokens/0
-    create index(:refresh_tokens, [:expires_at], name: :refresh_tokens_expires_at_index)
+    # Note: This index already exists from the original migration, skipping to avoid duplicate
 
     # Composite index for token validation
     # Used in: UserService.validate_refresh_token/1
@@ -145,7 +145,7 @@ defmodule LedgerBankApi.Repo.Migrations.AuditAndOptimizeIndexes do
 
     # Composite index for bank login queries
     # Used in: FinancialService.list_bank_logins/1
-    create index(:user_bank_logins, [:bank_id, :status], name: :user_bank_logins_bank_id_status_index)
+    create index(:user_bank_logins, [:bank_branch_id, :status], name: :user_bank_logins_bank_branch_id_status_index)
 
     # Composite index for pagination with sorting
     # Used in: FinancialService.list_user_logins/1 with order_by
@@ -169,7 +169,7 @@ defmodule LedgerBankApi.Repo.Migrations.AuditAndOptimizeIndexes do
 
     # Composite index for bank branch queries
     # Used in: FinancialService.list_bank_branches/1
-    create index(:bank_branches, [:bank_id, :status], name: :bank_branches_bank_id_status_index)
+    # Note: bank_branches_bank_id_index already exists from the original migration, skipping to avoid duplicate
 
     # Composite index for pagination with sorting
     # Used in: FinancialService.list_bank_branches/1 with order_by
@@ -195,7 +195,7 @@ defmodule LedgerBankApi.Repo.Migrations.AuditAndOptimizeIndexes do
       name: :user_payments_external_id_status_index)
 
     drop index(:transactions, [:user_id, :posted_at], name: :transactions_user_id_posted_at_index)
-    drop index(:transactions, [:account_id, :posted_at], name: :transactions_account_id_posted_at_index)
+    # Note: transactions_account_id_posted_at_index is not dropped as it was created in the original migration
     drop index(:transactions, [:user_id, :direction, :posted_at], name: :transactions_user_id_direction_posted_at_index)
     drop index(:transactions, [:user_id, :amount, :posted_at], name: :transactions_user_id_amount_posted_at_index)
     drop index(:transactions, [:user_id, :inserted_at, :id], name: :transactions_user_id_inserted_at_id_index)
@@ -205,7 +205,7 @@ defmodule LedgerBankApi.Repo.Migrations.AuditAndOptimizeIndexes do
     drop index(:user_bank_accounts, [:user_id, :inserted_at, :id], name: :user_bank_accounts_user_id_inserted_at_id_index)
 
     drop index(:refresh_tokens, [:user_id, :revoked_at], name: :refresh_tokens_user_id_revoked_at_index)
-    drop index(:refresh_tokens, [:expires_at], name: :refresh_tokens_expires_at_index)
+    # Note: refresh_tokens_expires_at_index is not dropped as it was created in the original migration
     drop index(:refresh_tokens, [:user_id, :expires_at, :revoked_at], name: :refresh_tokens_user_id_expires_at_revoked_at_index)
 
     drop index(:oban_jobs, [:args, :state], name: :oban_jobs_args_state_index)
@@ -213,13 +213,13 @@ defmodule LedgerBankApi.Repo.Migrations.AuditAndOptimizeIndexes do
     drop index(:oban_jobs, [:queue, :state, :attempt], name: :oban_jobs_queue_state_attempt_index)
 
     drop index(:user_bank_logins, [:user_id, :status], name: :user_bank_logins_user_id_status_index)
-    drop index(:user_bank_logins, [:bank_id, :status], name: :user_bank_logins_bank_id_status_index)
+    drop index(:user_bank_logins, [:bank_branch_id, :status], name: :user_bank_logins_bank_branch_id_status_index)
     drop index(:user_bank_logins, [:user_id, :inserted_at, :id], name: :user_bank_logins_user_id_inserted_at_id_index)
 
     drop index(:banks, [:status, :country], name: :banks_status_country_index)
     drop index(:banks, [:inserted_at, :id], name: :banks_inserted_at_id_index)
 
-    drop index(:bank_branches, [:bank_id, :status], name: :bank_branches_bank_id_status_index)
+    # Note: bank_branches_bank_id_index is not dropped as it was created in the original migration
     drop index(:bank_branches, [:bank_id, :inserted_at, :id], name: :bank_branches_bank_id_inserted_at_id_index)
   end
 end

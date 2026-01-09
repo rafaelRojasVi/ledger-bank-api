@@ -2,7 +2,6 @@ defmodule LedgerBankApiWeb.Resolvers.UserResolverTest do
   use LedgerBankApi.DataCase, async: true
 
   alias LedgerBankApiWeb.Resolvers.UserResolver
-  alias LedgerBankApi.Accounts.Schemas.User
   import LedgerBankApi.UsersFixtures
 
   describe "find/2" do

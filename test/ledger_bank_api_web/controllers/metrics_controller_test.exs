@@ -245,10 +245,10 @@ defmodule LedgerBankApiWeb.Controllers.MetricsControllerTest do
       end
     end
 
-    test "metrics endpoints handle concurrent requests", %{conn: conn} do
+    test "metrics endpoints handle concurrent requests", %{conn: _conn} do
       # Test concurrent access to metrics endpoints
       tasks =
-        for i <- 1..3 do
+        for _i <- 1..3 do
           Task.async(fn ->
             conn = build_conn()
             conn = get(conn, ~p"/api/metrics/health")

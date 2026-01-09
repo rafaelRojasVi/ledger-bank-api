@@ -2,8 +2,6 @@ defmodule LedgerBankApiWeb.Resolvers.PaymentResolverTest do
   use LedgerBankApi.DataCase, async: true
 
   alias LedgerBankApiWeb.Resolvers.PaymentResolver
-  alias LedgerBankApi.Financial.Schemas.UserPayment
-  alias LedgerBankApi.Accounts.Schemas.User
   import LedgerBankApi.UsersFixtures
   import LedgerBankApi.BankingFixtures
 

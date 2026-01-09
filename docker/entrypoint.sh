@@ -7,8 +7,13 @@ until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" >/dev/null 2>&1; do
 done
 echo "✅  Postgres is up."
 
+echo "🔍 Debugging release binary..."
+ls -la /app/ledger_bank_api/bin/ || echo "bin directory not found"
+test -f /app/ledger_bank_api/bin/ledger_bank_api && echo "✅ Release binary exists" || echo "❌ Release binary NOT found"
+head -1 /app/ledger_bank_api/bin/ledger_bank_api || echo "Cannot read release binary"
+
 echo "🛠  Running migrations..."
-/bin/sh /app/ledger_bank_api/bin/ledger_bank_api eval "LedgerBankApi.Release.migrate()"
+/app/ledger_bank_api/bin/ledger_bank_api eval "LedgerBankApi.Release.migrate()"
 
 echo "🚀  Launching Phoenix..."
-exec /bin/sh /app/ledger_bank_api/bin/ledger_bank_api start
+exec /app/ledger_bank_api/bin/ledger_bank_api start

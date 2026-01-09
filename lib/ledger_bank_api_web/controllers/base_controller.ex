@@ -373,6 +373,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
               pagination: pagination,
               filters: Map.take(validated_params, [:status, :role, :search])
             }
+
             unquote(success_handler).(response_data)
 
           {:error, reason} ->
@@ -381,6 +382,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
       else
         {:error, %Ecto.Changeset{} = changeset} ->
           handle_changeset_error(unquote(conn), changeset, unquote(context))
+
         {:error, %LedgerBankApi.Core.Error{} = error} ->
           handle_error(unquote(conn), error)
       end
@@ -413,6 +415,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
               total: total,
               success_rate: if(total > 0, do: length(successful) / total, else: 0)
             }
+
             unquote(success_handler).(response_data)
 
           {:error, reason} ->
@@ -421,6 +424,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
       else
         {:error, %Ecto.Changeset{} = changeset} ->
           handle_changeset_error(unquote(conn), changeset, unquote(context))
+
         {:error, %LedgerBankApi.Core.Error{} = error} ->
           handle_error(unquote(conn), error)
       end
@@ -449,9 +453,11 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
           case AuthService.get_user_from_token(token) do
             {:ok, user} ->
               unquote(operation).(user)
+
             {:error, reason} ->
               handle_error(unquote(conn), reason)
           end
+
         {:error, reason} ->
           handle_error(unquote(conn), reason)
       end
@@ -483,15 +489,19 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
               if Policy.has_role?(user, unquote(required_permission)) do
                 unquote(operation).(user)
               else
-                handle_error(unquote(conn),
+                handle_error(
+                  unquote(conn),
                   LedgerBankApi.Core.ErrorHandler.business_error(:insufficient_permissions, %{
                     source: "controller",
                     message: "Insufficient permissions for this operation"
-                  }))
+                  })
+                )
               end
+
             {:error, reason} ->
               handle_error(unquote(conn), reason)
           end
+
         {:error, reason} ->
           handle_error(unquote(conn), reason)
       end
@@ -523,15 +533,19 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
               if user.id == unquote(resource_id) or Policy.is_admin?(user) do
                 unquote(operation).(user)
               else
-                handle_error(unquote(conn),
+                handle_error(
+                  unquote(conn),
                   LedgerBankApi.Core.ErrorHandler.business_error(:insufficient_permissions, %{
                     source: "controller",
                     message: "You can only access your own resources"
-                  }))
+                  })
+                )
               end
+
             {:error, reason} ->
               handle_error(unquote(conn), reason)
           end
+
         {:error, reason} ->
           handle_error(unquote(conn), reason)
       end
@@ -564,6 +578,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
               message: "Operation scheduled successfully",
               check_status_url: "/api/jobs/#{job_id}/status"
             }
+
             unquote(success_handler).(response_data)
 
           {:error, reason} ->
@@ -572,6 +587,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
       else
         {:error, %Ecto.Changeset{} = changeset} ->
           handle_changeset_error(unquote(conn), changeset, unquote(context))
+
         {:error, %LedgerBankApi.Core.Error{} = error} ->
           handle_error(unquote(conn), error)
       end
@@ -597,6 +613,7 @@ defmodule LedgerBankApiWeb.Controllers.BaseController do
       case unquote(service_op).(unquote(context)) do
         {:ok, result} ->
           unquote(success_handler).(result)
+
         {:error, reason} ->
           handle_error(unquote(conn), reason)
       end

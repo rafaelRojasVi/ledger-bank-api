@@ -197,7 +197,9 @@ defmodule LedgerBankApi.Core.Queryable do
       """
       def apply_text_search(query, nil, _fields), do: query
       def apply_text_search(query, "", _fields), do: query
-      def apply_text_search(query, search_term, fields) when is_binary(search_term) and is_list(fields) do
+
+      def apply_text_search(query, search_term, fields)
+          when is_binary(search_term) and is_list(fields) do
         search_pattern = "%#{String.downcase(search_term)}%"
 
         Enum.reduce(fields, query, fn field, acc ->
@@ -215,7 +217,8 @@ defmodule LedgerBankApi.Core.Queryable do
           |> apply_date_range(:inserted_at, %{from: "2024-01-01", to: "2024-12-31"})
           |> Repo.all()
       """
-      def apply_date_range(query, field, %{from: from_date, to: to_date}) when is_binary(from_date) and is_binary(to_date) do
+      def apply_date_range(query, field, %{from: from_date, to: to_date})
+          when is_binary(from_date) and is_binary(to_date) do
         case {Date.from_iso8601(from_date), Date.from_iso8601(to_date)} do
           {{:ok, from}, {:ok, to}} ->
             from_datetime = DateTime.new!(from, ~T[00:00:00], "Etc/UTC")
@@ -253,7 +256,8 @@ defmodule LedgerBankApi.Core.Queryable do
         |> order_by([r], asc: r.inserted_at)
       end
 
-      def apply_keyset_pagination(query, %{limit: limit, cursor: cursor}) when is_binary(cursor) do
+      def apply_keyset_pagination(query, %{limit: limit, cursor: cursor})
+          when is_binary(cursor) do
         case DateTime.from_iso8601(cursor) do
           {:ok, cursor_datetime, _offset} ->
             query

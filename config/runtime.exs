@@ -60,54 +60,57 @@ config :ledger_bank_api, Oban,
 
 # Configure OpenTelemetry with environment-specific resource attributes
 config :opentelemetry,
-  resource_attributes: %{
-    # Service identification
-    "service.name" => System.get_env("OTEL_SERVICE_NAME", "ledger-bank-api"),
-    "service.version" => System.get_env("OTEL_SERVICE_VERSION", "1.0.0"),
-    "service.namespace" => System.get_env("OTEL_SERVICE_NAMESPACE", "financial"),
+  resource_attributes:
+    %{
+      # Service identification
+      "service.name" => System.get_env("OTEL_SERVICE_NAME", "ledger-bank-api"),
+      "service.version" => System.get_env("OTEL_SERVICE_VERSION", "1.0.0"),
+      "service.namespace" => System.get_env("OTEL_SERVICE_NAMESPACE", "financial"),
 
-    # Deployment information
-    "deployment.environment" => System.get_env("DEPLOYMENT_ENVIRONMENT", config_env() |> to_string()),
-    "deployment.region" => System.get_env("DEPLOYMENT_REGION", "unknown"),
-    "deployment.zone" => System.get_env("DEPLOYMENT_ZONE", "unknown"),
-    "deployment.cluster" => System.get_env("DEPLOYMENT_CLUSTER", "unknown"),
+      # Deployment information
+      "deployment.environment" =>
+        System.get_env("DEPLOYMENT_ENVIRONMENT", config_env() |> to_string()),
+      "deployment.region" => System.get_env("DEPLOYMENT_REGION", "unknown"),
+      "deployment.zone" => System.get_env("DEPLOYMENT_ZONE", "unknown"),
+      "deployment.cluster" => System.get_env("DEPLOYMENT_CLUSTER", "unknown"),
 
-    # Instance identification
-    "service.instance.id" => System.get_env("HOSTNAME", System.get_env("POD_NAME", "unknown")),
-    "k8s.pod.name" => System.get_env("POD_NAME"),
-    "k8s.namespace" => System.get_env("K8S_NAMESPACE"),
-    "k8s.node.name" => System.get_env("K8S_NODE_NAME"),
-    "k8s.container.name" => System.get_env("K8S_CONTAINER_NAME", "ledger-bank-api"),
+      # Instance identification
+      "service.instance.id" => System.get_env("HOSTNAME", System.get_env("POD_NAME", "unknown")),
+      "k8s.pod.name" => System.get_env("POD_NAME"),
+      "k8s.namespace" => System.get_env("K8S_NAMESPACE"),
+      "k8s.node.name" => System.get_env("K8S_NODE_NAME"),
+      "k8s.container.name" => System.get_env("K8S_CONTAINER_NAME", "ledger-bank-api"),
 
-    # Infrastructure information
-    "cloud.provider" => System.get_env("CLOUD_PROVIDER", "unknown"),
-    "cloud.region" => System.get_env("CLOUD_REGION", System.get_env("DEPLOYMENT_REGION")),
-    "cloud.availability_zone" => System.get_env("CLOUD_AZ", System.get_env("DEPLOYMENT_ZONE")),
-    "cloud.account.id" => System.get_env("CLOUD_ACCOUNT_ID"),
+      # Infrastructure information
+      "cloud.provider" => System.get_env("CLOUD_PROVIDER", "unknown"),
+      "cloud.region" => System.get_env("CLOUD_REGION", System.get_env("DEPLOYMENT_REGION")),
+      "cloud.availability_zone" => System.get_env("CLOUD_AZ", System.get_env("DEPLOYMENT_ZONE")),
+      "cloud.account.id" => System.get_env("CLOUD_ACCOUNT_ID"),
 
-    # Application information
-    "app.name" => "ledger-bank-api",
-    "app.version" => System.get_env("APP_VERSION", "1.0.0"),
-    "app.build" => System.get_env("APP_BUILD", "unknown"),
-    "app.commit" => System.get_env("APP_COMMIT", "unknown"),
+      # Application information
+      "app.name" => "ledger-bank-api",
+      "app.version" => System.get_env("APP_VERSION", "1.0.0"),
+      "app.build" => System.get_env("APP_BUILD", "unknown"),
+      "app.commit" => System.get_env("APP_COMMIT", "unknown"),
 
-    # Runtime information
-    "runtime.name" => "BEAM",
-    "runtime.version" => System.get_env("ERLANG_VERSION", "unknown"),
-    "runtime.os" => System.get_env("RUNTIME_OS", "unknown"),
-    "runtime.arch" => System.get_env("RUNTIME_ARCH", "unknown"),
+      # Runtime information
+      "runtime.name" => "BEAM",
+      "runtime.version" => System.get_env("ERLANG_VERSION", "unknown"),
+      "runtime.os" => System.get_env("RUNTIME_OS", "unknown"),
+      "runtime.arch" => System.get_env("RUNTIME_ARCH", "unknown"),
 
-    # Telemetry SDK information
-    "telemetry.sdk.name" => "opentelemetry",
-    "telemetry.sdk.language" => "erlang",
-    "telemetry.sdk.version" => "1.3.0"
-  }
-  |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-  |> Map.new()
+      # Telemetry SDK information
+      "telemetry.sdk.name" => "opentelemetry",
+      "telemetry.sdk.language" => "erlang",
+      "telemetry.sdk.version" => "1.3.0"
+    }
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.new()
 
 # Configure OpenTelemetry exporter for production
 config :opentelemetry_exporter,
-  otlp_protocol: System.get_env("OTEL_EXPORTER_OTLP_PROTOCOL", "http_protobuf") |> String.to_atom(),
+  otlp_protocol:
+    System.get_env("OTEL_EXPORTER_OTLP_PROTOCOL", "http_protobuf") |> String.to_atom(),
   otlp_endpoint: System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318"),
   otlp_headers: %{}
 

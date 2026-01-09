@@ -142,17 +142,20 @@ defmodule LedgerBankApi.Core.FinancialConfig do
       "external_dependency" => %{
         max_retries: get_config_value(:external_max_retries, "3") |> String.to_integer(),
         base_delay: get_config_value(:external_base_delay, "1000") |> String.to_integer(),
-        backoff_multiplier: get_config_value(:external_backoff_multiplier, "2.0") |> String.to_float()
+        backoff_multiplier:
+          get_config_value(:external_backoff_multiplier, "2.0") |> String.to_float()
       },
       "system" => %{
         max_retries: get_config_value(:system_max_retries, "2") |> String.to_integer(),
         base_delay: get_config_value(:system_base_delay, "500") |> String.to_integer(),
-        backoff_multiplier: get_config_value(:system_backoff_multiplier, "1.5") |> String.to_float()
+        backoff_multiplier:
+          get_config_value(:system_backoff_multiplier, "1.5") |> String.to_float()
       },
       "default" => %{
         max_retries: get_config_value(:default_max_retries, "3") |> String.to_integer(),
         base_delay: get_config_value(:default_base_delay, "1000") |> String.to_integer(),
-        backoff_multiplier: get_config_value(:default_backoff_multiplier, "2.0") |> String.to_float()
+        backoff_multiplier:
+          get_config_value(:default_backoff_multiplier, "2.0") |> String.to_float()
       }
     }
   end
@@ -227,6 +230,7 @@ defmodule LedgerBankApi.Core.FinancialConfig do
     end)
 
     max_transaction = max_single_transaction_limit()
+
     if Decimal.lt?(max_transaction, Decimal.new("0")) do
       raise "Invalid max single transaction limit: #{max_transaction}"
     end

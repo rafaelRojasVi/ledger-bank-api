@@ -17,7 +17,6 @@ defmodule LedgerBankApi.Accounts.Normalize do
       Normalize.password_attrs(attrs)
   """
 
-
   @doc """
   Normalize user attributes for user creation (public registration).
 

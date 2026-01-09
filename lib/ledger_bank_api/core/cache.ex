@@ -140,7 +140,8 @@ defmodule LedgerBankApi.Core.Cache do
       Cache.put_short("rate_limit:user:123", %{count: 10, reset_at: ~U[2024-01-01 12:00:00Z]})
   """
   def put_short(key, value) do
-    put(key, value, ttl: 300) # 5 minutes
+    # 5 minutes
+    put(key, value, ttl: 300)
   end
 
   @doc """
@@ -155,7 +156,8 @@ defmodule LedgerBankApi.Core.Cache do
       Cache.put_medium("bank:account:123", account_data)
   """
   def put_medium(key, value) do
-    put(key, value, ttl: 3600) # 1 hour
+    # 1 hour
+    put(key, value, ttl: 3600)
   end
 
   @doc """
@@ -170,7 +172,8 @@ defmodule LedgerBankApi.Core.Cache do
       Cache.put_long("config:app_settings", settings)
   """
   def put_long(key, value) do
-    put(key, value, ttl: 86400) # 24 hours
+    # 24 hours
+    put(key, value, ttl: 86400)
   end
 
   @doc """
@@ -185,7 +188,8 @@ defmodule LedgerBankApi.Core.Cache do
       Cache.put_very_long("currencies:list", currency_list)
   """
   def put_very_long(key, value) do
-    put(key, value, ttl: 604800) # 7 days
+    # 7 days
+    put(key, value, ttl: 604_800)
   end
 
   @doc """
@@ -199,7 +203,8 @@ defmodule LedgerBankApi.Core.Cache do
       end)
   """
   def get_or_put_short(key, fun) when is_function(fun, 0) do
-    get_or_put(key, fun, ttl: 300) # 5 minutes
+    # 5 minutes
+    get_or_put(key, fun, ttl: 300)
   end
 
   @doc """
@@ -213,7 +218,8 @@ defmodule LedgerBankApi.Core.Cache do
       end)
   """
   def get_or_put_medium(key, fun) when is_function(fun, 0) do
-    get_or_put(key, fun, ttl: 3600) # 1 hour
+    # 1 hour
+    get_or_put(key, fun, ttl: 3600)
   end
 
   @doc """
@@ -227,7 +233,8 @@ defmodule LedgerBankApi.Core.Cache do
       end)
   """
   def get_or_put_long(key, fun) when is_function(fun, 0) do
-    get_or_put(key, fun, ttl: 86400) # 24 hours
+    # 24 hours
+    get_or_put(key, fun, ttl: 86400)
   end
 
   @doc """
@@ -241,7 +248,8 @@ defmodule LedgerBankApi.Core.Cache do
       end)
   """
   def get_or_put_very_long(key, fun) when is_function(fun, 0) do
-    get_or_put(key, fun, ttl: 604800) # 7 days
+    # 7 days
+    get_or_put(key, fun, ttl: 604_800)
   end
 
   @doc """
@@ -358,28 +366,44 @@ defmodule LedgerBankApi.Core.Cache do
   defp ttl_seconds(:six_hours), do: 21600
   defp ttl_seconds(:twelve_hours), do: 43200
   defp ttl_seconds(:one_day), do: 86400
-  defp ttl_seconds(:three_days), do: 259200
-  defp ttl_seconds(:one_week), do: 604800
-  defp ttl_seconds(:two_weeks), do: 1209600
-  defp ttl_seconds(:one_month), do: 2592000
-  defp ttl_seconds(_), do: 3600 # Default to 1 hour
+  defp ttl_seconds(:three_days), do: 259_200
+  defp ttl_seconds(:one_week), do: 604_800
+  defp ttl_seconds(:two_weeks), do: 1_209_600
+  defp ttl_seconds(:one_month), do: 2_592_000
+  # Default to 1 hour
+  defp ttl_seconds(_), do: 3600
 
   # TTL by data type
-  defp ttl_by_type(:user), do: 3600 # 1 hour
-  defp ttl_by_type(:bank), do: 86400 # 24 hours
-  defp ttl_by_type(:session), do: 300 # 5 minutes
-  defp ttl_by_type(:config), do: 604800 # 7 days
-  defp ttl_by_type(:stats), do: 1800 # 30 minutes
-  defp ttl_by_type(:rate_limit), do: 300 # 5 minutes
-  defp ttl_by_type(:temp), do: 60 # 1 minute
-  defp ttl_by_type(_), do: 3600 # Default to 1 hour
+  # 1 hour
+  defp ttl_by_type(:user), do: 3600
+  # 24 hours
+  defp ttl_by_type(:bank), do: 86400
+  # 5 minutes
+  defp ttl_by_type(:session), do: 300
+  # 7 days
+  defp ttl_by_type(:config), do: 604_800
+  # 30 minutes
+  defp ttl_by_type(:stats), do: 1800
+  # 5 minutes
+  defp ttl_by_type(:rate_limit), do: 300
+  # 1 minute
+  defp ttl_by_type(:temp), do: 60
+  # Default to 1 hour
+  defp ttl_by_type(_), do: 3600
 
   # TTL by freshness level
-  defp ttl_by_freshness(:realtime), do: 30 # 30 seconds
-  defp ttl_by_freshness(:near_realtime), do: 300 # 5 minutes
-  defp ttl_by_freshness(:hourly), do: 3600 # 1 hour
-  defp ttl_by_freshness(:daily), do: 86400 # 24 hours
-  defp ttl_by_freshness(:weekly), do: 604800 # 7 days
-  defp ttl_by_freshness(:monthly), do: 2592000 # 30 days
-  defp ttl_by_freshness(_), do: 3600 # Default to 1 hour
+  # 30 seconds
+  defp ttl_by_freshness(:realtime), do: 30
+  # 5 minutes
+  defp ttl_by_freshness(:near_realtime), do: 300
+  # 1 hour
+  defp ttl_by_freshness(:hourly), do: 3600
+  # 24 hours
+  defp ttl_by_freshness(:daily), do: 86400
+  # 7 days
+  defp ttl_by_freshness(:weekly), do: 604_800
+  # 30 days
+  defp ttl_by_freshness(:monthly), do: 2_592_000
+  # Default to 1 hour
+  defp ttl_by_freshness(_), do: 3600
 end

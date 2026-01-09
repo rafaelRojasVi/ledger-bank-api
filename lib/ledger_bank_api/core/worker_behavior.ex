@@ -237,14 +237,22 @@ defmodule LedgerBankApi.Core.WorkerBehavior do
                   # Post-work cleanup (if implemented)
                   cleanup_result =
                     if function_exported?(__MODULE__, :post_work_cleanup, 3) do
-                      case apply(__MODULE__, :post_work_cleanup, [args, validated_context, work_result]) do
-                        :ok -> :ok
+                      case apply(__MODULE__, :post_work_cleanup, [
+                             args,
+                             validated_context,
+                             work_result
+                           ]) do
+                        :ok ->
+                          :ok
+
                         {:error, %Error{} = cleanup_error} ->
                           Logger.warning("Post-work cleanup failed", %{
                             error: cleanup_error.reason,
                             context: validated_context
                           })
-                          :ok  # Don't fail the job for cleanup errors
+
+                          # Don't fail the job for cleanup errors
+                          :ok
                       end
                     else
                       :ok
@@ -357,6 +365,7 @@ defmodule LedgerBankApi.Core.WorkerBehavior do
                 success_count: 1,
                 failure_count: 0
               }
+
             {:failure, _} ->
               %{
                 duration: duration,

@@ -8,7 +8,7 @@ done
 echo "✅  Postgres is up."
 
 echo "🛠  Running migrations..."
-/app/ledger_bank_api/bin/ledger_bank_api eval "LedgerBankApi.Release.migrate()"
+/bin/sh /app/ledger_bank_api/bin/ledger_bank_api eval "LedgerBankApi.Release.migrate()"
 
 echo "🚀  Launching Phoenix..."
-exec /app/ledger_bank_api/bin/ledger_bank_api start
+exec /bin/sh /app/ledger_bank_api/bin/ledger_bank_api start

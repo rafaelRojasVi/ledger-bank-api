@@ -1,29 +1,29 @@
 # .github/workflows/ci.yml
-name: mix-test + docker-build
+name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
+    branches: [main, develop]
+
+env:
+  MIX_ENV: test
+  DB_HOST: localhost
+  DB_USER: postgres
+  DB_PASS: postgres
+  DB_NAME: ledger_bank_api_test
+  JWT_SECRET: "test-secret-key-for-testing-only-must-be-64-chars-long"
+  HEX_HTTP_TIMEOUT: 20
 
 jobs:
-  test-and-build:
+  # Job 1: Code Quality Checks (fast, runs first)
+  code-quality:
+    name: Code Quality
     runs-on: ubuntu-latest
-
-    env:
-      MIX_ENV: test
-      DB_HOST: localhost            # host ↔ container
-      DB_USER: postgres
-      DB_PASS: postgres
-      DB_NAME: ledger_bank_api_test
-      JWT_SECRET: "test-secret-key-for-testing-only-must-be-64-chars-long"
-      HEX_HTTP_TIMEOUT: 20
-
     steps:
-      # 1) Checkout code
       - uses: actions/checkout@v4
 
-      # 2) Cache deps and _build to speed things up
       - uses: actions/cache@v4
         with:
           path: |
@@ -32,50 +32,103 @@ jobs:
             _build
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
 
-      # 3) Install Erlang/Elixir
       - uses: erlef/setup-beam@v1
         with:
           elixir-version: '1.18.4'
           otp-version: '26.2'
 
-      # 4) Start services with health dependencies
-      - name: Start services with health checks
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Compile with warnings as errors
+        run: mix compile --warnings-as-errors
+
+  # Job 2: Tests (runs in parallel with code-quality)
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ledger_bank_api_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mix
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18.4'
+          otp-version: '26.2'
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Setup database
         run: |
-          # Start db and redis services
+          mix ecto.create
+          mix ecto.migrate
+
+      - name: Run tests
+        run: mix test --warnings-as-errors
+
+  # Job 3: Docker Build & Health Check (only on main branch or PRs)
+  docker-build:
+    name: Docker Build & Health Check
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]  # Only run if tests pass
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start services
+        run: |
           docker compose up -d db redis
-          
-          # Wait for services to be healthy using compose health dependencies
-          echo "Waiting for services to be healthy..."
-          docker compose ps
-          
-          # Wait for db to be healthy
           timeout 60 bash -c 'until docker compose ps db | grep -q "healthy"; do sleep 2; done'
-          echo "Database is healthy"
-          
-          # Wait for redis to be healthy  
           timeout 60 bash -c 'until docker compose ps redis | grep -q "healthy"; do sleep 2; done'
-          echo "Redis is healthy"
 
-      # 6) Fetch deps, create DB, migrate, test
-      - run: mix deps.get
-      - run: mix format --check-formatted || (echo "Format check failed. Run 'mix format' to fix." && exit 1)
-      - run: mix compile --warnings-as-errors
-      - run: mix ecto.create
-      - run: mix ecto.migrate
-      - run: mix test --warnings-as-errors
-
-      # 7) Test health dependencies by starting web service
-      - name: Test service health dependencies
+      - name: Build and test Docker image
         run: |
-          echo "Testing service health dependencies..."
-          # Start web service in detached mode
-          docker compose up -d --build web
+          echo "Building Docker image..."
+          docker compose build web
+
+      - name: Test container health
+        run: |
+          echo "Starting web container..."
+          docker compose up -d web
           
-          # Show initial logs
-          echo "Container logs:"
-          docker compose logs --no-color --tail=50 web
-          
-          # Wait for app to be ready (check health endpoint)
           echo "Waiting for application to be ready..."
           for i in {1..30}; do
             if curl -fsS http://localhost:4000/api/health >/dev/null 2>&1; then
@@ -87,12 +140,47 @@ jobs:
             sleep 2
           done
           
-          # If we get here, health check failed
           echo "❌ Application did not become ready"
           docker compose logs --no-color --tail=100 web
           exit 1
 
-      # 8) Cleanup
       - name: Cleanup
         if: always()
         run: docker compose down -v
+
+  # Optional: Build artifacts for releases (only on tags)
+  build-release:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mix
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18.4'
+          otp-version: '26.2'
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Build release
+        env:
+          MIX_ENV: prod
+        run: mix release
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: _build/prod/rel/ledger_bank_api
+          retention-days: 30

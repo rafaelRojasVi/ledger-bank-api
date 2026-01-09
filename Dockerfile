@@ -32,8 +32,9 @@
   WORKDIR /app
   COPY --from=build /app/_build/prod/rel/ledger_bank_api ./ledger_bank_api
   COPY docker/entrypoint.sh /app/docker/entrypoint.sh
-  RUN sed -i 's/\r$//' /app/docker/entrypoint.sh || true && \
-      chmod 755 /app/docker/entrypoint.sh
+  RUN sed -i 's/\r$//' /app/docker/entrypoint.sh 2>/dev/null || true && \
+      chmod 755 /app/docker/entrypoint.sh && \
+      head -1 /app/docker/entrypoint.sh | grep -q '^#!/' || (echo "Missing shebang" && exit 1)
   
   ENV LANG=C.UTF-8 \
       MIX_ENV=prod \
@@ -41,5 +42,5 @@
       PORT=4000
   
   EXPOSE 4000
-  ENTRYPOINT ["/app/docker/entrypoint.sh"]   
+  ENTRYPOINT ["/bin/sh", "/app/docker/entrypoint.sh"]   
   

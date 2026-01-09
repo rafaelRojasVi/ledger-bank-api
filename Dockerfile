@@ -30,15 +30,15 @@
       rm -rf /var/lib/apt/lists/*
   
   WORKDIR /app
-  COPY --from=build /app/_build/prod/rel/ledger_bank_api ./ledger_bank_api
-  COPY docker/entrypoint.sh /app/docker/entrypoint.sh
+  COPY --from=build /app/_build/prod/rel/ledger_bank_api /opt/ledger_bank_api
+  COPY docker/entrypoint.sh /opt/docker/entrypoint.sh
   RUN echo "Verifying release copy..." && \
-      ls -la /app/ledger_bank_api/ && \
-      ls -la /app/ledger_bank_api/bin/ && \
-      test -f /app/ledger_bank_api/bin/ledger_bank_api && \
-      sed -i 's/\r$//' /app/docker/entrypoint.sh 2>/dev/null || true && \
-      chmod 755 /app/docker/entrypoint.sh && \
-      chmod +x /app/ledger_bank_api/bin/ledger_bank_api && \
+      ls -la /opt/ledger_bank_api/ && \
+      ls -la /opt/ledger_bank_api/bin/ && \
+      test -f /opt/ledger_bank_api/bin/ledger_bank_api && \
+      sed -i 's/\r$//' /opt/docker/entrypoint.sh 2>/dev/null || true && \
+      chmod 755 /opt/docker/entrypoint.sh && \
+      chmod +x /opt/ledger_bank_api/bin/ledger_bank_api && \
       echo "Release verified successfully"
   
   ENV LANG=C.UTF-8 \
@@ -47,5 +47,5 @@
       PORT=4000
   
   EXPOSE 4000
-  ENTRYPOINT ["/bin/sh", "/app/docker/entrypoint.sh"]   
+  ENTRYPOINT ["/bin/sh", "/opt/docker/entrypoint.sh"]   
   

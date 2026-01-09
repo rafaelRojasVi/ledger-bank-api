@@ -32,8 +32,8 @@
   WORKDIR /app
   COPY --from=build /app/_build/prod/rel/ledger_bank_api ./ledger_bank_api
   COPY docker/entrypoint.sh /app/docker/entrypoint.sh
-  RUN sed -i 's/\r$//' /app/docker/entrypoint.sh && \
-      chmod +x /app/docker/entrypoint.sh
+  RUN sed -i 's/\r$//' /app/docker/entrypoint.sh || true && \
+      chmod 755 /app/docker/entrypoint.sh
   
   ENV LANG=C.UTF-8 \
       MIX_ENV=prod \

@@ -68,10 +68,31 @@ jobs:
       - name: Test service health dependencies
         run: |
           echo "Testing service health dependencies..."
-          # Start web service which depends on db and redis being healthy
-          timeout 120 docker compose up --abort-on-container-exit web
-          echo "Web service started successfully with health dependencies"
+          # Start web service in detached mode
+          docker compose up -d --build web
+          
+          # Show initial logs
+          echo "Container logs:"
+          docker compose logs --no-color --tail=50 web
+          
+          # Wait for app to be ready (check health endpoint)
+          echo "Waiting for application to be ready..."
+          for i in {1..30}; do
+            if curl -fsS http://localhost:4000/api/health >/dev/null 2>&1; then
+              echo "✅ Application is healthy!"
+              docker compose logs --no-color --tail=20 web
+              exit 0
+            fi
+            echo "Attempt $i/30: Waiting for health endpoint..."
+            sleep 2
+          done
+          
+          # If we get here, health check failed
+          echo "❌ Application did not become ready"
+          docker compose logs --no-color --tail=100 web
+          exit 1
 
-      # 8) Build your Docker image (optional)
-      - name: Build app image
-        run: docker compose build --pull
+      # 8) Cleanup
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v

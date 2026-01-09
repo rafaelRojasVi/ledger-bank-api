@@ -32,9 +32,14 @@
   WORKDIR /app
   COPY --from=build /app/_build/prod/rel/ledger_bank_api ./ledger_bank_api
   COPY docker/entrypoint.sh /app/docker/entrypoint.sh
-  RUN sed -i 's/\r$//' /app/docker/entrypoint.sh 2>/dev/null || true && \
+  RUN echo "Verifying release copy..." && \
+      ls -la /app/ledger_bank_api/ && \
+      ls -la /app/ledger_bank_api/bin/ && \
+      test -f /app/ledger_bank_api/bin/ledger_bank_api && \
+      sed -i 's/\r$//' /app/docker/entrypoint.sh 2>/dev/null || true && \
       chmod 755 /app/docker/entrypoint.sh && \
-      chmod +x /app/ledger_bank_api/bin/ledger_bank_api
+      chmod +x /app/ledger_bank_api/bin/ledger_bank_api && \
+      echo "Release verified successfully"
   
   ENV LANG=C.UTF-8 \
       MIX_ENV=prod \

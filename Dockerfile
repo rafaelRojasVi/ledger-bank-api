@@ -26,7 +26,7 @@
   RUN apt-get update && \
       apt-get install -y --no-install-recommends \
         libssl3 libncurses6 libtinfo6 ca-certificates \
-        postgresql-client curl && \
+        postgresql-client curl bash file && \
       rm -rf /var/lib/apt/lists/*
   
   WORKDIR /app
@@ -34,7 +34,14 @@
   COPY docker/entrypoint.sh /app/docker/entrypoint.sh
   RUN sed -i 's/\r$//' /app/docker/entrypoint.sh 2>/dev/null || true && \
       chmod 755 /app/docker/entrypoint.sh && \
-      head -1 /app/docker/entrypoint.sh | grep -q '^#!/' || (echo "Missing shebang" && exit 1)
+      head -1 /app/docker/entrypoint.sh | grep -q '^#!/' || (echo "Missing shebang" && exit 1) && \
+      echo "Checking release structure..." && \
+      ls -la /app/ledger_bank_api/ && \
+      echo "Checking bin directory..." && \
+      ls -la /app/ledger_bank_api/bin/ && \
+      test -f /app/ledger_bank_api/bin/ledger_bank_api && \
+      chmod +x /app/ledger_bank_api/bin/ledger_bank_api && \
+      file /app/ledger_bank_api/bin/ledger_bank_api || (echo "Release binary not found!" && exit 1)
   
   ENV LANG=C.UTF-8 \
       MIX_ENV=prod \

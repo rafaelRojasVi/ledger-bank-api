@@ -28,6 +28,7 @@ services:
     environment:
       MIX_ENV: ${MIX_ENV:-dev}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dev-insecure}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-please-change-this-to-a-strong-64-char-secret-in-development}
       DATABASE_URL: ecto://${DB_USER:-postgres}:${DB_PASS:-postgres}@db:5432/${DB_NAME:-ledger_bank_api_dev}
       PGHOST: db
       PGPORT: 5432
@@ -36,6 +37,10 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       REDIS_URL: redis://redis:6379
+      # Disable OpenTelemetry exporters in CI unless explicitly needed
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-none}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
     ports:
       - "4000:4000"
     depends_on:

@@ -58,7 +58,7 @@ jobs:
 
       # 6) Fetch deps, create DB, migrate, test
       - run: mix deps.get
-      - run: mix format --check-formatted
+      - run: mix format --check-formatted || (echo "Format check failed. Run 'mix format' to fix." && exit 1)
       - run: mix compile --warnings-as-errors
       - run: mix ecto.create
       - run: mix ecto.migrate

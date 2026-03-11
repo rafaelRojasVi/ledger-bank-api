@@ -55,6 +55,7 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
           url: sanitize_url(redis_url),
           pool_size: pool_size
         })
+
         :ok
 
       {:error, reason} ->
@@ -106,10 +107,16 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
     encoded_value = encode_value(value)
 
     # Store value with TTL
-    case Redix.command(@connection_name, ["SETEX", encoded_key, Integer.to_string(ttl), encoded_value]) do
+    case Redix.command(@connection_name, [
+           "SETEX",
+           encoded_key,
+           Integer.to_string(ttl),
+           encoded_value
+         ]) do
       {:ok, "OK"} ->
         # Store metadata (created_at, access_count)
         metadata_key = metadata_key(key)
+
         metadata = %{
           created_at: DateTime.utc_now() |> DateTime.to_iso8601(),
           access_count: 0,
@@ -123,7 +130,8 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
       {:error, %Redix.Error{message: message}} ->
         Logger.error("Redis SETEX failed for key #{key}: #{message}")
         :ok
-        # Return :ok even on error to avoid breaking application flow
+
+      # Return :ok even on error to avoid breaking application flow
 
       {:error, reason} ->
         Logger.error("Redis SETEX failed for key #{key}: #{inspect(reason)}")
@@ -199,13 +207,17 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
         access_counts =
           Enum.map(metadata_keys, fn meta_key ->
             case Redix.command(@connection_name, ["GET", meta_key]) do
-              {:ok, nil} -> 0
+              {:ok, nil} ->
+                0
+
               {:ok, encoded_meta} ->
                 case decode_value(encoded_meta) do
                   {:ok, %{access_count: count}} -> count
                   _ -> 0
                 end
-              _ -> 0
+
+              _ ->
+                0
             end
           end)
 
@@ -230,6 +242,7 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
 
       {:error, reason} ->
         Logger.error("Redis KEYS failed during stats: #{inspect(reason)}")
+
         %{
           total_entries: 0,
           active_entries: 0,
@@ -289,16 +302,18 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
          {:ok, ttl} <- Redix.command(@connection_name, ["TTL", encoded_key]),
          {:ok, metadata_encoded} <- Redix.command(@connection_name, ["GET", metadata_key]),
          {:ok, metadata} <- decode_value(metadata_encoded || "{}") do
-      %{
-        key: key,
-        value: decode_value(value) |> elem(1),
-        created_at: parse_datetime(metadata[:created_at] || metadata["created_at"]),
-        expires_at: calculate_expires_at(ttl),
-        access_count: metadata[:access_count] || metadata["access_count"] || 0,
-        is_expired: ttl < 0,
-        ttl_remaining: if(ttl > 0, do: ttl, else: 0),
-        adapter: "redis"
-      }
+      if value == nil,
+        do: nil,
+        else: %{
+          key: key,
+          value: decode_value(value) |> elem(1),
+          created_at: parse_datetime(metadata[:created_at] || metadata["created_at"]),
+          expires_at: calculate_expires_at(ttl),
+          access_count: metadata[:access_count] || metadata["access_count"] || 0,
+          is_expired: ttl < 0,
+          ttl_remaining: if(ttl > 0, do: ttl, else: 0),
+          adapter: "redis"
+        }
     else
       {:ok, nil} ->
         nil
@@ -313,65 +328,11 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
   # PRIVATE HELPER FUNCTIONS
   # ============================================================================
 
-  defp start_redix_pool(url, _pool_size) do
-    # Parse Redis URL to connection options
-    opts = parse_redis_url(url)
-
-    # Start Redix connection
-    case Redix.start_link(opts, name: @connection_name) do
+  defp start_redix_pool(url, _pool_size) when is_binary(url) do
+    # Redix.start_link/2 expects (uri_string, options); name is in options
+    case Redix.start_link(url, name: @connection_name) do
       {:ok, _pid} -> :ok
       {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp parse_redis_url(url) when is_binary(url) do
-    # Parse redis://[password@]host[:port][/database] format
-    case URI.parse(url) do
-      %URI{scheme: "redis", host: host, port: port, userinfo: userinfo, path: path} ->
-        opts = []
-
-        opts =
-          if host, do: Keyword.put(opts, :host, String.to_charlist(host)), else: opts
-
-        opts =
-          if port, do: Keyword.put(opts, :port, port), else: Keyword.put(opts, :port, 6379)
-
-        # Extract password from userinfo (format: "password" or "username:password")
-        opts =
-          if userinfo do
-            password = userinfo |> String.split(":") |> List.last()
-            Keyword.put(opts, :password, password)
-          else
-            opts
-          end
-
-        # Extract database from path (format: "/0" -> database 0)
-        opts =
-          if path && path != "" do
-            db =
-              path
-              |> String.trim_leading("/")
-              |> String.to_integer()
-
-            Keyword.put(opts, :database, db)
-          else
-            opts
-          end
-
-        opts
-
-      _ ->
-        # Fallback: try to parse as simple host:port
-        case String.split(url, ":") do
-          [host, port] ->
-            [
-              host: String.to_charlist(host),
-              port: String.to_integer(port)
-            ]
-
-          _ ->
-            [host: ~c"localhost", port: 6379]
-        end
     end
   end
 

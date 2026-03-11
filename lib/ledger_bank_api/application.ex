@@ -48,8 +48,11 @@ defmodule LedgerBankApi.Application do
         # For Redis adapter, log warning but don't crash if Redis is unavailable
         # Application can still run with degraded cache performance
         adapter = Application.get_env(:ledger_bank_api, :cache_adapter)
+
         if adapter == LedgerBankApi.Core.Cache.RedisAdapter do
-          Logger.warning("Redis cache adapter failed to initialize. Application will continue but caching will be unavailable.")
+          Logger.warning(
+            "Redis cache adapter failed to initialize. Application will continue but caching will be unavailable."
+          )
         else
           raise "Cache initialization failed: #{inspect(reason)}"
         end
@@ -58,8 +61,12 @@ defmodule LedgerBankApi.Application do
     # Initialize rate limiting table
     LedgerBankApiWeb.Plugs.RateLimit.ensure_table_exists()
 
-    # Initialize circuit breakers (optional, controlled by config)
-    if Application.get_env(:ledger_bank_api, :enable_circuit_breaker, true) do
+    # Initialize circuit breakers (optional, controlled by :financial config)
+    enable_circuit_breaker =
+      Application.get_env(:ledger_bank_api, :financial, [])
+      |> Keyword.get(:enable_circuit_breaker, true)
+
+    if enable_circuit_breaker do
       case LedgerBankApi.Core.CircuitBreaker.init_default_breakers() do
         :ok ->
           require Logger
@@ -67,7 +74,10 @@ defmodule LedgerBankApi.Application do
 
         {:error, reason} ->
           require Logger
-          Logger.warning("Failed to initialize circuit breakers: #{inspect(reason)}. Continuing without circuit breaker protection.")
+
+          Logger.warning(
+            "Failed to initialize circuit breakers: #{inspect(reason)}. Continuing without circuit breaker protection."
+          )
       end
     end
 

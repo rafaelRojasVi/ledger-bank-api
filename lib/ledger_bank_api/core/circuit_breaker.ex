@@ -80,12 +80,11 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
   """
   def init(fuse_name, options \\ []) do
     max_failures = Keyword.get(options, :max_failures, 5)
-    _timeout = Keyword.get(options, :timeout, 60_000)
+    window_ms = Keyword.get(options, :timeout, 60_000)
     reset_timeout = Keyword.get(options, :reset_timeout, 30_000)
 
-    fuse_options = [
-      {:standard_fuse, max_failures, reset_timeout}
-    ]
+    # Fuse expects {{standard, MaxR, MaxT}, {reset, Time}}: strategy and refresh tuple
+    fuse_options = {{:standard, max_failures, window_ms}, {:reset, reset_timeout}}
 
     case :fuse.install(fuse_name, fuse_options) do
       :ok ->

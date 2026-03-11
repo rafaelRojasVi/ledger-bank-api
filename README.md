@@ -33,7 +33,8 @@ LedgerBank API is a production-grade financial services API built with Elixir an
 - 🎯 **Error Excellence** - Error catalog with retry policies and circuit breakers
 - 🚀 **Production Patterns** - Docker, CI/CD, health checks, monitoring
 - 📊 **Domain-Driven Design** - Financial and accounts contexts with clear boundaries
-- ⚡ **Performance** - Keyset pagination, ETS caching, query optimization
+- ⚡ **Performance** - Keyset pagination, ETS/Redis caching, query optimization
+- 🔄 **Horizontal Scaling** - Redis adapter for distributed caching across nodes
 
 ---
 

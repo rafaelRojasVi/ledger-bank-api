@@ -79,6 +79,58 @@ config :ledger_bank_api, :financial,
 
 ## Cache Configuration
 
+### Cache Adapter Selection
+
+The application supports two cache adapters:
+
+1. **ETS Adapter** (default) - Fast in-memory cache for single-node deployments
+2. **Redis Adapter** - Distributed cache for multi-node horizontal scaling
+
+#### Single-Node (ETS Adapter)
+
+```elixir
+# config/config.exs (default)
+config :ledger_bank_api, :cache_adapter,
+  LedgerBankApi.Core.Cache.EtsAdapter
+```
+
+**Characteristics:**
+- ✅ Fast (microsecond access times)
+- ✅ No external dependencies
+- ✅ Simple setup
+- ❌ Not shared across nodes
+- ❌ Lost on application restart
+
+#### Multi-Node (Redis Adapter)
+
+```elixir
+# config/runtime.exs or config/prod.exs
+config :ledger_bank_api, :cache_adapter,
+  LedgerBankApi.Core.Cache.RedisAdapter
+
+config :ledger_bank_api, :redis,
+  url: System.get_env("REDIS_URL", "redis://localhost:6379"),
+  pool_size: 10,
+  reconnect_on_error: true
+```
+
+**Environment Variable:**
+```bash
+# Use Redis adapter
+export CACHE_ADAPTER=redis
+export REDIS_URL=redis://localhost:6379
+export REDIS_POOL_SIZE=10
+```
+
+**Characteristics:**
+- ✅ Distributed (shared across all nodes)
+- ✅ Survives application restarts (if Redis persistence enabled)
+- ✅ Horizontal scaling ready
+- ❌ Requires Redis server
+- ❌ Network latency (vs in-memory)
+
+### Cache TTL Configuration
+
 Configure cache TTL (Time To Live) for different data types:
 
 ```elixir
@@ -88,6 +140,29 @@ config :ledger_bank_api, :financial,
   stats_cache_ttl: "300",      # 5 minutes
   default_cache_ttl: "600"      # 10 minutes
 ```
+
+### Switching Between Adapters
+
+To switch from ETS to Redis (for horizontal scaling):
+
+1. **Ensure Redis is running:**
+   ```bash
+   docker compose up -d redis
+   # Or use external Redis instance
+   ```
+
+2. **Set environment variable:**
+   ```bash
+   export CACHE_ADAPTER=redis
+   export REDIS_URL=redis://localhost:6379
+   ```
+
+3. **Restart application:**
+   ```bash
+   # Application will automatically use Redis adapter
+   ```
+
+**Note:** No code changes required! The adapter pattern allows switching via configuration.
 
 ## Retry Configuration
 

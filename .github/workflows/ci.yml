@@ -102,7 +102,7 @@ jobs:
       - name: Run tests
         run: mix test --warnings-as-errors
 
-  # Job 3: Docker Build & Health Check (only on main branch or PRs)
+  # Job 3: Docker Build & Health Check (runs on push/PR to main or develop)
   docker-build:
     name: Docker Build & Health Check
     runs-on: ubuntu-latest

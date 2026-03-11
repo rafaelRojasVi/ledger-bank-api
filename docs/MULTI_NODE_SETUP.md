@@ -220,12 +220,12 @@ docker compose -f docker-compose.multi-node.yml start web1
 # Create user
 curl -X POST http://localhost:4000/api/users \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","full_name":"Test","password":"password123","password_confirmation":"password123"}'
+  -d '{"email":"test@example.com","full_name":"Test","password":"password123!","password_confirmation":"password123!"}'
 
 # Login
 TOKEN=$(curl -s -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}' \
+  -d '{"email":"test@example.com","password":"password123!"}' \
   | jq -r '.data.access_token')
 
 # Make 10 requests with token (should work on any server)

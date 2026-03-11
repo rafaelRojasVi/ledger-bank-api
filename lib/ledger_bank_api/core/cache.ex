@@ -24,28 +24,23 @@ defmodule LedgerBankApi.Core.Cache do
 
   ## Configuration
 
-      # Single-node (default) - Fast in-memory cache
+  Default is ETS (no external dependencies). Redis is optional for multi-node.
+
+      # Default: ETS (single-node, in-memory)
       config :ledger_bank_api, :cache_adapter,
         LedgerBankApi.Core.Cache.EtsAdapter
 
-      # Multi-node - Distributed cache for horizontal scaling
+      # Optional: Redis (shared cache across nodes; single connection per node)
       config :ledger_bank_api, :cache_adapter,
         LedgerBankApi.Core.Cache.RedisAdapter
-
       config :ledger_bank_api, :redis,
-        url: System.get_env("REDIS_URL", "redis://localhost:6379"),
-        pool_size: 10
+        url: System.get_env("REDIS_URL", "redis://localhost:6379")
 
   ## Switching Adapters
 
-  Change configuration and restart - no code changes needed!
-  All adapters implement the same CacheAdapter behaviour.
+  Change configuration and restart. All adapters implement the same CacheAdapter behaviour.
 
-  **Environment Variable:**
-  ```bash
-  export CACHE_ADAPTER=redis  # Use Redis adapter
-  export REDIS_URL=redis://localhost:6379
-  ```
+  **Environment (prod):** `CACHE_ADAPTER=redis` and `REDIS_URL=...` to use Redis.
   """
 
   alias LedgerBankApi.Core.CacheAdapter

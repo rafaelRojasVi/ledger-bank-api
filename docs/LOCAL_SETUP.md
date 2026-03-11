@@ -7,7 +7,7 @@ Quick guide to run LedgerBank API locally on your machine (Windows/WSL/Linux/Mac
 ### **Option 1: Docker Compose (Easiest)**
 
 ```bash
-# 1. Start database and Redis
+# 1. Start database (and Redis only if you want to test CACHE_ADAPTER=redis)
 docker compose up -d db redis
 
 # 2. Wait for services to be ready (10-15 seconds)
@@ -119,7 +119,9 @@ mix phx.server
 
 ## 🧪 **Test the New Features**
 
-### **1. Test with Default ETS Cache (Single-Node)**
+### **1. Default: ETS cache (no Redis required)**
+
+The app uses ETS by default. No Redis needed for normal development.
 
 ```bash
 # Default - uses ETS adapter
@@ -129,7 +131,7 @@ mix phx.server
 curl http://localhost:4000/api/health
 ```
 
-### **2. Test with Redis Cache (Multi-Node Ready)**
+### **2. Optional: Test Redis cache adapter**
 
 ```bash
 # Set environment variable to use Redis
@@ -171,7 +173,7 @@ curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "alice@example.com",
-    "password": "password123"
+    "password": "password123!"
   }'
 ```
 

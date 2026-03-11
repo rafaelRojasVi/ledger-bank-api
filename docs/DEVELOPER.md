@@ -290,8 +290,8 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       attrs = %{
         email: "test@example.com",
         full_name: "Test User",
-        password: "password123",
-        password_confirmation: "password123"
+        password: "password123!",
+        password_confirmation: "password123!"
       }
       
       assert {:ok, %User{} = user} = UserService.create_user(attrs)
@@ -314,8 +314,8 @@ defmodule LedgerBankApi.Accounts.UserServiceTest do
       attrs = %{
         email: existing_user.email,
         full_name: "Another User",
-        password: "password123",
-        password_confirmation: "password123"
+        password: "password123!",
+        password_confirmation: "password123!"
       }
       
       assert {:error, %ErrorHandler{} = error} = UserService.create_user(attrs)
@@ -339,8 +339,8 @@ defmodule LedgerBankApiWeb.Controllers.UsersControllerTest do
       user_attrs = %{
         email: "test@example.com",
         full_name: "Test User",
-        password: "password123",
-        password_confirmation: "password123"
+        password: "password123!",
+        password_confirmation: "password123!"
       }
       
       conn = post(conn, ~p"/api/users", user_attrs)

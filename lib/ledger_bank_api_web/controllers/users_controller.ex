@@ -124,8 +124,8 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   Body: %{
     "email" => "user@example.com",
     "full_name" => "John Doe",
-    "password" => "password123",
-    "password_confirmation" => "password123"
+    "password" => "password123!",
+    "password_confirmation" => "password123!"
   }
 
   SECURITY NOTE: Role is always forced to "user" for public registration.
@@ -147,8 +147,8 @@ defmodule LedgerBankApiWeb.Controllers.UsersController do
   Body: %{
     "email" => "admin@example.com",
     "full_name" => "Admin User",
-    "password" => "password123456789",
-    "password_confirmation" => "password123456789",
+    "password" => "admin123!",
+    "password_confirmation" => "admin123!",
     "role" => "admin"
   }
 

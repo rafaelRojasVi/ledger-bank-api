@@ -101,16 +101,17 @@ config :ledger_bank_api, :cache_adapter,
 - ❌ Not shared across nodes
 - ❌ Lost on application restart
 
-#### Multi-Node (Redis Adapter)
+#### Optional: Redis (multi-node shared cache)
+
+Redis is optional. The adapter uses a single Redix connection per node (no pool).
 
 ```elixir
-# config/runtime.exs or config/prod.exs
+# config/runtime.exs or when CACHE_ADAPTER=redis
 config :ledger_bank_api, :cache_adapter,
   LedgerBankApi.Core.Cache.RedisAdapter
 
 config :ledger_bank_api, :redis,
   url: System.get_env("REDIS_URL", "redis://localhost:6379"),
-  pool_size: 10,
   reconnect_on_error: true
 ```
 
@@ -119,14 +120,13 @@ config :ledger_bank_api, :redis,
 # Use Redis adapter
 export CACHE_ADAPTER=redis
 export REDIS_URL=redis://localhost:6379
-export REDIS_POOL_SIZE=10
 ```
 
 **Characteristics:**
 - ✅ Distributed (shared across all nodes)
 - ✅ Survives application restarts (if Redis persistence enabled)
-- ✅ Horizontal scaling ready
 - ❌ Requires Redis server
+- ❌ Single connection per node (no pooling)
 - ❌ Network latency (vs in-memory)
 
 ### Cache TTL Configuration

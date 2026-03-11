@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Enterprise-Grade Financial Services API Built with Elixir/Phoenix**
+**Financial Services API Built with Elixir/Phoenix**
 
 [![Elixir](https://img.shields.io/badge/Elixir-1.18+-purple?style=flat&logo=elixir)](https://elixir-lang.org/)
 [![Phoenix](https://img.shields.io/badge/Phoenix-1.7+-orange?style=flat&logo=phoenix-framework)](https://phoenixframework.org/)
@@ -22,19 +22,34 @@
 
 ## 📖 Overview
 
-LedgerBank API is a production-grade financial services API built with Elixir and Phoenix. It demonstrates clean architecture, sophisticated error handling, security best practices, and background job processing—patterns commonly found in enterprise fintech applications.
+LedgerBank API is a demonstration financial services API built with Elixir and Phoenix. It demonstrates clean architecture, error handling, security practices, and background job processing—patterns used in fintech applications.
 
 **⚠️ Not for Production Use**: This is a demonstration project. It simulates banking operations but does not integrate with real financial institutions or handle actual money.
 
+### What This Project Demonstrates
+
+This codebase is a **portfolio-style backend** that shows how you might structure a financial API in Elixir/Phoenix: layered architecture, a single source of truth for errors, behavior-based services and workers, and one real external integration (Monzo). The goal is to illustrate patterns and tradeoffs, not to ship production traffic.
+
+**Implemented and real:** Auth (JWT, refresh tokens, RBAC), user and payment CRUD, error catalog and RFC 9457 problem details, Oban workers, circuit breaker around the bank client, ETS cache with optional Redis adapter, keyset and offset pagination, policies and normalization as pure functions.
+
+**Demonstrative or simulated:** Bank integration (Monzo client is real but “payments” are simulated; no real money). Webhooks and some endpoints are stubbed. No real compliance, fraud, or banking rails.
+
+### Scope and Limitations
+
+- **No real money or real banking.** All financial flows are in-app only. Monzo integration is for accounts/transactions only; no live payment initiation to real banks.
+- **Single external provider.** Only Monzo is implemented as a bank client; the design allows more.
+- **Cache:** Default is ETS (single-node). Redis adapter exists for multi-node scenarios but uses a single connection per node (no connection pool).
+- **Testing:** Full test suite and CI; test aliases (`mix test:auth`, `mix test:banking`, etc.) run against real DB and services.
+
 ### Project Highlights
 
-- 🏗️ **Clean Architecture** - Behaviors, services, policies, and pure functions
-- 🔒 **Security First** - JWT rotation, constant-time auth, RBAC, audit logs
-- 🎯 **Error Excellence** - Error catalog with retry policies and circuit breakers
-- 🚀 **Production Patterns** - Docker, CI/CD, health checks, monitoring
-- 📊 **Domain-Driven Design** - Financial and accounts contexts with clear boundaries
-- ⚡ **Performance** - Keyset pagination, ETS/Redis caching, query optimization
-- 🔄 **Horizontal Scaling** - Redis adapter for distributed caching across nodes
+- 🏗️ **Layered architecture** – Behaviors, services, policies, pure normalization
+- 🔒 **Auth and security** – JWT with rotation, constant-time login, RBAC, audit logging
+- 🎯 **Structured errors** – Central catalog, retry policy, circuit breaker for external calls
+- 🚀 **Operational tooling** – Docker, CI, health checks, optional metrics
+- 📊 **Domain split** – Accounts vs financial contexts with clear boundaries
+- ⚡ **Data access** – Keyset and offset pagination, ETS/Redis caching, filtering and sorting
+- 🔄 **Optional scaling** – Redis cache adapter for multi-node (single connection per node)
 
 ---
 
@@ -76,7 +91,7 @@ curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "alice@example.com",
-    "password": "password123"
+    "password": "password123!"
   }'
 
 # Response includes access_token - copy it for next requests
@@ -91,8 +106,8 @@ curl http://localhost:4000/api/users/stats \
 ```
 
 **Default credentials after seeding:**
-- Regular User: `alice@example.com` / `password123`
-- Admin User: `admin@example.com` / `adminpassword123456`
+- Regular User: `alice@example.com` / `password123!`
+- Admin User: `admin@example.com` / `admin123!`
 
 ---
 
@@ -100,16 +115,16 @@ curl http://localhost:4000/api/users/stats \
 
 ### Authentication & Authorization
 - ✅ **JWT-based authentication** with access and refresh tokens
-- ✅ **Token rotation** for enhanced security
+- ✅ **Token rotation** (refresh tokens with rotation)
 - ✅ **Role-based access control** (User, Admin, Support)
 - ✅ **Constant-time authentication** to prevent timing attacks
-- ✅ **Secure password hashing** with Argon2
+- ✅ **Secure password hashing** with PBKDF2
 - ✅ **Role-based password complexity** (8 chars for users, 15 for admins)
 
 ### Financial Operations
 - 💰 **Multi-bank integration** via OAuth2
 - 💳 **Account management** with balance tracking
-- 📈 **Transaction history** with advanced filtering
+- 📈 **Transaction history** with filtering
 - 💸 **Payment processing** with business rule validation
 - 🔄 **Bank synchronization** workers for automated updates
 - 🏦 **Multi-currency support**
@@ -151,7 +166,7 @@ curl http://localhost:4000/api/users/stats \
 ### Developer Experience
 - 📚 **OpenAPI/Swagger** documentation
 - 🐳 **Docker & Docker Compose** support
-- 🧪 **Comprehensive test suite** (1000+ tests)
+- 🧪 **Test suite** (unit, integration, and controller tests)
 - 📊 **Phoenix LiveDashboard** for monitoring
 - 📝 **Structured logging** with correlation IDs
 - 🔍 **Security audit logging**
@@ -200,7 +215,7 @@ curl http://localhost:4000/api/users/stats \
          └────────────────────┘
 ```
 
-**Key Insight:** Each layer has **one responsibility** and errors bubble up as `Error` structs, not strings.
+Each layer has a single responsibility; errors bubble up as `Error` structs, not strings.
 
 ### Clean Architecture Layers
 
@@ -281,7 +296,7 @@ def get_user(id) do
 end
 ```
 
-**Result:** Every service gets standard error handling, context building, and correlation IDs for free.
+Services get consistent error handling, context building, and correlation IDs via the behavior.
 
 #### 2. **Error Catalog System** - Single Source of Truth
 
@@ -321,7 +336,7 @@ Error.should_retry?() → false (business rules don't retry)
 WorkerBehavior sees should_retry?() = false → Dead Letter Queue
 ```
 
-**Benefits:** One change to the catalog affects all workers, services, and controllers. Circuit breaking can be added quickly since error categories are already defined.
+One change to the catalog affects workers, services, and controllers; error categories also drive retry and circuit-breaker behavior.
 
 #### 3. **Policy-Driven Authorization** - Pure Functions
 
@@ -370,7 +385,7 @@ normalized = Normalize.user_attrs(params)
 UserService.create_user(normalized)
 ```
 
-**Security Win:** `Normalize.user_attrs/1` **forces role to "user"** for public registration. Admin creation uses `Normalize.admin_user_attrs/1` which allows role selection but requires admin token.
+`Normalize.user_attrs/1` forces role to `"user"` for public registration; admin creation uses `Normalize.admin_user_attrs/1` and requires an admin token.
 
 #### 5. **Worker Behavior** - 280 Lines of Boilerplate Eliminated
 
@@ -426,7 +441,7 @@ def perform_work(%{"payment_id" => id}, context) do
 end
 ```
 
-**Result:** Infrastructure is centralized. Adding `NotificationWorker` requires ~40 lines, not 200.
+Infrastructure is centralized in the behavior; new workers focus on `perform_work/2`.
 
 ### Module Organization
 
@@ -484,7 +499,7 @@ lib/
 
 ### Authentication & Security
 - **Joken** - JWT token generation and validation with config-driven claims
-- **Argon2** - Password hashing (OWASP recommended) with environment-specific configuration
+- **PBKDF2** - Password hashing with configurable algorithm (PBKDF2 in production, simple hash in test)
 - **CORS** - Cross-origin resource sharing
 - **Security Headers** - CSP, HSTS, X-Frame-Options, etc.
 - **Policy Combinators** - Complex authorization logic with `all/1`, `any/1`, `negate/1`
@@ -523,7 +538,7 @@ Complete documentation is available in the `docs/` folder:
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and patterns
 - **[Developer Guide](docs/DEVELOPER.md)** - Code patterns and workflows
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - Testing strategies and examples
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment options
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Deployment and environment setup
 - **[Cheatsheet](docs/CHEATSHEET.md)** - Quick reference for developers
 
 ---
@@ -658,6 +673,8 @@ After seeding, you can login with:
 ## 📚 API Documentation
 
 ### Base URL
+
+All API routes use the single base path `/api` (no `/api/v1`). REST endpoints and OpenAPI docs live here; GraphQL is at `/api/graphql` and GraphiQL at `/api/graphiql`.
 
 ```
 http://localhost:4000/api
@@ -1146,7 +1163,7 @@ email             string            Unique email address
 full_name         string            User's full name
 status            string            ACTIVE | SUSPENDED | DELETED
 role              string            user | admin | support
-password_hash     string            Argon2 hashed password
+password_hash     string            PBKDF2 hashed password
 active            boolean           Account active flag
 verified          boolean           Email verified flag
 suspended         boolean           Account suspended flag
@@ -1498,7 +1515,7 @@ queues: [
 
 #### PaymentWorker
 
-Processes user payments with comprehensive business rule validation.
+Processes user payments with business rule validation.
 
 **Features:**
 - ✅ Comprehensive payment validation
@@ -1587,7 +1604,7 @@ http://localhost:4000/dev/dashboard/oban
 - ✅ **Token blacklisting** via database
 
 #### Password Security
-- ✅ **Argon2** hashing (OWASP recommended)
+- ✅ **PBKDF2** hashing (configurable via `:password_hashing`; simple hash in test for speed)
 - ✅ **Role-based complexity**:
   - Regular users: minimum 8 characters
   - Admin/Support: minimum 15 characters
@@ -1595,23 +1612,13 @@ http://localhost:4000/dev/dashboard/oban
 - ✅ **Current password** verification for changes
 
 #### Constant-Time Authentication
-Prevents timing attacks for email enumeration:
+Prevents timing attacks for email enumeration: the app always runs password verification (via `PasswordService`) even for unknown emails, so response time does not reveal whether an account exists.
 
 ```elixir
-# SECURITY: Always performs password hashing
-# even for non-existent users
-@dummy_password_hash Argon2.hash_pwd_salt("dummy_password")
-
-def authenticate_user(email, password) do
-  user = get_user_by_email(email) || nil
-  password_hash = if user, do: user.password_hash, else: @dummy_password_hash
-  
-  # Constant time comparison
-  password_valid? = Argon2.verify_pass(password, password_hash)
-  
-  # Check user existence and status AFTER password verification
-  # to maintain constant time regardless of account state
-end
+# SECURITY: Always performs password hashing (even for non-existent users)
+password_hash = if user, do: user.password_hash, else: @dummy_password_hash
+password_valid? = PasswordService.verify_password(password, password_hash)
+# Check user existence and status AFTER verification to maintain constant time
 ```
 
 ### Authorization
@@ -1727,7 +1734,7 @@ sanitized_fields = [
 ```
 
 #### Secure Storage
-- ✅ Passwords → Argon2 hashed
+- ✅ Passwords → PBKDF2 hashed
 - ✅ OAuth tokens → Encrypted at rest (recommended)
 - ✅ JWT secrets → Environment variables only
 - ✅ API keys → Never committed to git
@@ -2327,7 +2334,7 @@ This project draws inspiration from:
 A: Joken provides fine-grained control over JWT claims validation, signers, and security considerations. It enables custom token rotation and claim validation logic.
 
 **Q: Why ETS instead of Redis for cache?**  
-A: The `CacheAdapter` behavior allows switching to Redis with a single configuration change. ETS keeps the project simple to run locally, while the architecture is Redis-ready for production scaling.
+A: ETS is the default: no external services, simple to run locally. The `CacheAdapter` behavior lets you optionally switch to Redis (e.g. `CACHE_ADAPTER=redis`) for a shared cache across multiple nodes; the Redis adapter uses a single connection per node.
 
 **Q: Why extensive test coverage?**  
 A: The test suite covers multiple testing strategies:
@@ -2337,7 +2344,7 @@ A: The test suite covers multiple testing strategies:
 - Edge case tests (null bytes, boundary conditions)
 
 **Q: Is this production-ready?**  
-A: The patterns are production-grade, but production deployment would require:
+A: This is a demonstration project. The patterns are solid, but real production deployment would require:
 - Real banking integration (Plaid, Stripe)
 - Distributed cache (Redis)
 - Proper secrets management (Vault)

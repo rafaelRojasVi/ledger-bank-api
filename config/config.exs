@@ -138,18 +138,14 @@ config :ledger_bank_api, :cache,
   live_snapshot_ttl: 30,
   account_cache_ttl: 300
 
-# Configure cache adapter (pluggable for horizontal scaling)
-# Default: ETS (single-node) - fast, simple, no external dependencies
-# For multi-node deployments, use Redis adapter:
-#   config :ledger_bank_api, :cache_adapter, LedgerBankApi.Core.Cache.RedisAdapter
+# Cache adapter: ETS is default (no external deps). Redis is optional (CACHE_ADAPTER=redis).
 config :ledger_bank_api,
        :cache_adapter,
        LedgerBankApi.Core.Cache.EtsAdapter
 
-# Redis configuration (for Redis adapter)
+# Redis (only used when cache_adapter is RedisAdapter; single connection per node)
 config :ledger_bank_api, :redis,
   url: System.get_env("REDIS_URL", "redis://localhost:6379"),
-  pool_size: 10,
   reconnect_on_error: true
 
 # Use Jason for JSON parsing in Phoenix

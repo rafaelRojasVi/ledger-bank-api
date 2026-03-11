@@ -15,7 +15,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthController do
   Login user with email and password.
 
   POST /api/auth/login
-  Body: %{"email" => "user@example.com", "password" => "password123"}
+  Body: %{"email" => "user@example.com", "password" => "password123!"}
   """
   def login(conn, params) do
     context = build_context(conn, :login)

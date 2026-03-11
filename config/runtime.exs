@@ -115,15 +115,12 @@ config :opentelemetry_exporter,
   otlp_headers: %{}
 
 if config_env() == :prod do
-  # Redis configuration for production
-  redis_url = System.get_env("REDIS_URL", "redis://localhost:6379")
-
+  # Redis (optional; only used when CACHE_ADAPTER=redis; single connection per node)
   config :ledger_bank_api, :redis,
-    url: redis_url,
-    pool_size: String.to_integer(System.get_env("REDIS_POOL_SIZE") || "10"),
+    url: System.get_env("REDIS_URL", "redis://localhost:6379"),
     reconnect_on_error: true
 
-  # Optionally use Redis adapter for distributed caching
+  # Default ETS; set CACHE_ADAPTER=redis for optional shared cache across nodes
   cache_adapter =
     case System.get_env("CACHE_ADAPTER", "ets") do
       "redis" -> LedgerBankApi.Core.Cache.RedisAdapter

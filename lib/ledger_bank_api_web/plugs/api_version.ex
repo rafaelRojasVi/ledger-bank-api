@@ -1,12 +1,11 @@
 defmodule LedgerBankApiWeb.Plugs.ApiVersion do
   @moduledoc """
-  API versioning plug that handles version headers and route-based versioning.
+  API versioning plug for request/response. All routes use base path `/api`; version is carried by headers or query.
 
   Supports:
   - Accept header: `Accept: application/vnd.api+json;version=1`
   - Custom header: `X-API-Version: 1`
   - Query parameter: `?version=1`
-  - URL path: `/api/v1/...`
 
   Defaults to version 1 if no version is specified.
   """
@@ -58,10 +57,6 @@ defmodule LedgerBankApiWeb.Plugs.ApiVersion do
       # Check query parameter
       (version_param = conn.query_params["version"]) != nil ->
         version_param
-
-      # Check URL path for v1 pattern
-      String.contains?(conn.request_path, "/v1/") ->
-        "v1"
 
       # Default to version 1
       true ->

@@ -337,8 +337,8 @@ defmodule LedgerBankApi.UserServiceTest do
       attrs = %{
         email: "test@example.com",
         full_name: "Test User",
-        password: "password123",
-        password_confirmation: "password123"
+        password: "password123!",
+        password_confirmation: "password123!"
       }
       
       assert {:ok, user} = UserService.create_user(attrs)
@@ -375,8 +375,8 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
       {:ok, user} = UserService.create_user(%{
         email: "test@example.com",
         full_name: "Test User",
-        password: "password123",
-        password_confirmation: "password123"
+        password: "password123!",
+        password_confirmation: "password123!"
       })
       
       %{user: user}
@@ -385,7 +385,7 @@ defmodule LedgerBankApiWeb.Controllers.AuthControllerTest do
     test "returns JWT tokens for valid credentials", %{conn: conn, user: user} do
       conn = post(conn, "/api/auth/login", %{
         email: user.email,
-        password: "password123"
+        password: "password123!"
       })
       
       assert %{
@@ -512,8 +512,8 @@ defmodule LedgerBankApi.UsersFixtures do
     default_attrs = %{
       email: "user#{System.unique_integer()}@example.com",
       full_name: "Test User",
-      password: "password123",
-      password_confirmation: "password123"
+      password: "password123!",
+      password_confirmation: "password123!"
     }
     
     attrs = Map.merge(default_attrs, attrs)
@@ -643,7 +643,7 @@ test "login returns JWT tokens" do
   
   conn = post(conn, "/api/auth/login", %{
     email: user.email,
-    password: "password123"
+    password: "password123!"
   })
   
   assert %{"data" => %{"access_token" => token}} = json_response(conn, 200)
@@ -858,12 +858,12 @@ end
 # test/ledger_bank_api/accounts/constant_time_auth_test.exs
 test "authentication timing does not reveal email existence" do
   # Create known user
-  {:ok, user} = create_user(%{email: "known@example.com", password: "password123"})
+  {:ok, user} = create_user(%{email: "known@example.com", password: "password123!"})
   
   # Time 100 attempts with non-existent email
   nonexistent_timings = for _ <- 1..100 do
     {time, _result} = :timer.tc(fn ->
-      UserService.authenticate_user("nonexistent@example.com", "password123")
+      UserService.authenticate_user("nonexistent@example.com", "password123!")
     end)
     time
   end
@@ -898,8 +898,8 @@ test "rejects null bytes in email" do
   attrs = %{
     email: "test\0@example.com",  # Null byte
     full_name: "Test",
-    password: "password123",
-    password_confirmation: "password123"
+    password: "password123!",
+    password_confirmation: "password123!"
   }
   
   assert {:error, error} = UserService.create_user(attrs)
@@ -1364,10 +1364,10 @@ describe "authenticate_user/2" do
   
   test "returns user for valid credentials" do
     # Given a user exists with known credentials
-    user = user_fixture(%{email: "test@example.com", password: "password123"})
+    user = user_fixture(%{email: "test@example.com", password: "password123!"})
     
     # When we authenticate with valid credentials
-    result = UserService.authenticate_user("test@example.com", "password123")
+    result = UserService.authenticate_user("test@example.com", "password123!")
     
     # Get the user back
     assert {:ok, authenticated_user} = result

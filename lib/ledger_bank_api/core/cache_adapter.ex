@@ -9,19 +9,17 @@ defmodule LedgerBankApi.Core.CacheAdapter do
 
   - **Adapter pattern** - Swap implementations via configuration
   - **Same interface** - All adapters implement identical API
-  - **Testing flexibility** - Mock adapter for tests
-  - **Horizontal scaling** - Distributed adapters for multi-node setups
+  - **Default ETS** - No external deps; Redis optional for multi-node
 
   ## Configuration
 
-      # config/config.exs
+      # config/config.exs (default)
       config :ledger_bank_api, :cache_adapter,
-        LedgerBankApi.Core.Cache.EtsAdapter  # Default
+        LedgerBankApi.Core.Cache.EtsAdapter
 
-      # For multi-node deployments, implement a distributed cache adapter
-      # config/prod.exs (future)
+      # Optional: Redis for shared cache across nodes
       # config :ledger_bank_api, :cache_adapter,
-      #   LedgerBankApi.Core.Cache.DistributedAdapter
+      #   LedgerBankApi.Core.Cache.RedisAdapter
 
   ## Implementing an Adapter
 

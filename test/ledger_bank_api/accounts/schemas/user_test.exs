@@ -38,7 +38,7 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
       hashed = get_change(changeset, :password_hash)
       assert hashed != nil
       assert hashed != "mypassword123"
-      # In test env, PasswordHelper is used (different format than Argon2)
+      # In test env, PasswordHelper is used (different format than PBKDF2)
       assert is_binary(hashed) and String.length(hashed) > 0
     end
 
@@ -893,7 +893,7 @@ defmodule LedgerBankApi.Accounts.Schemas.UserTest do
         |> Repo.insert!()
 
       # Note: In test env, PasswordHelper may produce same hash for same password
-      # In production, Argon2 with salt would produce different hashes
+      # In production, PBKDF2 with salt would produce different hashes
       # We just verify both have password hashes
       assert user1.password_hash != nil
       assert user2.password_hash != nil

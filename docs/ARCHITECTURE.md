@@ -103,9 +103,9 @@ end
 config :ledger_bank_api, :cache_adapter, 
   LedgerBankApi.Core.Cache.EtsAdapter  # Single node
 
-# Future: Switch to Redis with one config change
-config :ledger_bank_api, :cache_adapter,
-  LedgerBankApi.Core.Cache.RedisAdapter  # Multi-node
+# Optional: Redis (single connection per node; for multi-node shared cache)
+# config :ledger_bank_api, :cache_adapter,
+#   LedgerBankApi.Core.Cache.RedisAdapter
 ```
 
 ### **3. Error Catalog System**
@@ -366,7 +366,7 @@ sequenceDiagram
     Controller->>Controller: InputValidator.validate_user_creation()
     Controller->>Service: UserService.create_user(attrs)
     Service->>Service: Normalize.user_attrs(attrs)
-    Service->>Service: Argon2.hash_pwd_salt(password)
+    Service->>Service: PasswordService.hash_password(password)
     Service->>Repo: Repo.insert(user_changeset)
     Repo->>Database: INSERT INTO users
     Database-->>Repo: User record
@@ -521,7 +521,7 @@ config :ledger_bank_api, Oban, queues: queues
 
 - **Indexes** on frequently queried fields
 - **Keyset pagination** instead of OFFSET
-- **Connection pooling** (10 connections per node)
+- **Database connection pool** (configurable per node)
 - **Query optimization** with `explain analyze`
 
 ### **Caching Strategy**

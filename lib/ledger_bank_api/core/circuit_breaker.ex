@@ -181,9 +181,7 @@ defmodule LedgerBankApi.Core.CircuitBreaker do
       result = fun.()
       duration = System.monotonic_time(:millisecond) - start_time
 
-      # Report success to circuit breaker
-      :fuse.melt(fuse_name)
-
+      # Success: do not melt; only failures increment the count
       if Application.get_env(:ledger_bank_api, :log_circuit_breaker, false) do
         Logger.debug("Circuit breaker #{fuse_name} call succeeded in #{duration}ms")
       end

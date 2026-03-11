@@ -177,8 +177,8 @@ curl -X POST https://your-app-name.onrender.com/api/users/admin \
   -d '{
     "email": "admin@example.com",
     "full_name": "Admin User",
-    "password": "admin123456789!",
-    "password_confirmation": "admin123456789!",
+    "password": "admin123!",
+    "password_confirmation": "admin123!",
     "role": "admin"
   }'
 ```

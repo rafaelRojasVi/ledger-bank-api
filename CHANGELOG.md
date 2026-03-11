@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Password Hashing Decoupling** - Removed Mix.env() dependencies
   - Created `LedgerBankApi.Accounts.PasswordService` for configuration-driven hashing
   - Decoupled password hashing from development environment detection
-  - Added support for multiple hashing algorithms (Pbkdf2, Argon2)
+  - Configuration-driven hashing (PBKDF2)
   - Environment-specific hashing configuration for optimal performance
 
 ##### Infrastructure & CI/CD Improvements
@@ -160,7 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Password Hashing** - Environment-specific configuration
   - Replaced `Mix.env()` conditional logic with configuration-driven approach
-  - Added support for different hashing algorithms per environment
+  - Environment-specific hashing configuration (PBKDF2 in prod/test)
   - Enhanced test performance with simplified hashing in test environment
   - Improved production security with configurable hashing parameters
 
@@ -210,7 +210,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Password Security** - Enhanced hashing security
   - Decoupled password hashing from development environment
-  - Added support for multiple hashing algorithms
+  - Configurable password hashing (PBKDF2)
   - Enhanced security through configurable hashing parameters
   - Improved test performance with simplified hashing
 
@@ -379,7 +379,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Token rotation for enhanced security (15-minute access, 7-day refresh)
 - Role-based access control (User, Admin, Support)
 - Constant-time authentication to prevent timing attacks
-- Secure password hashing with Argon2
+- Secure password hashing with PBKDF2
 - Role-based password complexity (8 chars for users, 15 for admins)
 - Token revocation and blacklisting support
 

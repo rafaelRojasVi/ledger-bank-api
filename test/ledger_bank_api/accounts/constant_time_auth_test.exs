@@ -10,8 +10,8 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
 
   ### Attack 1: Email Enumeration via Response Time
   - Attacker measures response time for different emails
-  - If unknown email returns faster (no Argon2), attacker knows email isn't registered
-  - Fix: Always perform Argon2 hashing, even for unknown emails
+  - If unknown email returns faster (no hashing), attacker knows email isn't registered
+  - Fix: Always perform password hashing, even for unknown emails
 
   ### Attack 2: Email Enumeration via Error Messages
   - Different error messages reveal which emails exist
@@ -19,7 +19,7 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
 
   ### Attack 3: Account Status Enumeration
   - Check if account is active BEFORE password verification
-  - Active accounts take longer (Argon2), inactive accounts faster
+  - Active accounts take longer (hashing), inactive accounts faster
   - Fix: Check password FIRST, then check status
 
   ## CRITICAL Test Assertions
@@ -43,7 +43,7 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
       assert error.type == :unauthorized
       refute error.reason == :user_not_found
 
-      # Note: In test environment, we use PasswordHelper (fast) instead of Argon2 (slow)
+      # Note: In test environment, we use PasswordHelper (fast) instead of full PBKDF2 (slow)
       # So we can't reliably test timing. The important thing is behavior:
       # - Unknown email goes through password hashing (even if fast in tests)
       # - Returns same error as wrong password
@@ -422,7 +422,7 @@ defmodule LedgerBankApi.Accounts.ConstantTimeAuthTest do
         assert error.reason == expected_reason,
                "Failed for scenario: #{description}. Expected #{expected_reason}, got #{error.reason}"
 
-        # In production, these would take 100-300ms due to Argon2
+        # In production, these would take 100-300ms due to PBKDF2
         # In tests, PasswordHelper is fast but still executes hashing logic
       end
     end

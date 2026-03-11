@@ -2,33 +2,31 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
   @moduledoc """
   Redis-based cache adapter implementation.
 
-  Provides distributed caching using Redis for multi-node deployments.
-  Suitable for horizontal scaling scenarios.
+  Optional backend for shared cache across multiple nodes. Uses a single
+  Redix connection per node (no connection pool). Prefer ETS for
+  single-node and local development.
 
   ## Characteristics
 
   - **Distributed** - Shared cache across all nodes
   - **Persistent** - Survives application restarts (if Redis persistence enabled)
-  - **Scalable** - Handles high throughput
   - **TTL support** - Automatic expiration
-  - **Connection pooling** - Efficient connection management
+  - **Single connection** - One Redix connection per node (no pool)
 
   ## Configuration
 
-      # config/runtime.exs or config/prod.exs
       config :ledger_bank_api, :cache_adapter,
         LedgerBankApi.Core.Cache.RedisAdapter
 
       config :ledger_bank_api, :redis,
         url: System.get_env("REDIS_URL", "redis://localhost:6379"),
-        pool_size: 10,
         reconnect_on_error: true
 
   ## Limitations
 
   - Requires Redis server running
   - Network latency (vs in-memory ETS)
-  - Additional infrastructure dependency
+  - Single connection per node (no pooling)
   """
 
   @behaviour LedgerBankApi.Core.CacheAdapter
@@ -47,13 +45,11 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
   @impl true
   def init do
     redis_url = get_redis_url()
-    pool_size = get_pool_size()
 
-    case start_redix_pool(redis_url, pool_size) do
+    case start_redix_connection(redis_url) do
       :ok ->
-        Logger.info("Redis cache adapter initialized successfully", %{
-          url: sanitize_url(redis_url),
-          pool_size: pool_size
+        Logger.info("Redis cache adapter initialized (single connection)", %{
+          url: sanitize_url(redis_url)
         })
 
         :ok
@@ -90,10 +86,6 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
 
       {:error, reason} ->
         Logger.error("Redis GET failed for key #{key}: #{inspect(reason)}")
-        :not_found
-
-      other ->
-        Logger.error("Unexpected Redis response for key #{key}: #{inspect(other)}")
         :not_found
     end
   end
@@ -315,9 +307,6 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
           adapter: "redis"
         }
     else
-      {:ok, nil} ->
-        nil
-
       {:error, reason} ->
         Logger.warning("Failed to get entry details for #{key}: #{inspect(reason)}")
         nil
@@ -328,8 +317,7 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
   # PRIVATE HELPER FUNCTIONS
   # ============================================================================
 
-  defp start_redix_pool(url, _pool_size) when is_binary(url) do
-    # Redix.start_link/2 expects (uri_string, options); name is in options
+  defp start_redix_connection(url) when is_binary(url) do
     case Redix.start_link(url, name: @connection_name) do
       {:ok, _pid} -> :ok
       {:error, reason} -> {:error, reason}
@@ -339,11 +327,6 @@ defmodule LedgerBankApi.Core.Cache.RedisAdapter do
   defp get_redis_url do
     Application.get_env(:ledger_bank_api, :redis, [])
     |> Keyword.get(:url, System.get_env("REDIS_URL", "redis://localhost:6379"))
-  end
-
-  defp get_pool_size do
-    Application.get_env(:ledger_bank_api, :redis, [])
-    |> Keyword.get(:pool_size, 10)
   end
 
   defp encode_key(key) when is_binary(key) do

@@ -102,8 +102,8 @@ curl -X POST http://localhost:4000/api/users \
   -d '{
     "email": "test@example.com",
     "full_name": "Test User",
-    "password": "password123",
-    "password_confirmation": "password123"
+    "password": "password123!",
+    "password_confirmation": "password123!"
   }'
 
 # Login
@@ -111,7 +111,7 @@ curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
-    "password": "password123"
+    "password": "password123!"
   }'
 ```
 

@@ -89,27 +89,28 @@ defmodule LedgerBankApi.MixProject do
       "test:auth": [
         "ecto.create --quiet",
         "ecto.migrate --quiet",
-        "test test/ledger_bank_api/auth/"
+        "test test/ledger_bank_api/accounts/"
       ],
       "test:banking": [
         "ecto.create --quiet",
         "ecto.migrate --quiet",
-        "test test/ledger_bank_api/banking/"
+        "test test/ledger_bank_api/financial/"
       ],
       "test:users": [
         "ecto.create --quiet",
         "ecto.migrate --quiet",
-        "test test/ledger_bank_api/users/"
+        "test test/ledger_bank_api/accounts/"
       ],
       "test:cache": [
         "ecto.create --quiet",
         "ecto.migrate --quiet",
-        "test test/ledger_bank_api/cache_test.exs"
+        "test test/ledger_bank_api/core/cache_test.exs",
+        "test test/ledger_bank_api/core/cache/"
       ],
       "test:integration": [
         "ecto.create --quiet",
         "ecto.migrate --quiet",
-        "test test/ledger_bank_api/integration/"
+        "test test/ledger_bank_api_web/controllers/integration_flow_test.exs"
       ],
       "test:unit": ["ecto.create --quiet", "ecto.migrate --quiet", "test test/ledger_bank_api/"]
     ]

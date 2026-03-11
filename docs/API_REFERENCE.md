@@ -218,7 +218,7 @@ Authenticate user and receive JWT tokens.
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "password123!"
 }
 ```
 
@@ -247,7 +247,7 @@ curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "alice@example.com",
-    "password": "password123"
+    "password": "password123!"
   }'
 ```
 
@@ -377,8 +377,8 @@ Create new user.
 {
   "email": "newuser@example.com",
   "full_name": "New User",
-  "password": "password123",
-  "password_confirmation": "password123"
+  "password": "password123!",
+  "password_confirmation": "password123!"
 }
 ```
 
@@ -723,7 +723,7 @@ GET /api/users?sort=email:asc,name:desc
 # Login and get token
 TOKEN=$(curl -s -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"password123"}' \
+  -d '{"email":"alice@example.com","password":"password123!"}' \
   | jq -r '.data.access_token')
 
 # Use token for authenticated requests

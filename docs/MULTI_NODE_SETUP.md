@@ -128,7 +128,7 @@ This creates:
 - ✅ **3 web servers** (web1, web2, web3)
 - ✅ **1 load balancer** (nginx)
 - ✅ **1 database** (shared)
-- ✅ **1 Redis** (for future cache adapter)
+- ✅ **1 Redis** (for distributed cache adapter)
 
 ### **Step 2: Wait for Services to Start**
 
@@ -283,7 +283,7 @@ done
 **Key Point:** Each request can hit a different server, but it doesn't matter because:
 - ✅ JWT tokens work on any server (stateless)
 - ✅ Database is shared (all servers see same data)
-- ✅ Cache (when using Redis) is shared
+- ✅ Cache is shared via Redis adapter (distributed caching)
 
 ### **Oban Job Distribution:**
 

@@ -71,7 +71,8 @@ defmodule LedgerBankApi.MixProject do
       {:absinthe_plug, "~> 1.5"},
       {:opentelemetry, "~> 1.3"},
       {:opentelemetry_exporter, "~> 1.6"},
-      {:opentelemetry_api, "~> 1.2"}
+      {:opentelemetry_api, "~> 1.2"},
+      {:redix, "~> 1.2"}
     ]
   end
 

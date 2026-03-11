@@ -38,25 +38,38 @@ defmodule LedgerBankApi.Application do
     # Initialize cache adapter
     case LedgerBankApi.Core.Cache.init() do
       :ok ->
-        :ok
+        require Logger
+        adapter_name = Application.get_env(:ledger_bank_api, :cache_adapter) |> inspect()
+        Logger.info("Cache adapter initialized: #{adapter_name}")
 
       {:error, reason} ->
         require Logger
         Logger.error("Failed to initialize cache adapter: #{inspect(reason)}")
-        raise "Cache initialization failed: #{inspect(reason)}"
+        # For Redis adapter, log warning but don't crash if Redis is unavailable
+        # Application can still run with degraded cache performance
+        adapter = Application.get_env(:ledger_bank_api, :cache_adapter)
+        if adapter == LedgerBankApi.Core.Cache.RedisAdapter do
+          Logger.warning("Redis cache adapter failed to initialize. Application will continue but caching will be unavailable.")
+        else
+          raise "Cache initialization failed: #{inspect(reason)}"
+        end
     end
 
     # Initialize rate limiting table
     LedgerBankApiWeb.Plugs.RateLimit.ensure_table_exists()
 
-    # Initialize circuit breakers (disabled for now due to configuration issues)
-    # case LedgerBankApi.Core.CircuitBreaker.init_default_breakers() do
-    #   :ok -> :ok
-    #   {:error, reason} ->
-    #     require Logger
-    #     Logger.error("Failed to initialize circuit breakers: #{inspect(reason)}")
-    #     raise "Circuit breaker initialization failed: #{inspect(reason)}"
-    # end
+    # Initialize circuit breakers (optional, controlled by config)
+    if Application.get_env(:ledger_bank_api, :enable_circuit_breaker, true) do
+      case LedgerBankApi.Core.CircuitBreaker.init_default_breakers() do
+        :ok ->
+          require Logger
+          Logger.info("Circuit breakers initialized successfully")
+
+        {:error, reason} ->
+          require Logger
+          Logger.warning("Failed to initialize circuit breakers: #{inspect(reason)}. Continuing without circuit breaker protection.")
+      end
+    end
 
     http_child =
       if Application.get_env(:ledger_bank_api, LedgerBankApiWeb.Endpoint)[:server] do
